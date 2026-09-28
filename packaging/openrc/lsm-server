@@ -1,0 +1,19 @@
+#!/sbin/openrc-run
+# Lanscape Mini server
+
+name="lsm-server"
+description="Lanscape Mini server"
+command="/usr/bin/lsm-server"
+command_args="-c /etc/lsm/server.conf"
+command_background=true
+pidfile="/run/${RC_SVCNAME}.pid"
+output_log="/var/log/lsm-server.log"
+error_log="/var/log/lsm-server.log"
+
+depend() {
+	need net
+}
+
+start_pre() {
+	checkpath -d -m 0750 /var/lib/lsm
+}

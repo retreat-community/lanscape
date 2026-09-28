@@ -1,0 +1,16 @@
+#!/sbin/openrc-run
+# Lanscape Mini agent
+
+name="lsm-agent"
+description="Lanscape Mini agent"
+command="/usr/bin/lsm-agent"
+command_args="-c /etc/lsm/agent.conf"
+command_background=true
+pidfile="/run/${RC_SVCNAME}.pid"
+output_log="/var/log/lsm-agent.log"
+error_log="/var/log/lsm-agent.log"
+
+depend() {
+	need net
+	after firewall
+}

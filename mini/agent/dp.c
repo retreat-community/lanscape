@@ -6,10 +6,12 @@
 #include "../common/util.h"
 
 #include <errno.h>
+#include <linux/sockios.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <poll.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -132,6 +134,23 @@ static uint64_t send_loop(int *fds, int n, uint64_t end)
         if (fds[i] >= 0)
             shutdown(fds[i], SHUT_WR);
     return total;
+}
+
+/* Waits until the kernel has transmitted everything queued on the sockets,
+ * so that interface counters read afterwards include the whole payload. */
+static void drain_wait(const int *fds, int n, uint64_t deadline)
+{
+    while (ls_now_us() < deadline) {
+        int i, pending = 0;
+        for (i = 0; i < n; i++) {
+            int q = 0;
+            if (fds[i] >= 0 && ioctl(fds[i], SIOCOUTQ, &q) == 0 && q > 0)
+                pending = 1;
+        }
+        if (!pending)
+            return;
+        usleep(20000);
+    }
 }
 
 typedef struct {
@@ -380,6 +399,7 @@ void dp_respond(int cfd, int lfd)
         } else {
             uint64_t sent = send_loop(data, nd, ls_now_us() + (uint64_t)(duration + warmup) * 1000u);
             ls_cpu_read(&c1);
+            drain_wait(data, nd, ls_now_us() + 5000000u);
             ls_if_counters(dev, &rx1, &tx1);
             ls_frame_begin(&w, LS_SENDER_STAT);
             ls_put_u64(&w, T_BYTES, sent);
@@ -586,12 +606,14 @@ static void run_tcp(int cfd, const cmd_t *c, result_t *r, uint32_t session)
         uint16_t cpu = 0;
         uint8_t pok = 1;
         ls_cpu_read(&c1);
-        ls_if_counters(c->dev, &rx1, &tx1);
         if (ls_read_frame(cfd, fb, sizeof(fb), ls_now_us() + 8000000u, &type, &pl, &plen) != LSR_OK ||
             type != LS_RESULT) {
             r->status = ST_TIMEOUT;
             goto out;
         }
+        /* the receiver answers after the last byte arrived: everything left the interface */
+        drain_wait(data, n, ls_now_us() + 2000000u);
+        ls_if_counters(c->dev, &rx1, &tx1);
         ls_get_u64(pl, plen, T_BYTES, &r->bytes);
         ls_get_u64(pl, plen, T_WINDOW_US, &r->window_us);
         ls_get_u16(pl, plen, T_CPU, &cpu);

@@ -1,0 +1,27 @@
+# Lanscape Mini with Docker Compose. Run the agent part on every host you want to measure:
+#   LSM_TOKEN=... docker compose -f mini.yaml up -d
+# and open http://<host>:8080. On other hosts start only the agent:
+#   LSM_TOKEN=... LSM_SERVER=<server-ip> docker compose -f mini.yaml up -d lsm-agent
+services:
+  lsm-server:
+    image: ghcr.io/retreat-community/lsm-server:${LSM_TAG:-latest}
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      LSM_TOKEN: ${LSM_TOKEN:?set LSM_TOKEN}
+      LSM_DATA_FILE: /data/runs.json
+    volumes:
+      - lsm-data:/data
+
+  lsm-agent:
+    image: ghcr.io/retreat-community/lsm-agent:${LSM_TAG:-latest}
+    network_mode: host
+    restart: unless-stopped
+    cap_add: [NET_RAW, NET_ADMIN]
+    environment:
+      LSM_SERVER: ${LSM_SERVER:-127.0.0.1}
+      LSM_TOKEN: ${LSM_TOKEN:?set LSM_TOKEN}
+      LSM_ID: ${LSM_ID:-}
+
+volumes:
+  lsm-data:

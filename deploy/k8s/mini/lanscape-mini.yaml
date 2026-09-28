@@ -1,0 +1,129 @@
+# Lanscape Mini on Kubernetes: lsm-server Deployment and lsm-agent DaemonSet on the host network.
+# kubectl apply -f lanscape-mini.yaml, then change the token in the Secret.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lanscape-mini
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: lsm-token
+  namespace: lanscape-mini
+type: Opaque
+stringData:
+  token: change-me-please
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lsm-server
+  namespace: lanscape-mini
+data:
+  server.conf: |
+    listen=:8080
+    ctl_listen=:47701
+    data_file=/data/runs.json
+    duration_ms=5000
+    streams=4
+    # expect=10.30.0.0/24:2500
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lsm-server
+  namespace: lanscape-mini
+  labels: {app.kubernetes.io/name: lsm-server}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app.kubernetes.io/name: lsm-server}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: lsm-server}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      containers:
+        - name: lsm-server
+          image: ghcr.io/retreat-community/lsm-server:latest
+          args: ["-c", "/etc/lsm/server.conf"]
+          env:
+            - name: LSM_TOKEN
+              valueFrom: {secretKeyRef: {name: lsm-token, key: token}}
+          ports:
+            - {name: http, containerPort: 8080}
+            - {name: control, containerPort: 47701}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+          resources:
+            requests: {cpu: 10m, memory: 8Mi}
+            limits: {memory: 32Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: config, mountPath: /etc/lsm}
+            - {name: data, mountPath: /data}
+      volumes:
+        - name: config
+          configMap: {name: lsm-server}
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lsm-server
+  namespace: lanscape-mini
+spec:
+  selector: {app.kubernetes.io/name: lsm-server}
+  ports:
+    - {name: http, port: 8080, targetPort: http}
+    - {name: control, port: 47701, targetPort: control}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: lsm-agent
+  namespace: lanscape-mini
+  labels: {app.kubernetes.io/name: lsm-agent}
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/name: lsm-agent}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: lsm-agent}
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+        - {key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule}
+        - {key: node-role.kubernetes.io/master, operator: Exists, effect: NoSchedule}
+      containers:
+        - name: lsm-agent
+          image: ghcr.io/retreat-community/lsm-agent:latest
+          env:
+            - name: LSM_SERVER
+              value: lsm-server.lanscape-mini.svc.cluster.local:47701
+            - name: LSM_TOKEN
+              valueFrom: {secretKeyRef: {name: lsm-token, key: token}}
+            - name: LSM_ID
+              valueFrom: {fieldRef: {fieldPath: spec.nodeName}}
+            - name: LSM_EXCLUDE
+              value: "wan*,tailscale*,docker*,veth*,cni*,flannel*,cilium*,lxc*,vxlan*,kube-ipvs*,nodelocaldns"
+          ports:
+            - {name: data, containerPort: 47700, hostPort: 47700}
+          resources:
+            requests: {cpu: 10m, memory: 4Mi}
+            limits: {memory: 16Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+              add: [NET_RAW, NET_ADMIN]

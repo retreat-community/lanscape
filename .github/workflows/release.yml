@@ -5,11 +5,70 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: read
+  contents: write
+  packages: write
+  id-token: write
 
 jobs:
-  layout:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    with:
+      release: true
+    secrets: inherit
+
+  release:
+    needs: ci
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: make check-layout
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mini-*
+          path: mini
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: openwrt-*
+          path: openwrt
+      - uses: sigstore/cosign-installer@v3
+      - name: Assemble assets
+        run: |
+          mkdir -p assets
+          scripts/package-mini.sh mini "$GITHUB_REF_NAME" assets
+          # OpenWrt packages: prefix with branch and arch (apk file names carry no arch)
+          for d in openwrt/openwrt-*; do
+            id=$(basename "$d")                      # openwrt-<branch>-<arch>
+            for f in "$d"/*.ipk "$d"/*.apk; do
+              [ -f "$f" ] && cp "$f" "assets/${id}_$(basename "$f")"
+            done
+            tar -C "$d" -czf "assets/${id}-feed.tar.gz" .
+          done
+          cd assets && sha256sum * > checksums.txt
+      - name: Sign checksums
+        run: cosign sign-blob --yes --bundle assets/checksums.txt.sigstore.json assets/checksums.txt
+      - name: Release notes
+        run: |
+          {
+            scripts/changelog.sh "$GITHUB_REF_NAME"
+            echo
+            cat mini/sizes.md 2>/dev/null || true
+            echo
+            echo "Verify: \`cosign verify-blob --bundle checksums.txt.sigstore.json" \
+                 "--certificate-identity-regexp 'https://github.com/${GITHUB_REPOSITORY}/' " \
+                 "--certificate-oidc-issuer https://token.actions.githubusercontent.com checksums.txt\`"
+          } > notes.md
+          cat notes.md
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" assets/* --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+
+  pages:
+    needs: release
+    uses: ./.github/workflows/pages.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit

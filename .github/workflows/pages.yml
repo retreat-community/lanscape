@@ -1,14 +1,67 @@
 name: pages
 
 on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
   workflow_dispatch:
+    inputs:
+      tag:
+        description: release tag to publish (default latest)
+        type: string
+        required: false
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  layout:
+  feed:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: make check-layout
+        with:
+          fetch-depth: 0
+      - name: Download OpenWrt feeds from the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ inputs.tag }}"
+          [ -n "$tag" ] || tag=$(gh release view --json tagName -q .tagName)
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+          mkdir -p feeds && gh release download "$tag" -p 'openwrt-*-feed.tar.gz' -D feeds
+      - name: Update gh-pages
+        run: |
+          git config user.name "KirillShakhov"
+          git config user.email "kirill.shakhov14@gmail.com"
+          if git ls-remote --exit-code origin gh-pages > /dev/null; then
+            git worktree add site origin/gh-pages
+            cd site && git checkout -B gh-pages && cd ..
+          else
+            git worktree add --detach site && cd site && git checkout --orphan gh-pages && git rm -rfq . && cd ..
+          fi
+          for f in feeds/openwrt-*-feed.tar.gz; do
+            id=$(basename "$f" -feed.tar.gz)        # openwrt-<branch>-<arch>
+            rest=${id#openwrt-}
+            branch=${rest%%-*}
+            arch=${rest#*-}
+            rm -rf "site/openwrt/$branch/$arch"
+            mkdir -p "site/openwrt/$branch/$arch"
+            tar -C "site/openwrt/$branch/$arch" -xzf "$f"
+          done
+          touch site/.nojekyll
+          {
+            echo "<!doctype html><meta charset=utf-8><title>Lanscape OpenWrt feed</title>"
+            echo "<h1>Lanscape OpenWrt feed</h1><p>Release $TAG. See docs/INSTALL.md.</p><ul>"
+            (cd site && find openwrt -mindepth 2 -maxdepth 2 -type d | sort | sed 's|.*|<li><a href="&/">&</a></li>|')
+            echo "</ul>"
+          } > site/index.html
+          cd site
+          git add -A
+          git commit -q -m "docs: publish openwrt feed for $TAG" || echo "no changes"
+          git push origin gh-pages

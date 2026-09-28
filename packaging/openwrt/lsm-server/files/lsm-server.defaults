@@ -1,0 +1,16 @@
+#!/bin/sh
+# Adds the server section to /etc/config/lsm on first install.
+[ -f /etc/config/lsm ] || touch /etc/config/lsm
+uci -q get lsm.server >/dev/null && exit 0
+uci -q batch <<UCI
+set lsm.server=server
+set lsm.server.enabled='0'
+set lsm.server.listen=':8080'
+set lsm.server.token=''
+set lsm.server.data_file='/etc/lsm/runs.json'
+set lsm.server.keep_runs='20'
+set lsm.server.duration_ms='5000'
+set lsm.server.streams='4'
+commit lsm
+UCI
+exit 0

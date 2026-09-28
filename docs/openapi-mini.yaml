@@ -1,0 +1,271 @@
+openapi: 3.0.3
+info:
+  title: Lanscape Mini API
+  version: "1"
+  description: HTTP API of lsm-server (port 8080). POST requests require HTTP basic auth (user `admin`) when a password is configured.
+  license:
+    name: GPL-3.0-or-later
+    url: https://www.gnu.org/licenses/gpl-3.0.html
+security:
+  - {}
+servers:
+  - url: http://localhost:8080
+paths:
+  /:
+    get:
+      operationId: getPage
+      summary: Embedded web page (gzip)
+      responses:
+        "200":
+          description: HTML page
+          content:
+            text/html: {}
+  /healthz:
+    get:
+      operationId: getHealth
+      summary: Liveness probe
+      responses:
+        "200":
+          description: ok
+          content:
+            text/plain: {}
+  /api/state:
+    get:
+      operationId: getState
+      summary: Agents, current segments and run progress
+      responses:
+        "200":
+          description: state
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/State"}
+  /api/last:
+    get:
+      operationId: getLastRun
+      summary: Last finished run (null when there is none)
+      responses:
+        "200":
+          description: run
+          content:
+            application/json:
+              schema:
+                type: object
+                nullable: true
+                allOf: [{$ref: "#/components/schemas/Run"}]
+  /api/runs:
+    get:
+      operationId: listRuns
+      summary: Stored runs, newest first
+      responses:
+        "200":
+          description: list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: {type: integer}
+                    started: {type: integer, description: unix ms}
+  /api/runs/{id}:
+    get:
+      operationId: getRun
+      summary: One stored run
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        "200":
+          description: run
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Run"}
+        "404": {$ref: "#/components/responses/Error"}
+  /api/run:
+    post:
+      operationId: startRun
+      summary: Start "check all"
+      security: [{basic: []}, {}]
+      responses:
+        "202":
+          description: started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: integer}
+        "400": {$ref: "#/components/responses/Error"}
+        "401": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+  /api/cancel:
+    post:
+      operationId: cancelRun
+      summary: Cancel the running run, keeping partial results
+      security: [{basic: []}, {}]
+      responses:
+        "200":
+          description: cancelled
+          content:
+            application/json:
+              schema: {type: object}
+        "401": {$ref: "#/components/responses/Error"}
+  /api/events:
+    get:
+      operationId: getEvents
+      summary: Server-sent events; `progress` (done, total, eta_s, step) and `done` (run)
+      responses:
+        "200":
+          description: event stream
+          content:
+            text/event-stream: {}
+components:
+  securitySchemes:
+    basic:
+      type: http
+      scheme: basic
+  responses:
+    Error:
+      description: error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: {type: string}
+  schemas:
+    Iface:
+      type: object
+      properties:
+        name: {type: string}
+        mac: {type: string}
+        ip: {type: string}
+        prefix: {type: integer}
+        vlan: {type: integer}
+        speed: {type: integer, description: "Mbit/s, 0 when unknown"}
+        mtu: {type: integer}
+        up: {type: boolean}
+        carrier: {type: boolean}
+        kind: {type: string}
+        parent: {type: string}
+    Agent:
+      type: object
+      properties:
+        id: {type: string}
+        hostname: {type: string}
+        host_id: {type: string}
+        arch: {type: string}
+        version: {type: string}
+        lite: {type: boolean}
+        online: {type: boolean}
+        seen: {type: integer}
+        ifs: {type: array, items: {$ref: "#/components/schemas/Iface"}}
+    Segment:
+      type: object
+      properties:
+        id: {type: string}
+        cidr: {type: string}
+        vlan: {type: integer}
+        expected_mbps: {type: integer}
+        manual: {type: boolean}
+        members:
+          type: array
+          items:
+            type: object
+            properties:
+              agent: {type: string}
+              if: {type: string}
+              ip: {type: string}
+              speed: {type: integer}
+              mtu: {type: integer}
+              kind: {type: string}
+    State:
+      type: object
+      properties:
+        version: {type: string}
+        edition: {type: string, enum: [mini]}
+        now: {type: integer}
+        running: {type: boolean}
+        run:
+          type: object
+          properties:
+            id: {type: integer}
+            started: {type: integer}
+            done: {type: integer}
+            total: {type: integer}
+            eta_s: {type: integer}
+        last_run: {type: integer, nullable: true}
+        agents: {type: array, items: {$ref: "#/components/schemas/Agent"}}
+        segments: {type: array, items: {$ref: "#/components/schemas/Segment"}}
+    Tcp:
+      type: object
+      nullable: true
+      properties:
+        status: {type: string}
+        streams: {type: integer}
+        bps: {type: integer}
+        cpu_local: {type: integer, description: per mille}
+        cpu_peer: {type: integer, description: per mille}
+        path_ok: {type: boolean}
+    Path:
+      type: object
+      properties:
+        seg: {type: integer}
+        src: {type: string}
+        src_if: {type: string}
+        src_ip: {type: string}
+        dst: {type: string}
+        dst_if: {type: string}
+        dst_ip: {type: string}
+        ping:
+          type: object
+          properties:
+            status: {type: string}
+            sent: {type: integer}
+            recv: {type: integer}
+            rtt_min_us: {type: integer}
+            rtt_avg_us: {type: integer}
+            rtt_max_us: {type: integer}
+            rtt_high: {type: boolean}
+        echo:
+          type: object
+          properties:
+            status: {type: string}
+            rtt_us: {type: integer}
+        mtu:
+          type: object
+          properties:
+            status: {type: string}
+            size: {type: integer}
+            jumbo_status: {type: string}
+            jumbo_size: {type: integer}
+        tcp1: {$ref: "#/components/schemas/Tcp"}
+        tcpn: {$ref: "#/components/schemas/Tcp"}
+        route_dev: {type: string}
+        expected_mbps: {type: integer}
+        best_bps: {type: integer}
+        mismatch: {type: boolean}
+        verdict: {type: string, enum: [green, yellow, red, purple, none]}
+    Problem:
+      type: object
+      properties:
+        kind: {type: string, enum: [tcp_intercepted, mtu, slow, path_mismatch, unreachable, macvlan, loss, cpu_bound]}
+        seg: {type: integer}
+        src: {type: string}
+        src_if: {type: string}
+        dst: {type: string}
+        dst_if: {type: string}
+        detail: {type: string}
+    Run:
+      type: object
+      properties:
+        id: {type: integer}
+        started: {type: integer}
+        finished: {type: integer}
+        status: {type: string, enum: [done, cancelled]}
+        duration_ms: {type: integer}
+        streams: {type: integer}
+        agents: {type: array, items: {$ref: "#/components/schemas/Agent"}}
+        segments: {type: array, items: {$ref: "#/components/schemas/Segment"}}
+        paths: {type: array, items: {$ref: "#/components/schemas/Path"}}
+        problems: {type: array, items: {$ref: "#/components/schemas/Problem"}}

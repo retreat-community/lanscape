@@ -12,7 +12,27 @@ Lanscape выпускается в двух редакциях:
 
 Обе редакции используют общий протокол тестов (LSTP/1) и модель сегментов.
 
-Продуктовое ТЗ — [docs/SPEC.md](docs/SPEC.md).
+## Быстрый старт: Lanscape Mini
+
+```sh
+# на сервере
+curl -fsSL https://raw.githubusercontent.com/retreat-community/lanscape/main/scripts/install-mini.sh | sudo sh -s -- server --token SECRET
+# на каждом узле (роутеры — пакеты OpenWrt, см. docs/INSTALL.md)
+curl -fsSL https://raw.githubusercontent.com/retreat-community/lanscape/main/scripts/install-mini.sh | sudo sh -s -- agent --server SERVER_IP --token SECRET
+```
+
+Откройте `http://SERVER_IP:8080` и нажмите **«Проверить всё»**. Каждый путь (пара узлов × общий
+сегмент) меряется отдельно, трафик привязан к интерфейсу: ping/RTT, MTU 1500 (и jumbo), TCP в
+1 и 4 потока. На странице — матрица скоростей по сегментам, автоматическая карта и список
+проблем: TCP перехвачен при рабочем ICMP, MTU, скорость ниже ожидаемой, путь не совпадает,
+macvlan-родитель.
+
+## Документация
+
+- [Установка](docs/INSTALL.md) — Linux, OpenWrt, Docker, Kubernetes
+- [Протоколы](docs/PROTOCOL.md)
+- [Архитектурные решения](docs/decisions/)
+- [ТЗ](docs/SPEC.md)
 
 ## Лицензия
 

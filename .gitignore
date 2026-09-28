@@ -19,3 +19,4 @@ coverage.txt
 .DS_Store
 # runtime data
 /data/
+node_modules/

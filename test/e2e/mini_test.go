@@ -85,7 +85,7 @@ func TestMini(t *testing.T) {
 	waitFor(t, 30*time.Second, "5 agents online", func() bool {
 		var st struct {
 			Agents []struct {
-				Online bool `json:"online"`
+				Online bool  `json:"online"`
 				Ifs    []any `json:"ifs"`
 			} `json:"agents"`
 		}

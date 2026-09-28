@@ -22,6 +22,7 @@ nsx() { _ns=$1; shift; ip netns exec "$P-$_ns" "$@"; }
 
 down() {
     for n in $NODES pod sw; do ip netns del "$P-$n" 2>/dev/null || true; done
+    for n in $NODES pod; do ip link del "m-$P-$n" 2>/dev/null || true; done
     ip link del "$P-mgmt" 2>/dev/null || true
 }
 

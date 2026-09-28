@@ -1,0 +1,188 @@
+package testengine
+
+import (
+	"context"
+	"errors"
+	"math/rand/v2"
+	"net"
+	"sort"
+	"syscall"
+	"time"
+
+	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv4"
+
+	"github.com/retreat-community/lanscape/internal/netio"
+)
+
+// PingParams configure ICMP echo probes.
+type PingParams struct {
+	Dev      string
+	Src, Dst net.IP
+	Count    int
+	Interval time.Duration
+	Size     int  // IP packet size in bytes
+	DF       bool // set Don't Fragment (PMTU probe)
+}
+
+// PingResult summarises ICMP probes.
+type PingResult struct {
+	Status   string `json:"status"`
+	Message  string `json:"message,omitempty"`
+	Sent     int    `json:"sent"`
+	Recv     int    `json:"recv"`
+	RTTMinUS uint32 `json:"rtt_min_us"`
+	RTTAvgUS uint32 `json:"rtt_avg_us"`
+	RTTP95US uint32 `json:"rtt_p95_us"`
+	RTTMaxUS uint32 `json:"rtt_max_us"`
+	JitterUS uint32 `json:"jitter_us"`
+}
+
+type icmpConn struct {
+	pc  net.PacketConn
+	raw bool
+}
+
+func openICMP(ctx context.Context, p PingParams) (*icmpConn, error) {
+	src := "0.0.0.0"
+	if p.Src != nil {
+		src = p.Src.String()
+	}
+	lc := net.ListenConfig{Control: netio.BindControl(p.Dev, p.DF)}
+	pc, err := lc.ListenPacket(ctx, "ip4:icmp", src)
+	if err == nil {
+		return &icmpConn{pc: pc, raw: true}, nil
+	}
+	// unprivileged ICMP datagram socket (net.ipv4.ping_group_range); no device binding
+	upc, uerr := icmp.ListenPacket("udp4", src)
+	if uerr != nil {
+		return nil, errors.Join(err, uerr)
+	}
+	return &icmpConn{pc: upc}, nil
+}
+
+// Ping sends ICMP echo requests bound to the device and collects RTT statistics.
+func Ping(ctx context.Context, p PingParams) PingResult {
+	if p.Count <= 0 {
+		p.Count = 10
+	}
+	if p.Interval <= 0 {
+		p.Interval = 100 * time.Millisecond
+	}
+	if p.Size < 28+16 {
+		p.Size = 84
+	}
+	res := PingResult{Status: StatusOK}
+	c, err := openICMP(ctx, p)
+	if err != nil {
+		res.Status, res.Message = StatusInternal, err.Error()
+		if errors.Is(err, syscall.ENODEV) {
+			res.Status = StatusNoDevice
+		}
+		return res
+	}
+	defer c.pc.Close()
+	id := rand.IntN(0xffff)
+	payload := make([]byte, p.Size-28)
+	for i := range payload {
+		payload[i] = byte(i)
+	}
+	var dst net.Addr = &net.IPAddr{IP: p.Dst}
+	if !c.raw {
+		dst = &net.UDPAddr{IP: p.Dst}
+	}
+	sentAt := make([]time.Time, p.Count)
+	var rtts []uint32
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		buf := make([]byte, 65536)
+		seen := make([]bool, p.Count)
+		for {
+			_ = c.pc.SetReadDeadline(time.Now().Add(p.Interval*time.Duration(p.Count) + time.Second))
+			n, from, err := c.pc.ReadFrom(buf)
+			if err != nil {
+				return
+			}
+			m, err := icmp.ParseMessage(1, buf[:n])
+			if err != nil || m.Type != ipv4.ICMPTypeEchoReply {
+				continue
+			}
+			e, ok := m.Body.(*icmp.Echo)
+			if !ok || (c.raw && e.ID != id) || e.Seq < 0 || e.Seq >= p.Count || seen[e.Seq] {
+				continue
+			}
+			var fip net.IP
+			switch a := from.(type) {
+			case *net.IPAddr:
+				fip = a.IP
+			case *net.UDPAddr:
+				fip = a.IP
+			}
+			if !fip.Equal(p.Dst) || sentAt[e.Seq].IsZero() {
+				continue
+			}
+			seen[e.Seq] = true
+			rtts = append(rtts, uint32(time.Since(sentAt[e.Seq]).Microseconds()))
+			if len(rtts) == p.Count {
+				return
+			}
+		}
+	}()
+	for i := 0; i < p.Count; i++ {
+		msg := icmp.Message{Type: ipv4.ICMPTypeEcho, Body: &icmp.Echo{ID: id, Seq: i, Data: payload}}
+		b, _ := msg.Marshal(nil)
+		sentAt[i] = time.Now()
+		if _, err := c.pc.WriteTo(b, dst); err != nil {
+			if errors.Is(err, syscall.EMSGSIZE) {
+				res.Status, res.Message = StatusMsgSize, "local MTU is smaller than the probe"
+				c.pc.Close()
+				<-done
+				return res
+			}
+			sentAt[i] = time.Time{}
+		} else {
+			res.Sent++
+		}
+		select {
+		case <-ctx.Done():
+			c.pc.Close()
+			<-done
+			res.Status = StatusTimeout
+			return res
+		case <-done:
+		case <-time.After(p.Interval):
+		}
+	}
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		c.pc.Close()
+		<-done
+	}
+	res.Recv = len(rtts)
+	if res.Recv == 0 {
+		res.Status = StatusUnreachable
+		return res
+	}
+	var j float64
+	for i := 1; i < len(rtts); i++ {
+		d := float64(rtts[i]) - float64(rtts[i-1])
+		if d < 0 {
+			d = -d
+		}
+		j += d
+	}
+	if len(rtts) > 1 {
+		res.JitterUS = uint32(j / float64(len(rtts)-1))
+	}
+	sort.Slice(rtts, func(a, b int) bool { return rtts[a] < rtts[b] })
+	var sum uint64
+	for _, r := range rtts {
+		sum += uint64(r)
+	}
+	res.RTTMinUS, res.RTTMaxUS = rtts[0], rtts[len(rtts)-1]
+	res.RTTAvgUS = uint32(sum / uint64(len(rtts)))
+	res.RTTP95US = rtts[(len(rtts)*95+99)/100-1]
+	return res
+}

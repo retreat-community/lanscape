@@ -26,11 +26,11 @@ import (
 
 // Validity periods.
 const (
-	CAValidity    = 10 * 365 * 24 * time.Hour
-	CertValidity  = 365 * 24 * time.Hour
-	RenewBefore   = 30 * 24 * time.Hour
-	AgentOU       = "lanscape-agent"
-	ServerOU      = "lanscape-server"
+	CAValidity   = 10 * 365 * 24 * time.Hour
+	CertValidity = 365 * 24 * time.Hour
+	RenewBefore  = 30 * 24 * time.Hour
+	AgentOU      = "lanscape-agent"
+	ServerOU     = "lanscape-server"
 )
 
 // CA is the server certificate authority.

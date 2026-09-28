@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lanscape Mini</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1c2330;--mut:#667085;--card:#fff;--ln:#d9dee6;--acc:#2f6fec;
+--g:#1f9d55;--y:#d9a400;--r:#d64545;--p:#8b5cf6;--n:#9aa4b2;color-scheme:light dark}
+@media(prefers-color-scheme:dark){:root{--bg:#10141b;--fg:#e6e9ef;--mut:#8b95a7;--card:#171c25;--ln:#2a3140;--acc:#5b8cff}}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--fg)}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--ln);position:sticky;top:0;z-index:2}
+h1{font-size:17px;margin:0 8px 0 0}h1 small{color:var(--mut);font-weight:400;font-size:12px}
+h2{font-size:15px;margin:0 0 10px}
+button{font:inherit;border:1px solid var(--ln);background:var(--card);color:var(--fg);padding:6px 12px;border-radius:6px;cursor:pointer}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+button:disabled{opacity:.55;cursor:default}
+.sp{flex:1}.mut{color:var(--mut)}
+main{max-width:1280px;margin:0 auto;padding:16px;display:grid;gap:16px}
+section{background:var(--card);border:1px solid var(--ln);border-radius:10px;padding:14px;overflow:auto}
+#bar{height:6px;width:220px;background:var(--ln);border-radius:3px;overflow:hidden;display:none}
+#bar i{display:block;height:100%;width:0;background:var(--acc);transition:width .3s}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.tabs button.on{border-color:var(--acc);color:var(--acc);font-weight:600}
+table{border-collapse:collapse;font-size:13px}
+th,td{border:1px solid var(--ln);padding:5px 8px;text-align:center;white-space:nowrap}
+th{font-weight:600;background:var(--bg)}
+td.c{min-width:92px;cursor:default}
+td.c b{display:block;font-size:14px}
+.v-green{background:color-mix(in srgb,var(--g) 22%,transparent)}
+.v-yellow{background:color-mix(in srgb,var(--y) 26%,transparent)}
+.v-red{background:color-mix(in srgb,var(--r) 22%,transparent)}
+.v-purple{background:color-mix(in srgb,var(--p) 24%,transparent)}
+.v-none{background:color-mix(in srgb,var(--n) 14%,transparent)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+ul.pr{list-style:none;margin:0;padding:0}
+ul.pr li{padding:8px 0;border-bottom:1px solid var(--ln)}ul.pr li:last-child{border:0}
+.tag{font-size:11px;padding:1px 6px;border-radius:4px;background:var(--bg);border:1px solid var(--ln);margin-left:6px}
+svg text{fill:var(--fg);font-size:12px}svg .m{fill:var(--mut);font-size:11px}
+.ag{display:flex;flex-wrap:wrap;gap:10px}.ag div{border:1px solid var(--ln);border-radius:8px;padding:8px 10px;min-width:180px}
+.leg span{margin-right:14px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+<h1>Lanscape Mini <small id="ver"></small></h1>
+<button class="pri" id="run" data-t="run">Check all</button>
+<button id="cancel" style="display:none" data-t="cancel">Cancel</button>
+<div id="bar"><i></i></div><span id="prog" class="mut"></span>
+<span class="sp"></span>
+<span id="sum" class="mut"></span>
+<button id="lang">RU</button>
+</header>
+<main>
+<section><h2 data-t="problems">Problems</h2><ul class="pr" id="problems"></ul></section>
+<section><h2 data-t="map">Map</h2><div class="leg" id="legend"></div><div id="map"></div></section>
+<section><h2 data-t="matrix">Speed matrix</h2><div class="tabs" id="tabs"></div><div id="matrix"></div></section>
+<section><h2 data-t="agents">Agents</h2><div class="ag" id="agents"></div></section>
+</main>
+<script>
+"use strict";
+const T={en:{run:"Check all",cancel:"Cancel",problems:"Problems",map:"Map",matrix:"Speed matrix",agents:"Agents",
+noprob:"No problems found.",norun:"No runs yet. Press “Check all”.",online:"online",offline:"offline",
+agentsN:"agents",segsN:"segments",last:"last run",eta:"left",green:"≥ 85% of expected",yellow:"50–85%",red:"< 50% or error",
+purple:"limited by CPU",none:"no expected speed",exp:"expected",src:"from \\ to",unknown:"unknown",
+k_tcp_intercepted:"TCP intercepted while ICMP ok",k_mtu:"MTU problem",k_slow:"Speed below expected",
+k_path_mismatch:"Path does not match",k_unreachable:"Unreachable",k_macvlan:"macvlan parent cannot reach child",
+k_loss:"Packet loss",k_cpu_bound:"CPU-bound",
+h_tcp_intercepted:"A transparent proxy (TPROXY/REDIRECT) or firewall captures TCP in this subnet. Exclude the subnet from interception.",
+h_mtu:"A link on this path has a smaller MTU. Align MTU on all hops or lower it on the endpoints.",
+h_macvlan:"Create a macvlan sibling on the host (ip link add storage0 link <parent> type macvlan mode bridge) and move the host address there.",
+h_path_mismatch:"Traffic left through a different interface. Check routes, ip rule and rp_filter.",
+h_slow:"Check link speed negotiation, cabling and uplinks between switches.",
+h_unreachable:"Check VLAN tagging, firewall and that the agent is listening.",h_loss:"Check cabling, duplex and interface errors.",
+h_cpu_bound:"The agent CPU was saturated; the link may be faster than measured.",
+ping:"ping",mtu:"MTU",tcp1:"1 stream",tcpn:"streams",cpu:"CPU",st:"status"},
+ru:{run:"Проверить всё",cancel:"Отмена",problems:"Проблемы",map:"Карта",matrix:"Матрица скоростей",agents:"Агенты",
+noprob:"Проблем не найдено.",norun:"Прогонов ещё не было. Нажмите «Проверить всё».",online:"в сети",offline:"не в сети",
+agentsN:"агентов",segsN:"сегментов",last:"последний прогон",eta:"осталось",green:"≥ 85% ожидаемого",yellow:"50–85%",red:"< 50% или ошибка",
+purple:"упёрлось в CPU",none:"ожидаемая скорость неизвестна",exp:"ожидается",src:"откуда \\ куда",unknown:"неизвестно",
+k_tcp_intercepted:"TCP перехвачен при рабочем ICMP",k_mtu:"Проблема MTU",k_slow:"Скорость ниже ожидаемой",
+k_path_mismatch:"Путь не совпадает",k_unreachable:"Недоступен",k_macvlan:"macvlan-родитель не видит ребёнка",
+k_loss:"Потери пакетов",k_cpu_bound:"Ограничено CPU",
+h_tcp_intercepted:"Прозрачный прокси (TPROXY/REDIRECT) или файрвол перехватывает TCP в этой подсети. Исключите подсеть из перехвата.",
+h_mtu:"На пути есть линк с меньшим MTU. Выровняйте MTU на всех участках или уменьшите его на концах.",
+h_macvlan:"Создайте на хосте macvlan-брата (ip link add storage0 link <parent> type macvlan mode bridge) и перенесите адрес хоста на него.",
+h_path_mismatch:"Трафик ушёл через другой интерфейс. Проверьте маршруты, ip rule и rp_filter.",
+h_slow:"Проверьте согласование скорости, кабели и аплинки между коммутаторами.",
+h_unreachable:"Проверьте тегирование VLAN, файрвол и что агент слушает порт.",h_loss:"Проверьте кабели, дуплекс и ошибки интерфейса.",
+h_cpu_bound:"CPU агента был загружен полностью; линк может быть быстрее измеренного.",
+ping:"ping",mtu:"MTU",tcp1:"1 поток",tcpn:"потоков",cpu:"CPU",st:"статус"}};
+const $=id=>document.getElementById(id);
+const COL={green:"var(--g)",yellow:"var(--y)",red:"var(--r)",purple:"var(--p)",none:"var(--n)"};
+const RANK={green:1,none:2,purple:3,yellow:4,red:5};
+let L=(navigator.language||"").slice(0,2)==="ru"?"ru":"en";
+try{L=localStorage.getItem("lsm-lang")||L}catch(e){}
+let S=null,R=null,seg=0;
+const t=k=>T[L][k]||T.en[k]||k;
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const mbps=b=>{const m=b/1e6;return m>=100?Math.round(m)+"":m>=10?m.toFixed(1):m.toFixed(2)};
+const ms=u=>(u/1000).toFixed(u<10000?2:1)+" ms";
+function h(tag,attrs,html){const e=document.createElement(tag);for(const k in attrs||{})e.setAttribute(k,attrs[k]);if(html!=null)e.innerHTML=html;return e}
+function i18n(){document.documentElement.lang=L;$("lang").textContent=L==="en"?"RU":"EN";
+document.querySelectorAll("[data-t]").forEach(e=>e.textContent=t(e.dataset.t));
+$("legend").innerHTML=["green","yellow","red","purple","none"].map(v=>`<span><i class="dot" style="background:${COL[v]}"></i>${t(v)}</span>`).join("")}
+async function j(u,o){const r=await fetch(u,o);if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||r.status);return r.json()}
+async function load(){try{S=await j("api/state");R=await j("api/last")}catch(e){$("sum").textContent=e.message;return}draw()}
+function draw(){$("ver").textContent=S.version;
+const on=S.agents.filter(a=>a.online).length;
+$("sum").textContent=`${on}/${S.agents.length} ${t("agentsN")} · ${S.segments.length} ${t("segsN")}`+(R?` · ${t("last")} #${R.id} ${new Date(R.finished).toLocaleString(L)}`:"");
+running(S.running,S.run);problems();map();matrix();agents()}
+function running(on,r){$("run").disabled=on;$("cancel").style.display=on?"":"none";$("bar").style.display=on?"block":"none";
+if(on&&r){$("bar").firstChild.style.width=(100*r.done/Math.max(1,r.total))+"%";
+$("prog").textContent=`${r.done}/${r.total} · ${t("eta")} ~${r.eta_s}s`+(r.step?` · ${r.step}`:"")}else $("prog").textContent=""}
+function problems(){const ul=$("problems");ul.innerHTML="";
+if(!R){ul.appendChild(h("li",{class:"mut"},t("norun")));return}
+if(!R.problems.length){ul.appendChild(h("li",{class:"mut"},t("noprob")));return}
+for(const p of R.problems){const sg=R.segments[p.seg];
+ul.appendChild(h("li",{},`<b>${esc(t("k_"+p.kind))}</b><span class="tag">${esc(sg?sg.id:"")}</span> <span class="mut">${esc(p.src)} (${esc(p.src_if)}) → ${esc(p.dst)} (${esc(p.dst_if)})</span><br>${esc(p.detail)}<br><span class="mut">${esc(t("h_"+p.kind))}</span>`))}}
+function worst(ps){let w=null;for(const p of ps)if(!w||RANK[p.verdict]>RANK[w])w=p.verdict;return w}
+function map(){const box=$("map");box.innerHTML="";
+const segs=R?R.segments:S.segments;if(!segs.length){box.textContent=t("norun");return}
+const ag=[...new Set(segs.flatMap(s=>s.members.map(m=>m.agent)))];
+const paths=R?R.paths:[];
+const W=Math.max(640,ag.length*170+40),busH=34,top=10,nodeY=top+segs.length*busH+60,nodeH=78,H=nodeY+nodeH+20;
+const svg=[`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`];
+const nx=i=>30+i*((W-60)/ag.length)+((W-60)/ag.length-150)/2;
+segs.forEach((s,i)=>{const y=top+i*busH+14;
+svg.push(`<line x1="20" y1="${y}" x2="${W-20}" y2="${y}" stroke="var(--acc)" stroke-width="5" stroke-linecap="round" opacity=".75"/>`,
+`<text x="24" y="${y-7}">${esc(s.id)}</text><text class="m" x="${W-24}" y="${y-7}" text-anchor="end">${s.expected_mbps?t("exp")+" "+s.expected_mbps+" Mbit/s":""}</text>`)});
+ag.forEach((a,i)=>{const x=nx(i),ps=paths.filter(p=>p.src===a||p.dst===a),v=worst(ps);
+const ports=[];segs.forEach((s,si)=>s.members.forEach(m=>{if(m.agent===a)ports.push({s,si,m})}));
+ports.forEach((q,k)=>{const px=x+12+k*(126/Math.max(1,ports.length-1||1)),py=top+q.si*busH+14;
+const pv=worst(paths.filter(p=>p.seg===q.si&&((p.src===a&&p.src_if===q.m.if)||(p.dst===a&&p.dst_if===q.m.if))));
+svg.push(`<line x1="${px}" y1="${py}" x2="${px}" y2="${nodeY}" stroke="${pv?COL[pv]:"var(--n)"}" stroke-width="2.5"><title>${esc(q.m.if+" "+q.m.ip+(q.m.speed?" "+q.m.speed+" Mbit/s":""))}</title></line>`,
+`<circle cx="${px}" cy="${py}" r="4" fill="${pv?COL[pv]:"var(--n)"}"/>`,
+`<rect x="${px-5}" y="${nodeY-5}" width="10" height="10" rx="2" fill="${pv?COL[pv]:"var(--n)"}"/>`)});
+const ai=(R?R.agents:S.agents).find(x=>x.id===a)||{};
+svg.push(`<rect x="${x}" y="${nodeY+6}" width="150" height="${nodeH-12}" rx="8" fill="var(--card)" stroke="${v?COL[v]:"var(--ln)"}" stroke-width="2"/>`,
+`<text x="${x+10}" y="${nodeY+26}" font-weight="600">${esc(a)}</text>`,
+`<text class="m" x="${x+10}" y="${nodeY+44}">${esc(ports.map(q=>q.m.if).join(", ").slice(0,24))}</text>`,
+`<text class="m" x="${x+10}" y="${nodeY+60}">${esc((ai.arch||"")+" "+(ai.hostname||""))}</text>`)});
+svg.push("</svg>");box.innerHTML=svg.join("")}
+function cell(p){if(!p)return`<td class="c mut">—</td>`;
+const tn=p.tcpn,t1=p.tcp1,pi=p.ping;
+const tip=[`${t("ping")}: ${pi.recv}/${pi.sent} ${pi.recv?ms(pi.rtt_avg_us):""}`,`${t("mtu")} 1500: ${p.mtu.status}`,
+t1?`${t("tcp1")}: ${mbps(t1.bps)} Mbit/s (${t1.status})`:"",tn?`${tn.streams} ${t("tcpn")}: ${mbps(tn.bps)} Mbit/s (${tn.status})`:"",
+tn||t1?`${t("cpu")}: ${((tn||t1).cpu_local/10).toFixed(0)}% / ${((tn||t1).cpu_peer/10).toFixed(0)}%`:"",
+p.expected_mbps?`${t("exp")}: ${p.expected_mbps} Mbit/s`:`${t("exp")}: ${t("unknown")}`].filter(Boolean).join("\n");
+const main=p.best_bps?mbps(p.best_bps):(p.echo.status!=="ok"?"TCP ✗":"✗");
+const sub=(pi.recv?"ICMP ✓":"ICMP ✗")+(p.mtu.status!=="ok"&&pi.recv?" · MTU ✗":"")+(p.mismatch?" · path ✗":"");
+return`<td class="c v-${p.verdict}" title="${esc(tip)}"><b>${main}</b><span class="mut">${sub}</span></td>`}
+function matrix(){const tabs=$("tabs"),box=$("matrix");tabs.innerHTML="";box.innerHTML="";
+if(!R){box.textContent=t("norun");return}
+if(seg>=R.segments.length)seg=0;
+R.segments.forEach((s,i)=>{const b=h("button",{class:i===seg?"on":""},esc(s.id));b.onclick=()=>{seg=i;matrix()};tabs.appendChild(b)});
+const s=R.segments[seg];if(!s)return;const ps=R.paths.filter(p=>p.seg===seg);
+const key=m=>m.agent+"|"+m.if,mem=s.members;
+let html=`<table><tr><th>${t("src")}</th>`+mem.map(m=>`<th>${esc(m.agent)}<br><span class="mut">${esc(m.if)} ${esc(m.ip)}</span></th>`).join("")+"</tr>";
+for(const a of mem){html+=`<tr><th>${esc(a.agent)}<br><span class="mut">${esc(a.if)}${a.speed?" · "+a.speed+"M":""}</span></th>`;
+for(const b of mem)html+=key(a)===key(b)||a.agent===b.agent?`<td class="mut">—</td>`:cell(ps.find(p=>p.src===a.agent&&p.src_if===a.if&&p.dst===b.agent&&p.dst_if===b.if));
+html+="</tr>"}
+box.innerHTML=html+"</table><p class=\"mut\">Mbit/s, "+esc(t("exp"))+": "+(s.expected_mbps||t("unknown"))+"</p>"}
+function agents(){$("agents").innerHTML=S.agents.map(a=>`<div><i class="dot" style="background:${a.online?"var(--g)":"var(--r)"}"></i><b>${esc(a.id)}</b> <span class="mut">${esc(a.arch)} ${esc(a.version)}</span><br>`+
+a.ifs.map(f=>`<span class="mut">${esc(f.name)}</span> ${esc(f.ip)}/${f.prefix}${f.vlan?" vlan "+f.vlan:""}${f.speed?" · "+f.speed+"M":""}${f.kind?" · "+esc(f.kind):""}`).join("<br>")+"</div>").join("")}
+$("run").onclick=async()=>{try{await j("api/run",{method:"POST"});running(true,{done:0,total:1,eta_s:"?"})}catch(e){alert(e.message)}};
+$("cancel").onclick=()=>j("api/cancel",{method:"POST"}).catch(()=>{});
+$("lang").onclick=()=>{L=L==="en"?"ru":"en";try{localStorage.setItem("lsm-lang",L)}catch(e){}i18n();if(S)draw()};
+function sse(){const es=new EventSource("api/events");
+es.addEventListener("progress",e=>running(true,JSON.parse(e.data)));
+es.addEventListener("done",()=>load());es.onerror=()=>{es.close();setTimeout(sse,3000)}}
+i18n();load();sse();setInterval(()=>{if(!S||!S.running)load()},30000);
+</script>
+</body>
+</html>

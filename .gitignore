@@ -1,0 +1,21 @@
+# build output
+/dist/
+/bin/
+/mini/build/
+/mini/tools/*.o
+/internal/server/webdist/*
+!/internal/server/webdist/.gitkeep
+/web/node_modules/
+/web/dist/
+/test/e2e/out/
+/test/e2e/screenshots/
+*.test
+*.out
+coverage.txt
+# editors
+.idea/
+.vscode/
+*.swp
+.DS_Store
+# runtime data
+/data/

@@ -39,7 +39,8 @@ int ls_read_frame(int fd, uint8_t *buf, size_t cap, uint64_t deadline, uint8_t *
 
 /* Config: key=value lines or UCI "option key 'value'" / "list key 'value'". */
 typedef void (*ls_conf_cb)(const char *key, const char *val, void *ctx);
-int ls_conf_load(const char *path, ls_conf_cb cb, void *ctx);
+/* section: UCI section type to read ("agent"/"server"), NULL for all. */
+int ls_conf_load(const char *path, const char *section, ls_conf_cb cb, void *ctx);
 /* Calls cb for every environment variable PREFIX_KEY (key lowercased). */
 void ls_conf_env(const char *prefix, ls_conf_cb cb, void *ctx);
 

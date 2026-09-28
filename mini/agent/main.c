@@ -455,7 +455,7 @@ int main(int argc, char **argv)
         cfg = "/etc/config/lsm";
     else if (!cfg && access("/etc/lsm/agent.conf", R_OK) == 0)
         cfg = "/etc/lsm/agent.conf";
-    if (cfg && ls_conf_load(cfg, conf_set, NULL))
+    if (cfg && ls_conf_load(cfg, "agent", conf_set, NULL))
         ls_log(LOG_W, "cannot read config %s", cfg);
     ls_conf_env("LSM", conf_set, NULL);
     for (i = 1; i < argc; i++) {

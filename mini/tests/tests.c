@@ -328,8 +328,39 @@ static void test_fmt_jw(void)
     free(s);
 }
 
+static char conf_seen[256];
+
+static void conf_cb(const char *k, const char *v, void *ctx)
+{
+    (void)ctx;
+    strcat(conf_seen, k);
+    strcat(conf_seen, "=");
+    strcat(conf_seen, v);
+    strcat(conf_seen, ";");
+}
+
+static void test_conf(void)
+{
+    const char *path = "build/gen/test.conf";
+    FILE *f = fopen(path, "w");
+    CHECK(f != NULL);
+    if (!f)
+        return;
+    fputs("# comment\ntoken = abc\nconfig agent 'agent'\n\toption server '10.0.0.1:47701'\n"
+          "\tlist exclude 'wan*'\nconfig server 'server'\n\toption listen ':8080'\n", f);
+    fclose(f);
+    conf_seen[0] = 0;
+    CHECK(ls_conf_load(path, "agent", conf_cb, NULL) == 0);
+    CHECK(!strcmp(conf_seen, "token=abc;server=10.0.0.1:47701;exclude=wan*;"));
+    conf_seen[0] = 0;
+    CHECK(ls_conf_load(path, "server", conf_cb, NULL) == 0);
+    CHECK(!strcmp(conf_seen, "token=abc;listen=:8080;"));
+    CHECK(ls_conf_load("build/gen/missing.conf", NULL, conf_cb, NULL) == -1);
+}
+
 int main(void)
 {
+    test_conf();
     test_sha256();
     test_hmac();
     test_tlv();

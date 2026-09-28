@@ -386,9 +386,10 @@ static char *unquote(char *s)
     return s;
 }
 
-int ls_conf_load(const char *path, ls_conf_cb cb, void *ctx)
+int ls_conf_load(const char *path, const char *section, ls_conf_cb cb, void *ctx)
 {
     char line[512];
+    int active = 1;
     FILE *f = fopen(path, "r");
     if (!f)
         return -1;
@@ -396,6 +397,17 @@ int ls_conf_load(const char *path, ls_conf_cb cb, void *ctx)
         char *s = trim(line);
         char *eq;
         if (!*s || *s == '#')
+            continue;
+        if (!strncmp(s, "config ", 7)) {
+            /* UCI section: "config <type> ['name']"; only the matching type applies */
+            char *ty = trim(s + 7), *e = ty;
+            while (*e && *e != ' ' && *e != '\t')
+                e++;
+            *e = 0;
+            active = !section || !strcmp(unquote(ty), section);
+            continue;
+        }
+        if (!active)
             continue;
         if (!strncmp(s, "option ", 7) || !strncmp(s, "list ", 5)) {
             char *k = trim(s + (*s == 'o' ? 7 : 5));
@@ -408,8 +420,6 @@ int ls_conf_load(const char *path, ls_conf_cb cb, void *ctx)
             cb(unquote(k), unquote(trim(sp)), ctx);
             continue;
         }
-        if (!strncmp(s, "config ", 7))
-            continue;
         eq = strchr(s, '=');
         if (!eq)
             continue;
@@ -434,7 +444,7 @@ void ls_conf_env(const char *prefix, ls_conf_cb cb, void *ctx)
         if (!eq)
             continue;
         n = (size_t)(eq - *e) - pl - 1;
-        if (n == 0 || n >= sizeof(key))
+        if (n == 0 || n >= sizeof(key) || !eq[1])
             continue;
         for (i = 0; i < n; i++) {
             char c = (*e)[pl + 1 + i];

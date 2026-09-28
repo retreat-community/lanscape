@@ -4,17 +4,291 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:
+    inputs:
+      release:
+        description: build in release mode (versioned packages, versioned image tags)
+        type: boolean
+        default: false
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !inputs.release }}
 
 permissions:
   contents: read
 
+env:
+  ZIG_VERSION: 0.14.1
+  GO_VERSION: "1.23"
+  OPENWRT_24: 24.10.8
+  OPENWRT_25: 25.12.5
+
 jobs:
-  layout:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      pkg_version: ${{ steps.v.outputs.pkg_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: v
+        run: |
+          if [ "${{ inputs.release }}" = "true" ] && [ "${GITHUB_REF_TYPE}" = tag ]; then
+            v=${GITHUB_REF_NAME}
+            pkg=${v#v}
+          else
+            v=$(git describe --tags --always)
+            base=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)
+            pkg=${base#v}_git$(git log -1 --format=%cd --date=format:%Y%m%d%H%M)
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "pkg_version=$pkg" >> "$GITHUB_OUTPUT"
+          echo "version $v, package version $pkg"
+      - run: make check-layout
+
+  mini:
+    needs: meta
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [linux-amd64, linux-386, linux-arm64, linux-armv7, linux-armv6, linux-armv5, linux-mips,
+                 linux-mipsle, linux-mips64, linux-mips64le, linux-riscv64, linux-ppc64le, freebsd-amd64]
+    # FreeBSD needs a libc that Zig 0.14 does not ship (docs/decisions/0003-mini-toolchain.md)
+    continue-on-error: ${{ matrix.target == 'freebsd-amd64' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+      - name: Install tools
+        run: sudo apt-get update -q && sudo apt-get install -y -q llvm cppcheck
+      - name: Unit and property tests
+        if: matrix.target == 'linux-amd64'
+        run: make -C mini test
+      - name: Static analysis
+        if: matrix.target == 'linux-amd64'
+        run: make -C mini page build/gen/index_html_gz.h && make -C mini lint
+      - name: Fuzz (libFuzzer)
+        if: matrix.target == 'linux-amd64'
+        continue-on-error: true
+        run: make -C mini fuzz
+      - name: Build
+        run: make -C mini TARGET=${{ matrix.target }} VERSION=${{ needs.meta.outputs.version }} all page
+      - name: Size check
+        run: |
+          mkdir -p out
+          make -s -C mini TARGET=${{ matrix.target }} VERSION=${{ needs.meta.outputs.version }} size-check | tee out/sizes-${{ matrix.target }}.md
+      - name: Collect
+        if: always()
+        run: |
+          mkdir -p out/${{ matrix.target }}
+          cp mini/build/${{ matrix.target }}/lsm-* out/${{ matrix.target }}/ 2>/dev/null || true
+          cp mini/build/gen/index.html.gz out/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mini-${{ matrix.target }}
+          path: out/
+          if-no-files-found: ignore
+
+  mini-sizes:
+    needs: mini
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mini-*
+          merge-multiple: true
+      - name: Size table
+        run: |
+          {
+            echo "## Lanscape Mini sizes"
+            echo
+            echo "| Target | File | Bytes | Budget | Status |"
+            echo "|---|---|---|---|---|"
+            cat sizes-*.md | grep '^| linux' | sort -u
+            cat sizes-*.md | grep '^| freebsd' | sort -u || true
+          } | tee sizes.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mini-sizes
+          path: sizes.md
+
+  e2e:
+    needs: mini
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: mini-linux-amd64
+          path: dist/mini
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: test/ui/pnpm-lock.yaml
+      - name: Prepare
+        run: |
+          chmod +x dist/mini/linux-amd64/*
+          sudo modprobe 8021q
+          sudo apt-get update -q && sudo apt-get install -y -q iproute2 iptables
+          cd test/ui && pnpm install --frozen-lockfile && pnpm exec playwright install --with-deps chromium
+      - name: Mini e2e
+        run: |
+          sudo -E env "PATH=$PATH" LSM_BIN=$PWD/dist/mini/linux-amd64 E2E_KEEP=1 \
+            go test -tags e2e -count=1 -timeout 30m -v -run TestMini ./test/e2e/
+      - name: Mini UI smoke
+        run: |
+          mkdir -p test/e2e/screenshots
+          cd test/ui && pnpm exec playwright test mini.spec.ts
+      - name: Teardown
+        if: always()
+        run: |
+          sudo test/e2e/mini.sh stop || true
+          sudo test/e2e/topo.sh down || true
+          sudo chmod -R a+rX test/e2e/out test/e2e/screenshots 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-results
+          path: |
+            test/e2e/out/
+            test/e2e/screenshots/
+
+  openwrt:
+    needs: [meta, mini]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ["24.10", "25.12"]
+        target: [x86-64, mediatek-filogic, ramips-mt7621, ath79-generic, ipq40xx-generic, bcm27xx-bcm2711]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mini-linux-*
+          path: bins
+          merge-multiple: true
+      - name: Build packages in the OpenWrt SDK
+        run: |
+          case "${{ matrix.branch }}" in 24.10) v=$OPENWRT_24 ;; *) v=$OPENWRT_25 ;; esac
+          mkdir -p out && chmod -R a+rwX out bins && chmod a+x bins/*/*
+          docker run --rm -v "$PWD:/src:ro" -v "$PWD/bins:/bins:ro" -v "$PWD/out:/out" \
+            "openwrt/sdk:${{ matrix.target }}-$v" \
+            /src/packaging/openwrt/sdk-build.sh /src /bins /out "${{ needs.meta.outputs.pkg_version }}" \
+            lsm-agent lsm-server
+          echo "ARCH=$(cat out/ARCH)" >> "$GITHUB_ENV"
+      - name: Check package size (≤ 64 KiB)
+        run: |
+          for f in out/lsm-*; do
+            s=$(wc -c < "$f"); echo "$f $s"
+            [ "$s" -le 65536 ] || { echo "$f exceeds 64 KiB"; exit 1; }
+          done
+      - name: Install smoke test in OpenWrt rootfs
+        if: matrix.target == 'x86-64'
+        run: |
+          case "${{ matrix.branch }}" in 24.10) v=$OPENWRT_24; inst="opkg install /pkgs/lsm-agent_*.ipk /pkgs/lsm-server_*.ipk" ;;
+            *) v=$OPENWRT_25; inst="apk add --allow-untrusted /pkgs/lsm-agent-*.apk /pkgs/lsm-server-*.apk" ;; esac
+          docker run --rm -v "$PWD/out:/pkgs:ro" "openwrt/rootfs:x86-64-$v" /bin/sh -c "
+            mkdir -p /var/lock /var/run && $inst && lsm-agent -V && lsm-server -V &&
+            uci -q get lsm.agent.exclude && uci -q get lsm.server.listen"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openwrt-${{ matrix.branch }}-${{ env.ARCH }}
+          path: out/
+
+  docker:
+    needs: [meta, mini]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mini-linux-*
+          path: ctx
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        if: github.event_name == 'push' || inputs.release
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: sigstore/cosign-installer@v3
+        if: inputs.release
+      - name: Tags
+        id: tags
+        run: |
+          v=${{ needs.meta.outputs.version }}
+          for img in lsm-agent lsm-server; do
+            base=ghcr.io/${GITHUB_REPOSITORY_OWNER}/$img
+            if [ "${{ inputs.release }}" = true ]; then
+              mm=$(echo "${v#v}" | cut -d. -f1-2)
+              t="$base:$v,$base:$mm,$base:latest"
+            else
+              t="$base:edge"
+            fi
+            echo "$(echo $img | tr - _)=$t" >> "$GITHUB_OUTPUT"
+          done
+      - name: Build lsm-agent
+        id: agent
+        uses: docker/build-push-action@v6
+        with:
+          context: ctx
+          file: packaging/docker/lsm-agent.Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6,linux/386,linux/riscv64,linux/ppc64le
+          push: ${{ github.event_name == 'push' || inputs.release }}
+          tags: ${{ steps.tags.outputs.lsm_agent }}
+      - name: Build lsm-server
+        id: server
+        uses: docker/build-push-action@v6
+        with:
+          context: ctx
+          file: packaging/docker/lsm-server.Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6,linux/386,linux/riscv64,linux/ppc64le
+          push: ${{ github.event_name == 'push' || inputs.release }}
+          tags: ${{ steps.tags.outputs.lsm_server }}
+      - name: Sign images
+        if: inputs.release
+        run: |
+          cosign sign --yes ghcr.io/${GITHUB_REPOSITORY_OWNER}/lsm-agent@${{ steps.agent.outputs.digest }}
+          cosign sign --yes ghcr.io/${GITHUB_REPOSITORY_OWNER}/lsm-server@${{ steps.server.outputs.digest }}
+
+  openapi:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: make check-layout
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Lint OpenAPI descriptions
+        run: npx --yes @redocly/cli@1 lint docs/openapi*.yaml
+
+  k8s:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate manifests with kubeconform
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz
+          ./kubeconform -strict -summary deploy/k8s/mini/*.yaml
+      - name: Validate compose files
+        run: |
+          for f in deploy/compose/*.yaml; do LSM_TOKEN=x docker compose -f "$f" config -q; done

@@ -26,7 +26,7 @@ env:
 
 jobs:
   meta:
-    runs-on: ubuntu-latest
+    runs-on: retreat-k8s
     outputs:
       version: ${{ steps.v.outputs.version }}
       pkg_version: ${{ steps.v.outputs.pkg_version }}
@@ -51,7 +51,7 @@ jobs:
 
   mini:
     needs: meta
-    runs-on: ubuntu-latest
+    runs-on: retreat-k8s
     strategy:
       fail-fast: false
       matrix:
@@ -97,7 +97,7 @@ jobs:
 
   mini-sizes:
     needs: mini
-    runs-on: ubuntu-latest
+    runs-on: retreat-k8s
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -120,7 +120,7 @@ jobs:
 
   e2e:
     needs: mini
-    runs-on: ubuntu-latest
+    runs-on: retreat-k8s
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -169,7 +169,7 @@ jobs:
 
   openwrt:
     needs: [meta, mini]
-    runs-on: ubuntu-latest
+    runs-on: retreat-k8s
     strategy:
       fail-fast: false
       matrix:
@@ -212,7 +212,7 @@ jobs:
 
   docker:
     needs: [meta, mini]
-    runs-on: ubuntu-latest
+    runs-on: retreat-k8s
     permissions:
       contents: read
       packages: write
@@ -272,7 +272,7 @@ jobs:
           cosign sign --yes ghcr.io/${GITHUB_REPOSITORY_OWNER}/lsm-server@${{ steps.server.outputs.digest }}
 
   openapi:
-    runs-on: ubuntu-latest
+    runs-on: retreat-k8s
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -282,7 +282,7 @@ jobs:
         run: npx --yes @redocly/cli@1 lint docs/openapi*.yaml
 
   k8s:
-    runs-on: ubuntu-latest
+    runs-on: retreat-k8s
     steps:
       - uses: actions/checkout@v4
       - name: Validate manifests with kubeconform

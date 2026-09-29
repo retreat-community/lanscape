@@ -464,7 +464,9 @@ func runICMP(ctx context.Context, s *Spec) Result {
 	if err != nil || len(ips) == 0 {
 		return down("resolve %s: %v", s.Target, err)
 	}
-	p := testengine.Ping(ctx, testengine.PingParams{Dst: ips[0], Count: 3, Interval: 200 * time.Millisecond})
+	// without ICMP permissions the host is probed with TCP connects to common ports
+	p := testengine.Ping(ctx, testengine.PingParams{Dst: ips[0], Count: 3, Interval: 200 * time.Millisecond,
+		TCPPorts: []int{443, 80, 22}})
 	if p.Status != testengine.StatusOK {
 		return down("ping: %s %s", p.Status, p.Message)
 	}

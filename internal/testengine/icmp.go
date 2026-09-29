@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net"
 	"sort"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -23,6 +24,9 @@ type PingParams struct {
 	Interval time.Duration
 	Size     int  // IP packet size in bytes
 	DF       bool // set Don't Fragment (PMTU probe)
+	// TCPPorts are tried with TCP connect probes when no ICMP socket can be opened (no
+	// CAP_NET_RAW and no ping_group_range); not used for PMTU probes.
+	TCPPorts []int
 }
 
 // PingResult summarises ICMP probes.
@@ -36,6 +40,7 @@ type PingResult struct {
 	RTTP95US uint32 `json:"rtt_p95_us"`
 	RTTMaxUS uint32 `json:"rtt_max_us"`
 	JitterUS uint32 `json:"jitter_us"`
+	Method   string `json:"method,omitempty"` // "tcp" when measured with TCP connects
 }
 
 type icmpConn struct {
@@ -75,6 +80,9 @@ func Ping(ctx context.Context, p PingParams) PingResult {
 	res := PingResult{Status: StatusOK}
 	c, err := openICMP(ctx, p)
 	if err != nil {
+		if !errors.Is(err, syscall.ENODEV) && !p.DF && len(p.TCPPorts) > 0 {
+			return TCPPing(ctx, p)
+		}
 		res.Status, res.Message = StatusInternal, err.Error()
 		if errors.Is(err, syscall.ENODEV) {
 			res.Status = StatusNoDevice
@@ -162,10 +170,16 @@ func Ping(ctx context.Context, p PingParams) PingResult {
 		c.pc.Close()
 		<-done
 	}
+	summarize(&res, rtts)
+	return res
+}
+
+// summarize fills received count, RTT statistics and jitter (rtts in send order).
+func summarize(res *PingResult, rtts []uint32) {
 	res.Recv = len(rtts)
 	if res.Recv == 0 {
 		res.Status = StatusUnreachable
-		return res
+		return
 	}
 	var j float64
 	for i := 1; i < len(rtts); i++ {
@@ -178,13 +192,56 @@ func Ping(ctx context.Context, p PingParams) PingResult {
 	if len(rtts) > 1 {
 		res.JitterUS = uint32(j / float64(len(rtts)-1))
 	}
-	sort.Slice(rtts, func(a, b int) bool { return rtts[a] < rtts[b] })
+	sorted := append([]uint32(nil), rtts...)
+	sort.Slice(sorted, func(a, b int) bool { return sorted[a] < sorted[b] })
 	var sum uint64
-	for _, r := range rtts {
+	for _, r := range sorted {
 		sum += uint64(r)
 	}
-	res.RTTMinUS, res.RTTMaxUS = rtts[0], rtts[len(rtts)-1]
-	res.RTTAvgUS = uint32(sum / uint64(len(rtts)))
-	res.RTTP95US = rtts[(len(rtts)*95+99)/100-1]
+	res.RTTMinUS, res.RTTMaxUS = sorted[0], sorted[len(sorted)-1]
+	res.RTTAvgUS = uint32(sum / uint64(len(sorted)))
+	res.RTTP95US = sorted[(len(sorted)*95+99)/100-1]
+}
+
+// TCPPing measures reachability and RTT with TCP connects: a completed handshake and a refused
+// connection (RST) both prove the host answers. The first port that answers is used.
+func TCPPing(ctx context.Context, p PingParams) PingResult {
+	res := PingResult{Status: StatusOK, Method: "tcp"}
+	if p.Count <= 0 {
+		p.Count = 10
+	}
+	if p.Interval <= 0 {
+		p.Interval = 100 * time.Millisecond
+	}
+	var local net.Addr
+	if p.Src != nil {
+		local = &net.TCPAddr{IP: p.Src}
+	}
+	d := net.Dialer{Timeout: time.Second, LocalAddr: local, Control: netio.BindControl(p.Dev, false)}
+	ports := p.TCPPorts
+	var rtts []uint32
+	for i := 0; i < p.Count; i++ {
+		for k, port := range ports {
+			start := time.Now()
+			c, err := d.DialContext(ctx, "tcp", net.JoinHostPort(p.Dst.String(), strconv.Itoa(port)))
+			if err == nil || errors.Is(err, syscall.ECONNREFUSED) {
+				rtt := time.Since(start)
+				if c != nil {
+					c.Close()
+				}
+				rtts = append(rtts, uint32(rtt.Microseconds()))
+				ports = ports[k : k+1]
+				break
+			}
+		}
+		res.Sent++
+		select {
+		case <-ctx.Done():
+			res.Status = StatusTimeout
+			return res
+		case <-time.After(p.Interval):
+		}
+	}
+	summarize(&res, rtts)
 	return res
 }

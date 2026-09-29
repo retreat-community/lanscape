@@ -555,7 +555,8 @@ func (a *Agent) runTest(ctx context.Context, t proto.TestMsg) TestResult {
 	switch t.Kind {
 	case "ping", "pmtu":
 		p := testengine.PingParams{Dev: t.Dev, Src: src, Dst: dst, Count: t.Count,
-			Interval: time.Duration(t.IntervalMS) * time.Millisecond, Size: t.Size, DF: t.Kind == "pmtu"}
+			Interval: time.Duration(t.IntervalMS) * time.Millisecond, Size: t.Size, DF: t.Kind == "pmtu",
+			TCPPorts: []int{proto.DataPort}}
 		if rd, ok := testengine.CheckRoute(t.Dev, src, dst); !ok {
 			return TestResult{Ping: &testengine.PingResult{Status: testengine.StatusRouteMismatch, Message: "route via " + rd}}
 		}

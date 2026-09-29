@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/retreat-community/lanscape/internal/agent"
+	"github.com/retreat-community/lanscape/internal/buildinfo"
 	"github.com/retreat-community/lanscape/internal/cli"
 	"github.com/retreat-community/lanscape/internal/discovery"
 	"github.com/retreat-community/lanscape/internal/monitor"
@@ -155,6 +157,8 @@ func registerActions(a *agent.Agent, cfg discovery.Config, allowed []string, log
 		case proto.ActionWake, proto.ActionRestart:
 			allow[x] = true
 			a.AddCaps("action:" + x)
+		case proto.MsgUpdate:
+			registerUpdate(a, log)
 		case "none", "off":
 		default:
 			log.Warn("unknown action", "action", x)
@@ -190,6 +194,30 @@ func registerActions(a *agent.Agent, cfg discovery.Config, allowed []string, log
 			}
 			return proto.ActionResultMsg{Detail: detail}, nil
 		}
+	})
+}
+
+// registerUpdate lets the panel replace the agent binary with a release (§13.1); the service
+// manager (systemd, procd, launchd, Windows recovery) starts the new binary after the exit.
+func registerUpdate(a *agent.Agent, log *slog.Logger) {
+	a.AddCaps(proto.MsgUpdate)
+	a.Handle(proto.MsgUpdate, func(ctx context.Context, env proto.Envelope) (any, error) {
+		var m proto.UpdateMsg
+		if err := json.Unmarshal(env.Data, &m); err != nil {
+			return nil, err
+		}
+		log.Info("update requested", "from", buildinfo.Version, "to", m.Version)
+		res, err := agent.SelfUpdate(ctx, &http.Client{Timeout: 5 * time.Minute}, buildinfo.Version, m)
+		if err != nil {
+			log.Warn("update failed", "err", err)
+			return nil, err
+		}
+		go func() {
+			time.Sleep(2 * time.Second) // let the reply reach the server
+			log.Info("restarting into the new version", "version", m.Version)
+			os.Exit(restartExitCode)
+		}()
+		return res, nil
 	})
 }
 

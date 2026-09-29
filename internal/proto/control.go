@@ -162,3 +162,21 @@ type IfaceTraffic struct {
 	RXbps uint64 `json:"rx_bps"`
 	TXbps uint64 `json:"tx_bps"`
 }
+
+// MsgUpdate asks an agent to replace its binary with a release (panel auto-update, §13.1).
+const MsgUpdate = "update"
+
+// UpdateMsg names a release: the agent picks its own archive from Checksums, downloads it from
+// BaseURL and verifies the SHA-256 before replacing the binary.
+type UpdateMsg struct {
+	Version   string            `json:"version"`
+	BaseURL   string            `json:"base_url"`  // archives are at BaseURL + "/" + name
+	Checksums map[string]string `json:"checksums"` // archive name -> sha256 (hex)
+}
+
+// UpdateResultMsg reports a finished update; the agent restarts right after it.
+type UpdateResultMsg struct {
+	From   string `json:"from"`
+	To     string `json:"to"`
+	Detail string `json:"detail"`
+}

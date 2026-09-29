@@ -28,3 +28,6 @@ func serviceCommand(args []string) error {
 }
 
 var errNoService = errors.New("service management is not available on this system; use the package's service file")
+
+// restartExitCode ends the process after an update; systemd, procd and launchd restart it.
+const restartExitCode = 0

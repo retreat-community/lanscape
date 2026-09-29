@@ -80,6 +80,8 @@ func serviceCommand(args []string) error {
 			return err
 		}
 		defer s.Close()
+		// restart after a crash and after an update (the agent exits to run the new binary)
+		_ = s.SetRecoveryActions([]mgr.RecoveryAction{{Type: mgr.ServiceRestart, Delay: 5 * time.Second}}, 86400)
 		return s.Start()
 	case "uninstall":
 		s, err := m.OpenService(serviceName)
@@ -92,3 +94,7 @@ func serviceCommand(args []string) error {
 	}
 	return fmt.Errorf("unknown service command %s", strings.Join(args, " "))
 }
+
+// restartExitCode ends the process after an update; a non-zero code triggers the service
+// recovery action (restart).
+const restartExitCode = 1

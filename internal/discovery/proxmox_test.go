@@ -18,7 +18,8 @@ func TestProxmox(t *testing.T) {
 			{"id":"qemu/900","type":"qemu","vmid":900,"name":"tpl","node":"pve1","status":"stopped","template":1},
 			{"id":"qemu/101","type":"qemu","vmid":101,"name":"old","node":"pve2","status":"stopped"}]}`,
 		"/api2/json/nodes/pve1/qemu/100/config": `{"data":{"description":"TrueNAS","net0":"virtio=BC:24:11:AA:BB:CC,bridge=vmbr0,firewall=1",
-			"net1":"virtio=BC:24:11:AA:BB:DD,bridge=vmbr1,tag=30","scsi0":"local:vm-100-disk-0"}}`,
+			"net1":"virtio=BC:24:11:AA:BB:DD,bridge=vmbr1,tag=30","scsi0":"local:vm-100-disk-0","scsi1":"nfs:100/vm-100-disk-1.qcow2,size=1T",
+			"ide2":"local:iso/debian.iso,media=cdrom","efidisk0":"local-lvm:vm-100-disk-2"}}`,
 		"/api2/json/nodes/pve1/qemu/100/agent/network-get-interfaces": `{"data":{"result":[
 			{"name":"lo","hardware-address":"00:00:00:00:00:00","ip-addresses":[{"ip-address":"127.0.0.1","ip-address-type":"ipv4"}]},
 			{"name":"eth0","hardware-address":"bc:24:11:aa:bb:cc","ip-addresses":[{"ip-address":"192.168.1.20","ip-address-type":"ipv4"},
@@ -27,9 +28,18 @@ func TestProxmox(t *testing.T) {
 		"/api2/json/nodes/pve1/lxc/200/interfaces": `{"data":[{"name":"lo","inet":"127.0.0.1/8"},{"name":"eth0","inet":"192.168.1.53/24"}]}`,
 		"/api2/json/nodes/pve2/qemu/101/config":    `{"data":{"net0":"e1000=BC:24:11:00:00:02,bridge=vmbr0"}}`,
 	}
+	storage := `{"data":[
+			{"storage":"local","node":"pve1","status":"available","disk":99000,"maxdisk":100000,"plugintype":"dir","shared":0},
+			{"storage":"local-lvm","node":"pve1","status":"available","disk":10,"maxdisk":100,"plugintype":"lvmthin","shared":0},
+			{"storage":"nfs","node":"pve1","status":"available","disk":91,"maxdisk":100,"plugintype":"nfs","shared":1},
+			{"storage":"nfs","node":"pve2","status":"available","disk":91,"maxdisk":100,"plugintype":"nfs","shared":1}]}`
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "PVEAPIToken=root@pam!ls=secret" {
 			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		if r.URL.Path == "/api2/json/cluster/resources" && r.URL.Query().Get("type") == "storage" {
+			_, _ = io.WriteString(w, storage)
 			return
 		}
 		if b, ok := api[r.URL.Path]; ok {
@@ -43,7 +53,7 @@ func TestProxmox(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(items) != 3 {
+	if len(items) != 6 {
 		t.Fatalf("items: %+v", items)
 	}
 	by := map[string]Item{}
@@ -55,6 +65,18 @@ func TestProxmox(t *testing.T) {
 		nas.Labels["notes"] != "TrueNAS" || nas.Labels["tags"] != "storage,prod" || len(nas.NICs) != 2 ||
 		nas.NICs[0].MAC != "bc:24:11:aa:bb:cc" || nas.NICs[0].Bridge != "vmbr0" || nas.NICs[1].VLAN != 30 {
 		t.Errorf("nas: %+v", nas)
+	}
+	if nas.Labels["storages"] != "local,local-lvm,nfs" {
+		t.Errorf("guest storages: %q", nas.Labels["storages"])
+	}
+	if st := by["storage/pve1/local"]; st.Kind != KindStorage || st.State != "full" || st.Labels["size"] != "100000" {
+		t.Errorf("local storage: %+v", st)
+	}
+	if st := by["storage/nfs"]; st.State != "warning" || st.Labels["shared"] != "1" {
+		t.Errorf("shared storage: %+v", st)
+	}
+	if st := by["storage/pve1/local-lvm"]; st.State != "online" {
+		t.Errorf("local-lvm: %+v", st)
 	}
 	if ct := by["lxc/200"]; ct.Kind != KindCT || len(ct.IPs) != 1 || ct.NICs[0].MAC != "bc:24:11:00:00:01" {
 		t.Errorf("ct: %+v", ct)

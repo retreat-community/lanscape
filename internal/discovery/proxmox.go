@@ -115,8 +115,91 @@ func Proxmox(ctx context.Context, cfg ProxmoxConfig) ([]Item, error) {
 		}(r)
 	}
 	wg.Wait()
+	var st []pveStorage
+	if err := c.get(ctx, "/cluster/resources?type=storage", &st); err == nil {
+		items = append(items, StorageItems(st)...)
+	}
 	sortItems(items)
 	return items, nil
+}
+
+// pveStorage is a storage of a node in /cluster/resources?type=storage.
+type pveStorage struct {
+	Storage string `json:"storage"`
+	Node    string `json:"node"`
+	Status  string `json:"status"` // available, unknown …
+	Disk    int64  `json:"disk"`
+	MaxDisk int64  `json:"maxdisk"`
+	Type    string `json:"plugintype"`
+	Shared  int    `json:"shared"`
+}
+
+// StorageItems turns storages into items; a shared storage is reported once.
+func StorageItems(st []pveStorage) []Item {
+	var out []Item
+	seen := map[string]bool{}
+	for _, s := range st {
+		key := "storage/" + s.Node + "/" + s.Storage
+		if s.Shared == 1 {
+			key = "storage/" + s.Storage
+		}
+		if seen[key] || s.Storage == "" {
+			continue
+		}
+		seen[key] = true
+		it := Item{Key: key, Kind: KindStorage, Name: s.Storage, State: "online", Labels: map[string]string{
+			"node": s.Node, "type": s.Type, "size": strconv.FormatInt(s.MaxDisk, 10), "alloc": strconv.FormatInt(s.Disk, 10)}}
+		if s.Shared == 1 {
+			it.Labels["shared"] = "1"
+		}
+		switch pct := usedPct(s.Disk, s.MaxDisk); {
+		case s.Status != "" && s.Status != "available":
+			it.State = "unavailable"
+		case pct >= StorageFullPct:
+			it.State = "full"
+		case pct >= 90:
+			it.State = "warning"
+		}
+		out = append(out, it)
+	}
+	return out
+}
+
+func usedPct(used, total int64) int64 {
+	if total <= 0 {
+		return 0
+	}
+	return used * 100 / total
+}
+
+// diskKey matches the configuration keys of guest disks.
+func diskKey(k string) bool {
+	for _, p := range []string{"scsi", "virtio", "sata", "ide", "efidisk", "tpmstate", "unused", "mp"} {
+		if strings.HasPrefix(k, p) && len(k) > len(p) && k[len(p)] >= '0' && k[len(p)] <= '9' {
+			return true
+		}
+	}
+	return k == "rootfs"
+}
+
+// GuestStorages lists the storages that hold a guest's disks ("local-lvm:vm-100-disk-0,size=32G").
+func GuestStorages(conf map[string]any) []string {
+	seen := map[string]bool{}
+	var out []string
+	for k, v := range conf {
+		val, ok := v.(string)
+		if !ok || !diskKey(k) || strings.Contains(val, "media=cdrom") {
+			continue
+		}
+		st, _, found := strings.Cut(strings.Split(val, ",")[0], ":")
+		if !found || st == "" || strings.HasPrefix(st, "/") || seen[st] {
+			continue
+		}
+		seen[st] = true
+		out = append(out, st)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func (c *pveClient) guest(ctx context.Context, r pveResource) Item {
@@ -134,6 +217,9 @@ func (c *pveClient) guest(ctx context.Context, r pveResource) Item {
 	if err := c.get(ctx, base+"/config", &conf); err == nil {
 		if d, ok := conf["description"].(string); ok && d != "" {
 			it.Labels["notes"] = strings.TrimSpace(d)
+		}
+		if st := GuestStorages(conf); len(st) > 0 {
+			it.Labels["storages"] = strings.Join(st, ",")
 		}
 		keys := make([]string, 0)
 		for k := range conf {

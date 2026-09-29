@@ -12,6 +12,10 @@ import (
 const (
 	KindVM = "vm" // QEMU guest
 	KindCT = "ct" // LXC container
+	// KindStorage is a hypervisor storage (Proxmox "local", "local-lvm", NFS …) with its usage
+	KindStorage = "storage"
+	// StorageFullPct is the usage at which a storage is "full" and its guests are reported down
+	StorageFullPct = 98
 )
 
 // ProxmoxConfig is a read-only API token (PVEAuditor role is enough).

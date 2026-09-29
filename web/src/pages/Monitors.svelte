@@ -19,6 +19,19 @@
   let monitors = $state<MonitorView[]>([]);
   let incidents = $state<Incident[]>([]);
   let windows = $state<Maintenance[]>([]);
+  let expanded = $state<string[]>([]);
+
+  // open incidents suppressed for the same reason ("host prx1 is offline") are shown as one group
+  const groups = $derived.by(() => {
+    const by: Record<string, Incident[]> = {};
+    for (const i of incidents) {
+      if (!i.suppressed || i.closed) continue;
+      const cause = i.cause.split(";")[0];
+      (by[cause] ??= []).push(i);
+    }
+    return Object.entries(by).filter(([, list]) => list.length > 1);
+  });
+  const grouped = $derived(new Set(groups.flatMap(([, list]) => list.map((i) => i.id))));
   let creating = $state(initial.includes("new=1"));
   let q = $state("");
   let mw = $state({ name: "", minutes: 30, planned: false, starts: "", ends: "", monitors: [] as number[] });
@@ -124,7 +137,18 @@
       </section>
     {:else if tab === "incidents"}
       <section class="card">
-        {#each incidents as i (i.id)}
+        {#each groups as [cause, list] (cause)}
+          <div class="group">
+            <button class="link" onclick={() => (expanded = expanded.includes(cause) ? expanded.filter((c) => c !== cause) : [...expanded, cause])}>
+              <span class="dot v-red"></span>
+              <b>{t("inc.group", { n: list.length, cause })}</b>
+            </button>
+            {#if expanded.includes(cause)}
+              {#each list as i (i.id)}<IncidentItem incident={i} onchange={load} />{/each}
+            {/if}
+          </div>
+        {/each}
+        {#each incidents.filter((i) => !grouped.has(i.id)) as i (i.id)}
           <IncidentItem incident={i} onchange={load} />
         {:else}
           <p class="muted">{t("inc.none")}</p>
@@ -186,6 +210,18 @@
 {/if}
 
 <style>
+  .group {
+    border-bottom: 1px solid var(--line);
+    padding: 6px 0;
+  }
+  .group > button {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+  }
   .form {
     display: grid;
     gap: 8px;

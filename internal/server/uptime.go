@@ -351,6 +351,8 @@ func (u *uptime) execute(ctx context.Context, st *monState) {
 	switch spec.Type {
 	case monitor.TypeContainer, monitor.TypeK8s, monitor.TypeVM:
 		r = u.s.resourceResult(ctx, spec)
+	case monitor.TypePath:
+		r = u.s.pathResult(ctx, spec)
 	case monitor.TypeHeartbeat, monitor.TypeComposite:
 		r = u.evaluate(st)
 	default:

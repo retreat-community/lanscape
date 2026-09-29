@@ -42,6 +42,9 @@ const (
 	TypeContainer = "container"
 	TypeK8s       = "k8s"
 	TypeVM        = "vm"
+	// TypePath follows the verdict of network paths in the last full run (§6): target
+	// "src[/iface] > dst[/iface]" (agent names or ids, "*" for any) or "segment:<id>".
+	TypePath = "path"
 )
 
 // RDAPBase is the RDAP bootstrap service used for domain checks.
@@ -89,7 +92,7 @@ type Spec struct {
 // ServerSide reports whether the type is evaluated by the server instead of a network check.
 func (s *Spec) ServerSide() bool {
 	switch s.Type {
-	case TypeHeartbeat, TypeComposite, TypeContainer, TypeK8s, TypeVM:
+	case TypeHeartbeat, TypeComposite, TypeContainer, TypeK8s, TypeVM, TypePath:
 		return true
 	}
 	return false
@@ -152,6 +155,10 @@ func (s *Spec) Validate() error {
 	case TypeComposite:
 		if _, err := ParseExpr(s.Expr); err != nil {
 			return fmt.Errorf("expr: %w", err)
+		}
+	case TypePath:
+		if _, err := ParsePathRef(s.Target); err != nil {
+			return err
 		}
 	default:
 		return fmt.Errorf("unknown check type %q", s.Type)
@@ -619,4 +626,40 @@ func runDomain(ctx context.Context, s *Spec) Result {
 	}
 	r.Message = "no expiration date in RDAP"
 	return r
+}
+
+// PathRef selects network paths for a path monitor.
+type PathRef struct {
+	Segment    string
+	Src, SrcIf string // "" = any
+	Dst, DstIf string
+}
+
+// ParsePathRef parses "src[/iface] > dst[/iface]" or "segment:<id>".
+func ParsePathRef(target string) (PathRef, error) {
+	t := strings.TrimSpace(target)
+	if seg, ok := strings.CutPrefix(t, "segment:"); ok {
+		if strings.TrimSpace(seg) == "" {
+			return PathRef{}, errors.New("target: segment id is empty")
+		}
+		return PathRef{Segment: strings.TrimSpace(seg)}, nil
+	}
+	a, b, ok := strings.Cut(t, ">")
+	if !ok {
+		return PathRef{}, errors.New(`target must be "src[/iface] > dst[/iface]" or "segment:<id>"`)
+	}
+	split := func(s string) (string, string) {
+		n, i, _ := strings.Cut(strings.TrimSpace(s), "/")
+		if n == "*" {
+			n = ""
+		}
+		return strings.TrimSpace(n), strings.TrimSpace(i)
+	}
+	var r PathRef
+	r.Src, r.SrcIf = split(a)
+	r.Dst, r.DstIf = split(b)
+	if r.Src == "" && r.Dst == "" {
+		return PathRef{}, errors.New("target: name at least one end of the path")
+	}
+	return r, nil
 }

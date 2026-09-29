@@ -571,3 +571,37 @@ func TestDiscoveredDevices(t *testing.T) {
 		t.Errorf("extras: %+v", ex)
 	}
 }
+
+func TestPathMonitor(t *testing.T) {
+	s, _ := newTestServer(t)
+	ctx := context.Background()
+	s.hub.Connected(AgentState{ID: "a", Name: "router", Kind: "full"}, &fakeConn{id: "a"})
+	s.hub.Connected(AgentState{ID: "b", Name: "nas", Kind: "full"}, &fakeConn{id: "b"})
+	spec := func(target string) monitor.Spec { return monitor.Spec{Type: monitor.TypePath, Target: target} }
+	if r := s.pathResult(ctx, spec("router > nas")); r.Status != monitor.Degraded {
+		t.Errorf("no run: %+v", r)
+	}
+	rep := Report{Kind: KindFull, Status: "done", Paths: []topo.PathResult{
+		{SegID: "10.0.0.0/24", Src: "a", SrcIf: "eth0", Dst: "b", DstIf: "eth0", Verdict: topo.Green, BestBPS: 940e6},
+		{SegID: "10.30.0.0/24", Src: "a", SrcIf: "eth1", Dst: "b", DstIf: "eth1", Verdict: topo.Red},
+		{SegID: "10.30.0.0/24", Src: "b", SrcIf: "eth1", Dst: "a", DstIf: "eth1", Verdict: topo.Yellow}}}
+	raw, _ := json.Marshal(rep)
+	id, err := s.store.CreateRun(ctx, store.Run{Kind: KindFull, Status: "running", Started: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.store.FinishRun(ctx, id, "done", raw); err != nil {
+		t.Fatal(err)
+	}
+	for target, want := range map[string]string{
+		"router/eth0 > nas": monitor.Up, "router > nas": monitor.Down, "nas > router": monitor.Degraded,
+		"segment:10.0.0.0/24": monitor.Up, "segment:10.30.0.0/24": monitor.Down, "* > router/eth9": monitor.Degraded,
+	} {
+		if r := s.pathResult(ctx, spec(target)); r.Status != want {
+			t.Errorf("%s: %+v, want %s", target, r, want)
+		}
+	}
+	if (&monitor.Spec{Type: monitor.TypePath, Target: "just-a-name"}).Validate() == nil {
+		t.Error("bad target accepted")
+	}
+}

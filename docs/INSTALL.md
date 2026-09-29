@@ -283,7 +283,9 @@ Monitors check HTTP(S), TCP, UDP, ICMP, DNS, TLS certificates and domain expiry 
 server or from any Full agent (**Check from**). DNS checks query the system resolver or a given
 server over UDP/TCP (`192.168.1.11`, `tcp://…`), DNS over TLS (`tls://1.1.1.1`) or DNS over HTTPS
 (`https://dns.example/dns-query`). Without permission for ICMP sockets, ping checks fall back to
-TCP connects (a refused connection also proves the host is up). Docker containers, Kubernetes workloads and
+TCP connects (a refused connection also proves the host is up). **Network path** monitors follow the
+verdict of the last full run for `router/eth0 > nas` or a whole `segment:10.30.0.0/24`: green is up,
+yellow or CPU-bound is degraded, red is down. Docker containers, Kubernetes workloads and
 Proxmox guests are watched through discovery; heartbeat monitors wait for a job to call their
 push URL (`curl -fsS https://panel/api/push/<token>?status=up&msg=OK`); composite monitors
 combine others (`#1 && (#2 || #3)`). A monitor can depend on others (a router, a hypervisor):

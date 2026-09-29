@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -171,4 +172,65 @@ func bridgeSpeed(s *Server, node, bridge string) int {
 		}
 	}
 	return 0
+}
+
+// pathResult evaluates a path monitor from the last full run: the worst verdict of the paths it
+// selects decides (§9.1 "interface/path").
+func (s *Server) pathResult(ctx context.Context, spec monitor.Spec) monitor.Result {
+	res := monitor.Result{At: time.Now().UnixMilli()}
+	ref, err := monitor.ParsePathRef(spec.Target)
+	if err != nil {
+		res.Status, res.Message = monitor.Down, err.Error()
+		return res
+	}
+	last, err := s.store.LastRun(ctx, KindFull)
+	var rep Report
+	if err != nil || json.Unmarshal(last.Report, &rep) != nil {
+		res.Status, res.Message = monitor.Degraded, "no full network run yet"
+		return res
+	}
+	// names or ids of agents
+	id := func(v string) string {
+		if v == "" {
+			return ""
+		}
+		for _, a := range s.hub.List() {
+			if strings.EqualFold(a.Name, v) || a.ID == v {
+				return a.ID
+			}
+		}
+		return v
+	}
+	src, dst := id(ref.Src), id(ref.Dst)
+	rank := map[string]int{topo.Green: 0, topo.None: 1, topo.Purple: 2, topo.Yellow: 3, topo.Red: 4}
+	worst, n := -1, 0
+	var why string
+	for _, p := range rep.Paths {
+		if ref.Segment != "" && p.SegID != ref.Segment {
+			continue
+		}
+		if (src != "" && p.Src != src) || (ref.SrcIf != "" && p.SrcIf != ref.SrcIf) ||
+			(dst != "" && p.Dst != dst) || (ref.DstIf != "" && p.DstIf != ref.DstIf) {
+			continue
+		}
+		n++
+		if r := rank[p.Verdict]; r > worst {
+			worst = r
+			why = fmt.Sprintf("%s/%s → %s/%s: %s", s.pointName(p.Src), p.SrcIf, s.pointName(p.Dst), p.DstIf, p.Verdict)
+			if p.BestBPS > 0 {
+				why += fmt.Sprintf(", %.0f Mbit/s", float64(p.BestBPS)/1e6)
+			}
+		}
+	}
+	switch {
+	case n == 0:
+		res.Status, res.Message = monitor.Degraded, "no matching path in run #"+strconv.FormatInt(last.ID, 10)
+	case worst >= rank[topo.Red]:
+		res.Status, res.Message = monitor.Down, why
+	case worst >= rank[topo.Purple]:
+		res.Status, res.Message = monitor.Degraded, why
+	default:
+		res.Status, res.Message = monitor.Up, fmt.Sprintf("%d paths green", n)
+	}
+	return res
 }

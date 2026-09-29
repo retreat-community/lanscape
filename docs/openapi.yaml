@@ -1005,6 +1005,36 @@ paths:
         "400": {$ref: "#/components/responses/Error"}
         "404": {$ref: "#/components/responses/Error"}
         "409": {$ref: "#/components/responses/Error"}
+  /api/v1/config:
+    get:
+      tags: [settings]
+      operationId: exportConfig
+      summary: Export the declarative configuration (admin)
+      parameters:
+        - {name: format, in: query, schema: {type: string, enum: [yaml, json]}}
+      responses:
+        "200":
+          description: configuration file (apiVersion lanscape/v1)
+          content:
+            application/yaml:
+              schema: {$ref: "#/components/schemas/ConfigFile"}
+            application/json:
+              schema: {$ref: "#/components/schemas/ConfigFile"}
+    post:
+      tags: [settings]
+      operationId: applyConfig
+      summary: Apply a configuration file (admin; audited)
+      parameters:
+        - {name: dry_run, in: query, schema: {type: boolean}}
+        - {name: prune, in: query, schema: {type: boolean}}
+      requestBody:
+        required: true
+        content:
+          application/yaml:
+            schema: {$ref: "#/components/schemas/ConfigFile"}
+      responses:
+        "200": {$ref: "#/components/responses/ConfigPlan"}
+        "400": {$ref: "#/components/responses/ConfigPlan"}
   /api/v1/import/uptime-kuma:
     post:
       tags: [discovery]
@@ -1439,6 +1469,23 @@ components:
         application/json:
           schema: {$ref: "#/components/schemas/StatusPage"}
   responses:
+    ConfigPlan:
+      description: plan of the changes (with error when nothing was applied because of it)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              dry_run: {type: boolean}
+              error: {type: string}
+              plan:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    kind: {type: string, enum: [service, monitor, segment, rules, channel, status_page]}
+                    name: {type: string}
+                    action: {type: string, enum: [create, update, delete, unchanged]}
     ActionResult:
       description: per-agent outcome (ok is true when any agent succeeded)
       content:
@@ -1525,6 +1572,18 @@ components:
               result: {$ref: "#/components/schemas/CheckResult"}
               points: {type: array, items: {$ref: "#/components/schemas/CheckResult"}}
   schemas:
+    ConfigFile:
+      type: object
+      description: declarative configuration, see docs/INSTALL.md (Configuration as code)
+      required: [apiVersion]
+      properties:
+        apiVersion: {type: string, enum: [lanscape/v1]}
+        services: {type: array, items: {type: object, additionalProperties: true}}
+        monitors: {type: array, items: {type: object, additionalProperties: true}}
+        segments: {type: array, items: {type: object, additionalProperties: true}}
+        rules: {type: array, items: {type: object, additionalProperties: true}}
+        channels: {type: array, items: {type: object, additionalProperties: true}}
+        status_pages: {type: array, items: {type: object, additionalProperties: true}}
     Role: {type: string, enum: [viewer, operator, admin]}
     User:
       type: object

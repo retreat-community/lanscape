@@ -97,9 +97,11 @@ func (s *Server) Route(pattern, role string, h http.HandlerFunc) {
 func securityHeaders(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") && r.Method != http.MethodGet && r.Method != http.MethodHead {
-			// CSRF: state-changing API calls must be JSON or carry a bearer token
+			// CSRF: state-changing API calls must be JSON (or YAML configuration) or carry a bearer
+			// token; neither type can be sent cross-site without a CORS preflight
 			ct := r.Header.Get("Content-Type")
-			if r.Header.Get("Authorization") == "" && r.ContentLength > 0 && !strings.HasPrefix(ct, "application/json") {
+			if r.Header.Get("Authorization") == "" && r.ContentLength > 0 && !strings.HasPrefix(ct, "application/json") &&
+				!strings.HasPrefix(ct, "application/yaml") {
 				writeError(w, http.StatusUnsupportedMediaType, "application/json required")
 				return
 			}

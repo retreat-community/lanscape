@@ -36,6 +36,8 @@ commands:
   backup FILE      write a consistent copy of the database to FILE
   restore FILE     replace the database with FILE (server must be stopped)
   user-password U  set a new password for user U (reads LANSCAPE_NEW_PASSWORD)
+  config export    print the declarative configuration (YAML) of a running panel
+  config apply     apply a configuration file: -f FILE [--dry-run] [--prune]
   version          print the version
 
 Flags can also be set with LANSCAPE_<FLAG> environment variables.
@@ -45,7 +47,8 @@ Flags can also be set with LANSCAPE_<FLAG> environment variables.
 type flags struct {
 	listen, gatewayListen, miniListen, miniToken, dataDir, db, gatewayHosts, expect string
 	tlsCert, tlsKey, metricsToken, adminUser, adminPassword, publicURL, logLevel    string
-	logFormat                                                                       string
+	logFormat, configFile                                                           string
+	configPrune                                                                     bool
 	oidcIssuer, oidcClientID, oidcClientSecret, oidcName, oidcRoleClaim             string
 	oidcAdminGroups, oidcOperatorGroups, oidcDefaultRole                            string
 	parallel                                                                        int
@@ -74,6 +77,8 @@ func parse(name string, args []string) (*flag.FlagSet, *flags, error) {
 	fs.StringVar(&f.logFormat, "log-format", "text", "text or json")
 	fs.IntVar(&f.parallel, "parallel", 8, "parallel reachability tests")
 	fs.BoolVar(&f.secureCookies, "secure-cookies", false, "mark session cookies Secure (behind a TLS proxy)")
+	fs.StringVar(&f.configFile, "config", "", "declarative configuration (YAML) applied on start; ${VAR} reads the environment")
+	fs.BoolVar(&f.configPrune, "config-prune", false, "with -config: delete objects of the listed sections that the file does not contain")
 	fs.StringVar(&f.oidcIssuer, "oidc-issuer", "", "OpenID Connect issuer URL (enables single sign-on)")
 	fs.StringVar(&f.oidcClientID, "oidc-client-id", "", "OpenID Connect client id")
 	fs.StringVar(&f.oidcClientSecret, "oidc-client-secret", "", "OpenID Connect client secret (empty for public clients with PKCE)")
@@ -147,6 +152,8 @@ func run(args []string) error {
 	case "help":
 		usage()
 		return nil
+	case "config":
+		return configCmd(args)
 	case "serve", "backup", "restore", "user-password":
 	default:
 		usage()
@@ -209,6 +216,11 @@ func run(args []string) error {
 		return err
 	}
 	registerModules(srv, log)
+	if f.configFile != "" {
+		if err := applyConfigFile(ctx, srv, f.configFile, f.configPrune, log); err != nil {
+			return err
+		}
+	}
 	err = srv.Run(ctx)
 	time.Sleep(100 * time.Millisecond)
 	return err

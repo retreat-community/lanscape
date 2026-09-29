@@ -193,6 +193,29 @@ func KeepSecrets(typ string, cfg, old json.RawMessage) json.RawMessage {
 	return b
 }
 
+// StripSecrets removes secrets from a channel configuration (for exports).
+func StripSecrets(typ string, cfg json.RawMessage) map[string]any {
+	m := map[string]any{}
+	_ = json.Unmarshal(cfg, &m)
+	for _, f := range secretFields[typ] {
+		delete(m, f)
+	}
+	return m
+}
+
+// FillSecrets copies secrets from old into cfg where cfg leaves them out, empty or masked.
+func FillSecrets(typ string, cfg map[string]any, old json.RawMessage) {
+	var o map[string]any
+	_ = json.Unmarshal(old, &o)
+	for _, f := range secretFields[typ] {
+		if v, _ := cfg[f].(string); v == "" || v == Mask {
+			if ov, ok := o[f]; ok {
+				cfg[f] = ov
+			}
+		}
+	}
+}
+
 // New validates a configuration and returns a sender.
 func New(typ string, cfg json.RawMessage, client *http.Client) (Sender, error) {
 	if client == nil {

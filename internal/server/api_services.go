@@ -71,6 +71,8 @@ func (s *Server) servicesRoutes(mux *http.ServeMux, v func(string, http.HandlerF
 	mux.HandleFunc("POST /api/v1/push/subscribe", v(RoleViewer, s.apiPushSubscribe))
 	mux.HandleFunc("POST /api/v1/push/unsubscribe", v(RoleViewer, s.apiPushUnsubscribe))
 	mux.HandleFunc("POST /api/v1/push/test", v(RoleViewer, s.apiPushTest))
+	mux.HandleFunc("GET /api/v1/config", v(RoleAdmin, s.apiExportConfig))
+	mux.HandleFunc("POST /api/v1/config", v(RoleAdmin, s.apiApplyConfig))
 	mux.HandleFunc("POST /api/v1/actions/wol", v(RoleOperator, s.apiWake))
 	mux.HandleFunc("POST /api/v1/actions/restart", v(RoleOperator, s.apiRestart))
 	mux.HandleFunc("POST /api/v1/import/prometheus", v(RoleAdmin, s.apiImportPrometheus))
@@ -523,33 +525,32 @@ func (s *Server) checkPoints(points []string) error {
 	return nil
 }
 
-func (s *Server) apiSaveMonitor(w http.ResponseWriter, r *http.Request) {
-	var req monitorReq
-	if !readJSON(w, r, &req) {
-		return
-	}
+// inputError is a validation failure (HTTP 400) as opposed to a storage error.
+type inputError struct{ msg string }
+
+func (e inputError) Error() string { return e.msg }
+
+func badInput(format string, a ...any) error { return inputError{fmt.Sprintf(format, a...)} }
+
+// saveMonitor validates and stores a monitor: id 0 creates one. It is shared by the API and
+// configuration imports.
+func (s *Server) saveMonitor(ctx context.Context, id int64, req monitorReq) (store.Monitor, error) {
 	req.Name = strings.TrimSpace(req.Name)
 	if req.Name == "" {
-		writeError(w, http.StatusBadRequest, "name is required")
-		return
+		return store.Monitor{}, badInput("name is required")
 	}
 	spec, err := validateSpec(req.Spec)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "spec: "+err.Error())
-		return
+		return store.Monitor{}, badInput("spec: %v", err)
 	}
-	self, _ := pathID(r)
-	if err := s.checkRefs(self, spec, req.Parents); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
+	if err := s.checkRefs(id, spec, req.Parents); err != nil {
+		return store.Monitor{}, badInput("%v", err)
 	}
 	if req.IntervalS != 0 && (req.IntervalS < minIntervalS || req.IntervalS > 86400) {
-		writeError(w, http.StatusBadRequest, "interval_s must be between 5 and 86400")
-		return
+		return store.Monitor{}, badInput("interval_s must be between 5 and 86400")
 	}
 	if err := s.checkPoints(req.Points); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
+		return store.Monitor{}, badInput("%v", err)
 	}
 	m := store.Monitor{ServiceID: req.ServiceID, Name: req.Name, Spec: req.Spec, IntervalS: req.IntervalS, Retries: req.Retries,
 		Points: req.Points, MinFailing: req.MinFailing, SLA: req.SLA, Enabled: req.Enabled == nil || *req.Enabled, Parents: req.Parents}
@@ -560,34 +561,22 @@ func (s *Server) apiSaveMonitor(w http.ResponseWriter, r *http.Request) {
 		m.IntervalS = 60
 	}
 	if m.ServiceID > 0 {
-		if _, err := s.store.ServiceByID(r.Context(), m.ServiceID); err != nil {
-			writeError(w, http.StatusBadRequest, "unknown service")
-			return
+		if _, err := s.store.ServiceByID(ctx, m.ServiceID); err != nil {
+			return store.Monitor{}, badInput("unknown service")
 		}
 	}
-	if r.PathValue("id") == "" {
+	if id == 0 {
 		if spec.Type == monitor.TypeHeartbeat {
 			m.PushToken = NewSecret("lsh_")
 		}
-		id, err := s.createMonitor(r.Context(), m)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
-			return
+		if m.ID, err = s.createMonitor(ctx, m); err != nil {
+			return store.Monitor{}, err
 		}
-		s.audit(r, "monitor.create", strconv.FormatInt(id, 10), "ok", m.Name)
-		mv, _ := s.uptime.get(id)
-		writeJSON(w, http.StatusCreated, mv)
-		return
-	}
-	id, ok := pathID(r)
-	if !ok {
-		writeError(w, http.StatusBadRequest, "bad id")
-		return
+		return m, nil
 	}
 	old, ok := s.uptime.get(id)
 	if !ok {
-		writeError(w, http.StatusNotFound, "not found")
-		return
+		return store.Monitor{}, errNotFound
 	}
 	m.ID, m.CreatedAt, m.PushToken, m.LastPush = id, old.CreatedAt, old.PushToken, old.LastPush
 	if spec.Type == monitor.TypeHeartbeat && m.PushToken == "" {
@@ -599,13 +588,48 @@ func (s *Server) apiSaveMonitor(w http.ResponseWriter, r *http.Request) {
 	if m.MinFailing <= 0 {
 		m.MinFailing = 1
 	}
-	if _, err := s.store.SaveMonitor(r.Context(), m); err != nil {
+	if _, err := s.store.SaveMonitor(ctx, m); err != nil {
+		return store.Monitor{}, err
+	}
+	s.uptime.set(m)
+	return m, nil
+}
+
+var errNotFound = errors.New("not found")
+
+func (s *Server) apiSaveMonitor(w http.ResponseWriter, r *http.Request) {
+	var req monitorReq
+	if !readJSON(w, r, &req) {
+		return
+	}
+	var id int64
+	if r.PathValue("id") != "" {
+		var ok bool
+		if id, ok = pathID(r); !ok {
+			writeError(w, http.StatusBadRequest, "bad id")
+			return
+		}
+	}
+	m, err := s.saveMonitor(r.Context(), id, req)
+	var ie inputError
+	switch {
+	case errors.As(err, &ie):
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	case errors.Is(err, errNotFound):
+		writeError(w, http.StatusNotFound, "not found")
+		return
+	case err != nil:
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	s.uptime.set(m)
+	mv, _ := s.uptime.get(m.ID)
+	if id == 0 {
+		s.audit(r, "monitor.create", strconv.FormatInt(m.ID, 10), "ok", m.Name)
+		writeJSON(w, http.StatusCreated, mv)
+		return
+	}
 	s.audit(r, "monitor.update", strconv.FormatInt(id, 10), "ok", m.Name)
-	mv, _ := s.uptime.get(id)
 	writeJSON(w, http.StatusOK, mv)
 }
 

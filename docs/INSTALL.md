@@ -294,3 +294,52 @@ listed in `--actions` (`LANSCAPE_ACTIONS`):
 | `restart` | off | Restarts a Docker container, performs a rolling restart of a Kubernetes deployment, statefulset or daemonset (needs `patch` on them; the Helm chart adds it when `agent.actions` contains `restart`), or reboots a Proxmox VM/CT (the API token needs `VM.PowerMgmt`). |
 
 `--actions none` disables actions on an agent.
+
+### Configuration as code (GitOps)
+
+Services, monitors, segments, discovery rules, notification channels and status pages can be
+kept in a YAML file under version control. Objects refer to each other by name; secrets are
+never exported and a channel keeps its stored secret when the file leaves it out. `${NAME}` is
+replaced from the environment of whoever reads the file (the CLI or `--config`), so tokens stay
+out of the repository.
+
+```yaml
+apiVersion: lanscape/v1
+services:
+  - {name: Gitea, app: gitea, group: Dev, internal_url: "http://10.0.0.5:3000", tile: true}
+monitors:
+  - name: Router
+    check: {type: icmp, target: 10.0.0.1}
+  - name: Gitea HTTP
+    service: Gitea
+    check: {type: http, target: "http://10.0.0.5:3000/api/healthz"}
+    interval: 30
+    from: [server, nas]          # observation points: agent names or "server"
+    depends_on: [Router]         # incidents are suppressed while the router is down
+  - name: Internet
+    check: {type: composite, expr: "{Router} && {Gitea HTTP}"}
+segments:
+  - {id: 10.0.0.0/24, name: LAN, expected_mbps: 1000}
+rules:
+  - {name: ingresses, kind: ingress, action: add, monitor: true}
+channels:
+  - name: ops
+    type: telegram
+    config: {bot_token: "${TELEGRAM_TOKEN}", chat_id: "-100123", monitors: [Gitea HTTP]}
+status_pages:
+  - slug: home
+    title: Home
+    public: true
+    groups: [{name: Core, monitors: [Router, Gitea HTTP]}]
+```
+
+- `lanscape config export --url https://panel --api-token lst_... > lanscape.yaml` writes the
+  current state (also **Settings → Import → Download current configuration**).
+- `lanscape config apply -f lanscape.yaml --dry-run` prints the plan; without `--dry-run` it
+  applies it. Applying the same file twice changes nothing, so it fits a CI pipeline.
+- `--prune` also deletes objects of the sections present in the file that the file does not
+  list; sections left out of the file are never touched.
+- `lanscape serve --config /etc/lanscape/lanscape.yaml` applies the file on every start.
+
+The API is `GET /api/v1/config` and `POST /api/v1/config?dry_run=true&prune=true` with an
+administrator token.

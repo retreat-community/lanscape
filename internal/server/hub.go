@@ -44,6 +44,7 @@ type AgentState struct {
 	DataPort int             `json:"data_port"`
 	LastSeen int64           `json:"last_seen"`
 	Caps     []string        `json:"caps,omitempty"`
+	Addr     string          `json:"addr,omitempty"` // address the agent connects from
 	Inv      agent.Inventory `json:"inventory"`
 	conn     Conn
 }

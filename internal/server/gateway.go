@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -174,6 +175,9 @@ func (s *Server) handleAgentWS(w http.ResponseWriter, r *http.Request) {
 	_ = json.Unmarshal(rec.Inventory, &inv)
 	st := AgentState{ID: id, Name: rec.Name, Kind: "full", Version: hm.Version, OS: hm.OS, Arch: hm.Arch,
 		Hostname: hm.Hostname, HostID: hm.HostID, DataPort: hm.DataPort, Caps: hm.Caps, Inv: inv}
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		st.Addr = host
+	}
 	s.hub.Connected(st, c)
 	s.log.Info("agent connected", "id", id, "name", rec.Name, "version", hm.Version)
 	defer func() {

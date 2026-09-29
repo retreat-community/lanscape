@@ -76,7 +76,12 @@ func agentLANIP(inv *agent.Inventory) string {
 func (s *Server) agentInfos() map[string]catalog.AgentInfo {
 	m := map[string]catalog.AgentInfo{}
 	for _, a := range s.hub.List() {
-		m[a.ID] = catalog.AgentInfo{Name: a.Name, IP: agentLANIP(&a.Inv)}
+		// the address the agent connects from is reachable from the server; fall back to the inventory
+		ip := a.Addr
+		if pip := net.ParseIP(ip); pip == nil || pip.IsLoopback() || pip.To4() == nil {
+			ip = agentLANIP(&a.Inv)
+		}
+		m[a.ID] = catalog.AgentInfo{Name: a.Name, IP: ip}
 	}
 	return m
 }

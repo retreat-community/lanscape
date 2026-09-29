@@ -17,6 +17,7 @@ import (
 	"github.com/retreat-community/lanscape/internal/discovery"
 	"github.com/retreat-community/lanscape/internal/monitor"
 	"github.com/retreat-community/lanscape/internal/proto"
+	"github.com/retreat-community/lanscape/internal/testengine"
 	"github.com/retreat-community/lanscape/internal/wol"
 )
 
@@ -32,6 +33,18 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 				return nil, err
 			}
 			return monitor.Run(ctx, s), nil
+		})
+	}
+	if o.mode != "respond-only" {
+		// public address and download speed through each default gateway (§6.1, on request)
+		a.Handle(proto.MsgInternet, func(ctx context.Context, env proto.Envelope) (any, error) {
+			var m proto.InternetMsg
+			if err := json.Unmarshal(env.Data, &m); err != nil {
+				return nil, err
+			}
+			routes, _, _, _, _ := agent.CollectSystem()
+			return testengine.Internet(ctx, agent.DefaultGateways(routes),
+				testengine.InternetParams{IPURL: m.IPURL, DownloadURL: m.DownloadURL}), nil
 		})
 	}
 	allow, err := discovery.ParsePrefixes(cli.SplitList(o.scanAllow))

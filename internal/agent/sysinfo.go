@@ -4,10 +4,12 @@ import (
 	"bufio"
 	"os"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/retreat-community/lanscape/internal/netio"
+	"github.com/retreat-community/lanscape/internal/testengine"
 )
 
 // Inventory is the full report sent to the server (§5).
@@ -161,4 +163,20 @@ func DetectEnv(root string, getenv func(string) string) Env {
 
 func baseResources() Resources {
 	return Resources{Arch: runtime.GOARCH, CPUs: runtime.NumCPU(), OS: runtime.GOOS}
+}
+
+// DefaultGateways lists the default routes (one per interface, lowest metric first), which the
+// Internet test uses as separate exits (multi-WAN).
+func DefaultGateways(routes []Route) []testengine.Gateway {
+	sort.SliceStable(routes, func(i, j int) bool { return routes[i].Metric < routes[j].Metric })
+	seen := map[string]bool{}
+	var out []testengine.Gateway
+	for _, r := range routes {
+		if (r.Dst != "default" && r.Dst != "0.0.0.0/0") || r.Dev == "" || seen[r.Dev] {
+			continue
+		}
+		seen[r.Dev] = true
+		out = append(out, testengine.Gateway{Dev: r.Dev, Gateway: r.Gateway, Src: r.Src})
+	}
+	return out
 }

@@ -137,3 +137,12 @@ type ActionMsg struct {
 type ActionResultMsg struct {
 	Detail string `json:"detail"`
 }
+
+// MsgInternet asks an agent for the Internet test through each of its default gateways.
+const MsgInternet = "internet"
+
+// InternetMsg configures the Internet test; DownloadURL empty = address only.
+type InternetMsg struct {
+	IPURL       string `json:"ip_url"`
+	DownloadURL string `json:"download_url,omitempty"`
+}

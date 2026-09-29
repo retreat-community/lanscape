@@ -46,3 +46,15 @@ func TestDetectEnv(t *testing.T) {
 		t.Errorf("k8s: %+v", e)
 	}
 }
+
+func TestDefaultGateways(t *testing.T) {
+	gws := DefaultGateways([]Route{
+		{Dst: "10.0.0.0/24", Dev: "eth0"},
+		{Dst: "default", Gateway: "192.168.0.1", Dev: "wan2", Metric: 20},
+		{Dst: "default", Gateway: "192.168.1.1", Dev: "wan", Metric: 10},
+		{Dst: "default", Gateway: "192.168.1.254", Dev: "wan", Metric: 30, Table: 100},
+	})
+	if len(gws) != 2 || gws[0].Dev != "wan" || gws[0].Gateway != "192.168.1.1" || gws[1].Dev != "wan2" {
+		t.Errorf("%+v", gws)
+	}
+}

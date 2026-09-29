@@ -79,6 +79,30 @@ jobs:
           body_path: notes.md
           files: assets/*
 
+  msi:
+    # the Windows zip is the supported download; the installer is a convenience (wixl)
+    needs: release
+    runs-on: retreat-k8s
+    continue-on-error: true
+    container: debian:bookworm
+    steps:
+      - name: Install tools
+        run: apt-get update -qq && apt-get install -y -qq wixl unzip git ca-certificates > /dev/null
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: full-packages
+          path: full
+      - name: Build the installer
+        run: |
+          v=${GITHUB_REF_NAME#v}
+          scripts/build-msi.sh "full/lanscape-agent_${v}_windows_amd64.zip" "$GITHUB_REF_NAME" msi
+          cd msi && sha256sum -- *.msi > "lanscape-agent_${v}_windows_amd64.msi.sha256"
+      - name: Attach to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: msi/*
+
   helm:
     needs: release
     runs-on: retreat-k8s

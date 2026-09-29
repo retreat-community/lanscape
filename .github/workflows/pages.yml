@@ -21,9 +21,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  feed:
+  site:
     runs-on: retreat-k8s
+    container: debian:bookworm
     steps:
+      - name: Install tools
+        run: apt-get update -qq && apt-get install -y -qq git ca-certificates apt-utils createrepo-c > /dev/null
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -34,8 +37,37 @@ jobs:
           latest: ${{ inputs.tag == '' }}
           fileName: 'openwrt-*-feed.tar.gz'
           out-file-path: feeds
+      - name: Download deb packages
+        uses: robinraju/release-downloader@v1
+        with:
+          tag: ${{ inputs.tag }}
+          latest: ${{ inputs.tag == '' }}
+          fileName: '*.deb'
+          out-file-path: assets
+      - name: Download rpm packages
+        uses: robinraju/release-downloader@v1
+        with:
+          tag: ${{ inputs.tag }}
+          latest: ${{ inputs.tag == '' }}
+          fileName: '*.rpm'
+          out-file-path: assets
+      - name: Download macOS archives for Homebrew
+        uses: robinraju/release-downloader@v1
+        with:
+          tag: ${{ inputs.tag }}
+          latest: ${{ inputs.tag == '' }}
+          fileName: 'lanscape*_darwin_*.tar.gz'
+          out-file-path: assets
+      - name: Download Linux archives for Homebrew
+        uses: robinraju/release-downloader@v1
+        with:
+          tag: ${{ inputs.tag }}
+          latest: ${{ inputs.tag == '' }}
+          fileName: 'lanscape*_linux_*64.tar.gz'
+          out-file-path: assets
       - name: Resolve tag
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           tag="${{ inputs.tag }}"
           [ -n "$tag" ] || tag=$(git describe --tags --abbrev=0)
           echo "TAG=$tag" >> "$GITHUB_ENV"
@@ -58,14 +90,17 @@ jobs:
             mkdir -p "site/openwrt/$branch/$arch"
             tar -C "site/openwrt/$branch/$arch" -xzf "$f"
           done
+          scripts/publish-repos.sh assets site "$TAG"
           touch site/.nojekyll
           {
-            echo "<!doctype html><meta charset=utf-8><title>Lanscape OpenWrt feed</title>"
-            echo "<h1>Lanscape OpenWrt feed</h1><p>Release $TAG. See docs/INSTALL.md.</p><ul>"
+            echo "<!doctype html><meta charset=utf-8><title>Lanscape packages</title>"
+            echo "<h1>Lanscape packages</h1><p>Release $TAG. See docs/INSTALL.md.</p>"
+            echo "<ul><li><a href=\"apt/\">apt repository</a></li><li><a href=\"rpm/\">rpm repository</a></li>"
+            echo "<li><a href=\"homebrew/\">Homebrew formulas</a></li></ul><h2>OpenWrt feed</h2><ul>"
             (cd site && find openwrt -mindepth 2 -maxdepth 2 -type d | sort | sed 's|.*|<li><a href="&/">&</a></li>|')
             echo "</ul>"
           } > site/index.html
           cd site
           git add -A
-          git commit -q -m "docs: publish openwrt feed for $TAG" || echo "no changes"
+          git commit -q -m "docs: publish packages for $TAG" || echo "no changes"
           git push origin gh-pages

@@ -20,8 +20,8 @@ func TestSysinfoParsers(t *testing.T) {
 func TestDetectEnv(t *testing.T) {
 	root := t.TempDir()
 	write := func(p, s string) {
-		_ = os.MkdirAll(filepath.Dir(root+p), 0o755)
-		_ = os.WriteFile(root+p, []byte(s), 0o644)
+		_ = os.MkdirAll(filepath.Dir(root+p), 0o750)
+		_ = os.WriteFile(root+p, []byte(s), 0o600)
 	}
 	none := func(string) string { return "" }
 	if e := DetectEnv(root, none); e.Kind != "bare-metal" {

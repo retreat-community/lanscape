@@ -348,9 +348,12 @@ func (u *uptime) execute(ctx context.Context, st *monState) {
 	m, spec := st.m, st.spec
 	u.mu.Unlock()
 	var r monitor.Result
-	if spec.ServerSide() {
+	switch spec.Type {
+	case monitor.TypeContainer, monitor.TypeK8s, monitor.TypeVM:
+		r = u.s.resourceResult(ctx, spec)
+	case monitor.TypeHeartbeat, monitor.TypeComposite:
 		r = u.evaluate(st)
-	} else {
+	default:
 		r = combine(u.observe(ctx, spec, m.Points), m.MinFailing)
 	}
 	u.record(ctx, st, r)

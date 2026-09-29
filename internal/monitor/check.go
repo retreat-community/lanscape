@@ -36,6 +36,12 @@ const (
 	TypeHeartbeat = "heartbeat"
 	// TypeComposite combines other monitors ("#1 && (#2 || #3)"); evaluated by the server.
 	TypeComposite = "composite"
+	// Resource types are evaluated by the server from the latest discovery reports. Target:
+	// "<source>:<agent id or *>:<item key>", e.g. "docker:ag1:container/gitea", "k8s:*:deploy/forge/gitea",
+	// "proxmox:*:qemu/100".
+	TypeContainer = "container"
+	TypeK8s       = "k8s"
+	TypeVM        = "vm"
 )
 
 // RDAPBase is the RDAP bootstrap service used for domain checks.
@@ -81,7 +87,22 @@ type Spec struct {
 }
 
 // ServerSide reports whether the type is evaluated by the server instead of a network check.
-func (s *Spec) ServerSide() bool { return s.Type == TypeHeartbeat || s.Type == TypeComposite }
+func (s *Spec) ServerSide() bool {
+	switch s.Type {
+	case TypeHeartbeat, TypeComposite, TypeContainer, TypeK8s, TypeVM:
+		return true
+	}
+	return false
+}
+
+// ResourceRef splits the target of a resource monitor.
+func ResourceRef(target string) (source, agent, key string, err error) {
+	parts := strings.SplitN(target, ":", 3)
+	if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+		return "", "", "", errors.New(`target must be "<source>:<agent|*>:<key>"`)
+	}
+	return parts[0], parts[1], parts[2], nil
+}
 
 // Status of a check result.
 const (
@@ -124,6 +145,10 @@ func (s *Spec) Validate() error {
 			return errors.New("target must be a host name or address")
 		}
 	case TypeHeartbeat:
+	case TypeContainer, TypeK8s, TypeVM:
+		if _, _, _, err := ResourceRef(s.Target); err != nil {
+			return err
+		}
 	case TypeComposite:
 		if _, err := ParseExpr(s.Expr); err != nil {
 			return fmt.Errorf("expr: %w", err)
@@ -162,7 +187,7 @@ func Run(ctx context.Context, s Spec) Result {
 		r = runTLS(ctx, &s)
 	case TypeDomain:
 		r = runDomain(ctx, &s)
-	case TypeHeartbeat, TypeComposite:
+	case TypeHeartbeat, TypeComposite, TypeContainer, TypeK8s, TypeVM:
 		r = Result{Status: Down, Message: s.Type + " monitors are evaluated by the server"}
 	default:
 		r = Result{Status: Down, Message: "unknown check type " + s.Type}

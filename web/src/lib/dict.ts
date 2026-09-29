@@ -398,6 +398,10 @@ export const en = {
   "mon.push_url": "Push URL",
   "inc.suppressed": "caused by a parent failure",
   "dash.dependents": "+{n} dependent",
+  "mon.type.container": "Docker container",
+  "mon.type.k8s": "Kubernetes workload",
+  "mon.type.vm": "VM / CT",
+  "mon.target_hint_resource": "source:agent:key, e.g. proxmox:*:qemu/100 (added from Found)",
 } as const;
 
 export type Key = keyof typeof en;
@@ -800,6 +804,10 @@ export const ru: Record<Key, string> = {
   "mon.push_url": "Push-адрес",
   "inc.suppressed": "из-за сбоя родителя",
   "dash.dependents": "+{n} зависимых",
+  "mon.type.container": "Контейнер Docker",
+  "mon.type.k8s": "Workload Kubernetes",
+  "mon.type.vm": "VM / CT",
+  "mon.target_hint_resource": "источник:агент:ключ, например proxmox:*:qemu/100 (из «Найдено»)",
 };
 
 export type Lang = "en" | "ru";

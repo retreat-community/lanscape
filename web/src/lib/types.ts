@@ -360,7 +360,7 @@ export interface AppMatch {
 }
 
 export interface CheckSpec {
-  type: "http" | "tcp" | "udp" | "icmp" | "dns" | "tls" | "domain" | "heartbeat" | "composite";
+  type: "http" | "tcp" | "udp" | "icmp" | "dns" | "tls" | "domain" | "heartbeat" | "composite" | "container" | "k8s" | "vm";
   target: string;
   timeout_ms?: number;
   method?: string;

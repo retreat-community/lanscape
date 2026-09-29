@@ -13,12 +13,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/retreat-community/lanscape/internal/agent"
 	"github.com/retreat-community/lanscape/internal/catalog"
 	"github.com/retreat-community/lanscape/internal/discovery"
 	"github.com/retreat-community/lanscape/internal/fingerprint"
 	"github.com/retreat-community/lanscape/internal/monitor"
+	"github.com/retreat-community/lanscape/internal/netio"
 	"github.com/retreat-community/lanscape/internal/notify"
 	"github.com/retreat-community/lanscape/internal/store"
+	"github.com/retreat-community/lanscape/internal/topo"
 )
 
 type hookSink struct {
@@ -441,5 +444,45 @@ func TestHeartbeatCompositeSuppression(t *testing.T) {
 	mu.Unlock()
 	if !strings.Contains(joined, "incident.resolved router") || !strings.Contains(joined, "incident.opened nas") {
 		t.Errorf("after the parent recovered: %v", sent)
+	}
+}
+
+func TestResourceMonitorsAndProxmoxSpeed(t *testing.T) {
+	s, _ := newTestServer(t)
+	ctx := context.Background()
+	s.hub.Connected(AgentState{ID: "pve", Name: "pve1", Hostname: "pve1", Kind: "full", Inv: agent.Inventory{Ifaces: []netio.Iface{
+		{Name: "eno1", Kind: "physical", Speed: 1000}, {Name: "eno2", Kind: "physical", Speed: 1000},
+		{Name: "bond0", Kind: "bond", Members: []string{"eno1", "eno2"}},
+		{Name: "vmbr0", Kind: "bridge", Members: []string{"bond0", "tap100i0"}},
+	}}}, &fakeConn{id: "pve"})
+	s.hub.Connected(AgentState{ID: "guest", Name: "nas", Kind: "full", Inv: agent.Inventory{Ifaces: []netio.Iface{
+		{Name: "eth0", Kind: "physical", MAC: "BC:24:11:AA:BB:CC"},
+	}}}, &fakeConn{id: "guest"})
+	vm := discovery.Item{Key: "qemu/100", Kind: discovery.KindVM, Name: "nas", State: "running", Labels: map[string]string{"node": "pve1"},
+		NICs: []discovery.NIC{{Name: "net0", MAC: "bc:24:11:aa:bb:cc", Bridge: "vmbr0", Model: "virtio"}}}
+	report := func(items ...discovery.Item) {
+		if err := s.ingestDiscovery(ctx, "pve", discovery.Report{Sources: []discovery.SourceReport{{Source: discovery.SourceProxmox, Items: items}}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	report(vm)
+	if sp := s.inheritSpeed(topo.Member{Node: "guest", Iface: "eth0"}); sp != 2000 {
+		t.Errorf("inherited speed %d, want 2000 (bond of two 1G ports)", sp)
+	}
+	spec := monitor.Spec{Type: monitor.TypeVM, Target: "proxmox:*:qemu/100"}
+	if r := s.resourceResult(ctx, spec); r.Status != monitor.Up {
+		t.Errorf("running vm: %+v", r)
+	}
+	vm.State = "stopped"
+	report(vm)
+	if r := s.resourceResult(ctx, spec); r.Status != monitor.Down || !strings.Contains(r.Message, "stopped") {
+		t.Errorf("stopped vm: %+v", r)
+	}
+	report()
+	if r := s.resourceResult(ctx, spec); r.Status != monitor.Down || !strings.Contains(r.Message, "disappeared") {
+		t.Errorf("removed vm: %+v", r)
+	}
+	if r := s.resourceResult(ctx, monitor.Spec{Type: monitor.TypeContainer, Target: "docker:x:container/none"}); r.Status != monitor.Down {
+		t.Errorf("unknown container: %+v", r)
 	}
 }

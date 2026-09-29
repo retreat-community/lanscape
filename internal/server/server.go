@@ -166,7 +166,7 @@ func (s *Server) inheritSpeed(m topo.Member) int {
 	if SpeedInheritor != nil {
 		return SpeedInheritor(s, m)
 	}
-	return 0
+	return proxmoxSpeed(s, m)
 }
 
 func (s *Server) settings(ctx context.Context) Settings {

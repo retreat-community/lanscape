@@ -187,6 +187,7 @@ the findings into cards in **Services → Found**. Sources are chosen with `--di
 | `sockets` | Linux; root (or `CAP_SYS_PTRACE`) to see the processes behind other users' sockets |
 | `docker` | read access to the Docker (or Podman) socket, `--docker-socket /var/run/docker.sock`; mount it read-only in containers |
 | `k8s` | in-cluster service account with read-only access to Services, Ingresses, HTTPRoutes, Deployments, StatefulSets, DaemonSets and PVCs, or `--kubeconfig` |
+| Proxmox VE | `--proxmox-url https://127.0.0.1:8006 --proxmox-token 'lanscape@pve!discovery=<secret>'` (a token with the PVEAuditor role; `--proxmox-insecure` for the self-signed certificate). VMs and containers with status, addresses (QEMU guest agent), tags and notes; virtio guests inherit the link speed of the host bridge |
 
 The default `--discover auto` enables `sockets` on Linux, `docker` when the socket exists and
 `k8s` inside a cluster. HTTP endpoints are fingerprinted (title, headers, favicon, characteristic
@@ -200,8 +201,13 @@ add with an HTTPS monitor and a dashboard tile".
 
 ### Monitors and notifications
 
-Monitors check HTTP(S), TCP, UDP, ICMP, DNS and TLS certificates from the server or from any
-Full agent (**Check from**); with several observation points an incident opens only when at
+Monitors check HTTP(S), TCP, UDP, ICMP, DNS, TLS certificates and domain expiry (RDAP) from the
+server or from any Full agent (**Check from**). Docker containers, Kubernetes workloads and
+Proxmox guests are watched through discovery; heartbeat monitors wait for a job to call their
+push URL (`curl -fsS https://panel/api/push/<token>?status=up&msg=OK`); composite monitors
+combine others (`#1 && (#2 || #3)`). A monitor can depend on others (a router, a hypervisor):
+while a parent is down, or while the agent a service runs on is offline, its incidents are
+suppressed and grouped under the cause. With several observation points an incident opens only when at
 least *N* points fail, which separates "the service is down" from "the path to it is down". An
 incident opens after the configured number of failed checks in a row and closes automatically.
 Maintenance windows (planned, or "right now for 30 minutes") mute notifications.

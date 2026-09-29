@@ -1489,7 +1489,7 @@ components:
     Address:
       type: object
       properties:
-        type: {type: string, enum: [internal, external, hostport, workload, container, process]}
+        type: {type: string, enum: [internal, external, hostport, workload, container, process, vm, ip]}
         value: {type: string}
         agent: {type: string}
     AppMatch:
@@ -1528,7 +1528,7 @@ components:
             type: object
             properties:
               agent: {type: string}
-              source: {type: string, enum: [sockets, docker, k8s]}
+              source: {type: string, enum: [sockets, docker, k8s, proxmox]}
               key: {type: string}
               kind: {type: string}
               gone: {type: boolean}
@@ -1584,8 +1584,8 @@ components:
       type: object
       required: [type, target]
       properties:
-        type: {type: string, enum: [http, tcp, udp, icmp, dns, tls, domain, heartbeat, composite]}
-        target: {type: string, description: "URL (http), host:port (tcp, udp, tls), host (icmp), record name (dns) or domain; not used by heartbeat and composite"}
+        type: {type: string, enum: [http, tcp, udp, icmp, dns, tls, domain, heartbeat, composite, container, k8s, vm]}
+        target: {type: string, description: "URL (http), host:port (tcp, udp, tls), host (icmp), record name (dns), domain, or <source>:<agent|*>:<key> for container, k8s and vm; not used by heartbeat and composite"}
         timeout_ms: {type: integer}
         method: {type: string}
         expect_status: {type: array, items: {type: integer}, description: "exact codes or classes (2 = 2xx); default 200-399"}

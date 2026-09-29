@@ -48,7 +48,8 @@ func TestKubernetesMerge(t *testing.T) {
 	if c.Monitor == nil || c.Monitor.Type != monitor.TypeHTTP || c.Monitor.Target != "http://10.96.5.5:3000/api/healthz" {
 		t.Errorf("monitor: %+v", c.Monitor)
 	}
-	if cards[1].Key != "k8s:deploy/forge/other" || cards[1].Monitor != nil {
+	if cards[1].Key != "k8s:deploy/forge/other" || cards[1].Monitor == nil || cards[1].Monitor.Type != monitor.TypeK8s ||
+		cards[1].Monitor.Target != "k8s:*:deploy/forge/other" {
 		t.Errorf("other: %+v", cards[1])
 	}
 }
@@ -158,5 +159,18 @@ func TestDiff(t *testing.T) {
 		[]discovery.Item{{Key: "c", Kind: discovery.KindContainer, Name: "c", State: "exited"}}, "h")
 	if len(stopped) != 1 || stopped[0].Kind != ChangeContainerStopped {
 		t.Errorf("stopped: %+v", stopped)
+	}
+}
+
+func TestProxmoxCards(t *testing.T) {
+	vm := discovery.Item{Key: "qemu/100", Kind: discovery.KindVM, Name: "nas", State: "running", IPs: []string{"192.168.1.20"},
+		Labels: map[string]string{"node": "pve1"}}
+	fs := []Finding{{Agent: "pve1", Source: discovery.SourceProxmox, Item: vm}, {Agent: "pve2", Source: discovery.SourceProxmox, Item: vm}}
+	cards := Build(fs, nil)
+	if len(cards) != 1 || cards[0].Key != "proxmox:qemu/100" || cards[0].State != "running" || len(cards[0].Agents) != 0 {
+		t.Fatalf("cards: %+v", cards)
+	}
+	if m := cards[0].Monitor; m == nil || m.Type != monitor.TypeVM || m.Target != "proxmox:*:qemu/100" {
+		t.Errorf("monitor: %+v", m)
 	}
 }

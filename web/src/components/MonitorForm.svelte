@@ -25,9 +25,10 @@
   let test = $state<{ result: CheckResult; points: CheckResult[] } | null>(null);
   let busy = $state(false);
 
-  const serverSide = $derived(spec.type === "heartbeat" || spec.type === "composite");
+  const resource = $derived(spec.type === "container" || spec.type === "k8s" || spec.type === "vm");
+  const serverSide = $derived(spec.type === "heartbeat" || spec.type === "composite" || resource);
   const hint = $derived(
-    spec.type === "http" ? t("mon.target_hint_http") : spec.type === "icmp" || spec.type === "dns" ? t("mon.target_hint_host") : t("mon.target_hint_hostport"),
+    resource ? t("mon.target_hint_resource") : spec.type === "http" ? t("mon.target_hint_http") : spec.type === "icmp" || spec.type === "dns" ? t("mon.target_hint_host") : t("mon.target_hint_hostport"),
   );
   const checkAgents = $derived(agents.filter((a) => a.kind !== "lite"));
 
@@ -93,7 +94,7 @@
     <label class="field"
       >{t("mon.type")}
       <select bind:value={spec.type} data-testid="mon-type">
-        {#each ["http", "tcp", "udp", "icmp", "dns", "tls", "domain", "heartbeat", "composite"] as ty (ty)}
+        {#each ["http", "tcp", "udp", "icmp", "dns", "tls", "domain", "heartbeat", "composite", "container", "k8s", "vm"] as ty (ty)}
           <option value={ty}>{t(`mon.type.${ty}`)}</option>
         {/each}
       </select>
@@ -202,7 +203,7 @@
     </div>
   {/if}
   <div class="row">
-    <button class="primary" disabled={busy || (!serverSide && !spec.target)} onclick={save} data-testid="mon-save">{t("common.save")}</button>
+    <button class="primary" disabled={busy || ((!serverSide || resource) && !spec.target)} onclick={save} data-testid="mon-save">{t("common.save")}</button>
     <button disabled={busy || serverSide || !spec.target} onclick={tryIt}>{t("mon.test")}</button>
     <button onclick={oncancel}>{t("common.cancel")}</button>
   </div>

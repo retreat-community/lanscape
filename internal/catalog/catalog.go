@@ -81,7 +81,7 @@ var ignoredProcesses = map[string]bool{
 var kindRank = map[string]int{
 	discovery.KindDeployment: 1, discovery.KindStatefulSet: 1, discovery.KindDaemonSet: 1,
 	discovery.KindContainer: 2, discovery.KindService: 3, discovery.KindIngress: 4, discovery.KindHTTPRoute: 4,
-	discovery.KindSocket: 5,
+	discovery.KindSocket: 5, discovery.KindVM: 1, discovery.KindCT: 1,
 }
 
 type node struct {
@@ -134,8 +134,8 @@ func include(f *Finding) bool {
 // nodeID is unique across agents; Kubernetes objects are cluster-wide, so agents of the
 // same cluster (a DaemonSet) report the same object.
 func nodeID(f *Finding) string {
-	if f.Source == discovery.SourceK8s {
-		return "k8s:" + f.Item.Key
+	if f.Source == discovery.SourceK8s || f.Source == discovery.SourceProxmox {
+		return f.Source + ":" + f.Item.Key // cluster-wide objects
 	}
 	return f.Source + ":" + f.Agent + ":" + f.Item.Key
 }
@@ -289,7 +289,7 @@ func card(ms []*Finding, agents map[string]AgentInfo) Card {
 		if c.FirstSeen == 0 || (f.First > 0 && f.First < c.FirstSeen) {
 			c.FirstSeen = f.First
 		}
-		if f.Source != discovery.SourceK8s {
+		if f.Source != discovery.SourceK8s && f.Source != discovery.SourceProxmox {
 			agentSet[f.Agent] = true
 		}
 		if it.App != nil && (c.App == nil || it.App.Score > c.App.Score) {
@@ -331,6 +331,14 @@ func card(ms []*Finding, agents map[string]AgentInfo) Card {
 			addAddr("workload", "svc/"+it.Namespace+"/"+it.Name, "")
 		case discovery.KindDeployment, discovery.KindStatefulSet, discovery.KindDaemonSet:
 			addAddr("workload", strings.TrimPrefix(it.Kind, "k8s_")+"/"+it.Namespace+"/"+it.Name, "")
+			if c.State == "" {
+				c.State = it.State
+			}
+		case discovery.KindVM, discovery.KindCT:
+			addAddr("vm", it.Key+" @ "+it.Labels["node"], "")
+			for _, ip := range it.IPs {
+				addAddr("ip", ip, "")
+			}
 			if c.State == "" {
 				c.State = it.State
 			}
@@ -397,7 +405,28 @@ func card(ms []*Finding, agents map[string]AgentInfo) Card {
 		c.Name = c.App.Name // process names are technical; the application name reads better
 	}
 	c.Monitor = recommend(&c)
+	if c.Monitor == nil {
+		c.Monitor = resourceMonitor(p)
+	}
 	return c
+}
+
+// resourceMonitor checks the state of the primary object when there is no endpoint to probe.
+func resourceMonitor(p *Finding) *monitor.Spec {
+	agent := p.Agent
+	if p.Source == discovery.SourceK8s || p.Source == discovery.SourceProxmox {
+		agent = "*"
+	}
+	target := p.Source + ":" + agent + ":" + p.Item.Key
+	switch p.Item.Kind {
+	case discovery.KindContainer:
+		return &monitor.Spec{Type: monitor.TypeContainer, Target: target}
+	case discovery.KindDeployment, discovery.KindStatefulSet, discovery.KindDaemonSet:
+		return &monitor.Spec{Type: monitor.TypeK8s, Target: target}
+	case discovery.KindVM, discovery.KindCT:
+		return &monitor.Spec{Type: monitor.TypeVM, Target: target}
+	}
+	return nil
 }
 
 // lanURL replaces a loopback host in a probed URL with the agent's LAN address.
@@ -415,8 +444,8 @@ func lanURL(raw, hostIP string) string {
 func cardKey(p *Finding) string {
 	it := &p.Item
 	switch {
-	case p.Source == discovery.SourceK8s:
-		return "k8s:" + it.Key
+	case p.Source == discovery.SourceK8s || p.Source == discovery.SourceProxmox:
+		return p.Source + ":" + it.Key
 	case it.Kind == discovery.KindContainer:
 		return "docker:" + p.Agent + ":" + it.Name
 	case it.Kind == discovery.KindSocket && it.Process != "" && it.Owner == "":

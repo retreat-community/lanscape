@@ -99,7 +99,9 @@ func (s *Store) ReplaceFindings(ctx context.Context, agentID, source string, ite
 
 // PruneFindings deletes items gone before the cut-off and all items of deleted agents.
 func (s *Store) PruneFindings(ctx context.Context, before int64) error {
-	_, err := s.Exec(ctx, `DELETE FROM findings WHERE (gone > 0 AND gone < ?) OR agent_id NOT IN (SELECT id FROM agents)`, before)
+	// "server" owns findings imported by the server itself (Prometheus, Home Assistant)
+	_, err := s.Exec(ctx, `DELETE FROM findings WHERE (gone > 0 AND gone < ?) OR (agent_id <> 'server' AND agent_id NOT IN (SELECT id FROM agents))`,
+		before)
 	return err
 }
 

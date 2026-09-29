@@ -862,6 +862,55 @@ paths:
       responses:
         "202": {description: started}
         "400": {$ref: "#/components/responses/Error"}
+  /api/v1/import/uptime-kuma:
+    post:
+      tags: [discovery]
+      operationId: importUptimeKuma
+      summary: Import Uptime Kuma monitors
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, description: Uptime Kuma backup file (monitorList is used), additionalProperties: true}
+      responses:
+        "200":
+          description: result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  created: {type: integer}
+                  skipped: {type: array, items: {type: string}}
+        "400": {$ref: "#/components/responses/Error"}
+  /api/v1/import/prometheus:
+    post:
+      tags: [discovery]
+      operationId: importPrometheus
+      summary: Import Prometheus targets
+      description: Active scrape targets appear in the found queue.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [url], properties: {url: {type: string}}}
+      responses:
+        "200": {description: imported, content: {application/json: {schema: {type: object, properties: {items: {type: integer}}}}}}
+        "502": {$ref: "#/components/responses/Error"}
+  /api/v1/import/home-assistant:
+    post:
+      tags: [discovery]
+      operationId: importHomeAssistant
+      summary: Import Home Assistant
+      description: Home Assistant itself goes to the found queue, entities with an IP address to the discovered devices.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [url, token], properties: {url: {type: string}, token: {type: string}}}
+      responses:
+        "200": {description: imported, content: {application/json: {schema: {type: object, properties: {items: {type: integer}}}}}}
+        "502": {$ref: "#/components/responses/Error"}
   /api/v1/discovery/rules:
     get:
       tags: [discovery]

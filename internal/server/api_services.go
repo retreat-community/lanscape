@@ -65,6 +65,9 @@ func (s *Server) servicesRoutes(mux *http.ServeMux, v func(string, http.HandlerF
 	mux.HandleFunc("GET /api/v1/paths/history", v(RoleViewer, s.apiPathHistory))
 	mux.HandleFunc("GET /api/v1/devices/discovered", v(RoleViewer, s.apiDevices))
 	mux.HandleFunc("POST /api/v1/discovery/scan", v(RoleAdmin, s.apiScan))
+	mux.HandleFunc("POST /api/v1/import/uptime-kuma", v(RoleAdmin, s.apiImportKuma))
+	mux.HandleFunc("POST /api/v1/import/prometheus", v(RoleAdmin, s.apiImportPrometheus))
+	mux.HandleFunc("POST /api/v1/import/home-assistant", v(RoleAdmin, s.apiImportHomeAssistant))
 
 	// status pages: public (or with the link token) HTML and JSON, administration
 	mux.HandleFunc("GET /status/{slug}", func(w http.ResponseWriter, r *http.Request) { s.serveStatusHTML(w, r, r.PathValue("slug")) })

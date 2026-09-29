@@ -429,6 +429,16 @@ export const en = {
   "dev.scan_start": "Start",
   "dev.scan_started": "Scan started; results appear here when it finishes",
   "dev.scan_hint": "popular TCP ports, 200 connections/s, up to 1024 addresses",
+  "set.import": "Import",
+  "imp.kuma": "Uptime Kuma backup (JSON)",
+  "imp.kuma_hint": "Uptime Kuma → Settings → Backup → Export. HTTP, keyword, JSON query, TCP port, ping, DNS and push monitors are converted.",
+  "imp.kuma_done": "Monitors created: {n}, skipped: {skipped}",
+  "imp.prometheus": "Prometheus server",
+  "imp.ha": "Home Assistant",
+  "imp.ha_token": "Long-lived access token",
+  "imp.run": "Import",
+  "imp.items": "Imported: {n}",
+  "imp.found_hint": "Prometheus targets and Home Assistant appear in Services → Found; devices with an address in Devices → Discovered.",
 } as const;
 
 export type Key = keyof typeof en;
@@ -862,6 +872,16 @@ export const ru: Record<Key, string> = {
   "dev.scan_start": "Запустить",
   "dev.scan_started": "Сканирование запущено; результаты появятся здесь по окончании",
   "dev.scan_hint": "популярные TCP-порты, 200 соединений/с, до 1024 адресов",
+  "set.import": "Импорт",
+  "imp.kuma": "Резервная копия Uptime Kuma (JSON)",
+  "imp.kuma_hint": "Uptime Kuma → Settings → Backup → Export. Переносятся мониторы HTTP, keyword, JSON query, TCP, ping, DNS и push.",
+  "imp.kuma_done": "Создано мониторов: {n}, пропущено: {skipped}",
+  "imp.prometheus": "Сервер Prometheus",
+  "imp.ha": "Home Assistant",
+  "imp.ha_token": "Долгоживущий токен доступа",
+  "imp.run": "Импортировать",
+  "imp.items": "Импортировано: {n}",
+  "imp.found_hint": "Цели Prometheus и Home Assistant появятся в «Сервисы → Найдено», устройства с адресом — в «Устройства → Обнаруженные».",
 };
 
 export type Lang = "en" | "ru";

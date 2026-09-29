@@ -28,5 +28,11 @@ func DNSRecords(context.Context, DNSConfig) ([]Item, error) { return nil, errNot
 // Hardware is not included in small builds.
 func Hardware(context.Context, HostConfig) ([]Item, error) { return nil, errNotInBuild }
 
+// Libvirt is not included in small builds.
+func Libvirt(context.Context) ([]Item, error) { return nil, errNotInBuild }
+
+// LibvirtAvailable is false in small builds.
+func LibvirtAvailable() bool { return false }
+
 // Restart is not included in small builds.
 func Restart(context.Context, Config, string, string) (string, error) { return "", errNotInBuild }

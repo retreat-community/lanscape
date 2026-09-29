@@ -151,6 +151,13 @@ from the release, install it, set options in `/etc/lanscape/lanscape.env`, then
 has an environment variable `LANSCAPE_<FLAG>`. Useful flags: `--expect 10.30.0.0/24=2500`,
 `--metrics-token`, `--mini-token`, `--secure-cookies` (behind a TLS proxy).
 
+**Prometheus and Grafana**: `/metrics` exports paths (throughput, RTT, loss, verdict), agents,
+devices, runs, problems, monitors (status, response time) and failed notifications; protect it
+with `--metrics-token` (bearer token). Ready dashboards are in
+[`deploy/grafana`](../deploy/grafana): import `lanscape-network.json` and
+`lanscape-services.json` in Grafana (**Dashboards → New → Import**) and pick the Prometheus
+data source.
+
 **Database**: SQLite in the data directory by default (WAL mode, nothing to set up). For larger
 installations or an existing database cluster use PostgreSQL 13 or newer:
 `--db 'postgres://lanscape:secret@db:5432/lanscape?sslmode=require'` (Helm:
@@ -243,10 +250,12 @@ the findings into cards in **Services → Found**. Sources are chosen with `--di
 | `k8s` | in-cluster service account with read-only access to Services, Ingresses, HTTPRoutes, Deployments, StatefulSets, DaemonSets and PVCs, or `--kubeconfig` |
 | `openwrt` | the agent running on an OpenWrt router: DHCP leases (dynamic and static) give devices their names, hostapd reports Wi-Fi clients with band and signal, port forwards and SQM settings are listed |
 | reverse proxies | `--traefik-url http://traefik:8080` (API), `--caddy-admin http://127.0.0.1:2019`, `--nginx-dir auto`: public names are attached to the containers and processes they forward to, which gives services their external URLs |
-| local DNS | `--pihole-url` + `--pihole-password` (v6 app password or v5 token), `--adguard-url` + `--adguard-user`/`--adguard-password`, `--technitium-url` + `--technitium-token`: local names for discovered devices |
+| local DNS | `--pihole-url` + `--pihole-password` (v6 app password or v5 token), `--adguard-url` + `--adguard-user`/`--adguard-password`, `--technitium-url` + `--technitium-token`, or a zone transfer from any server that allows it (`--axfr 192.168.1.11/home.arpa`): local names for discovered devices |
 | hardware | `--nut` (Network UPS Tools, `auto` = 127.0.0.1:3493), `--smart` (smartctl, as root) and `--zfs` (zpool): UPS charge and runtime, disk health and pool state on the dashboard; changes such as "on battery" go to the change feed |
 | `mdns`, `ssdp` | multicast on the local links (not inside Kubernetes pods): printers, media players, NAS, IoT and UPnP routers; with the ARP neighbour tables of all agents and the MAC vendor they appear under **Devices → Discovered**, in IPAM and on the map |
+| `netbios` | names of Windows PCs and SMB devices: the addresses in the agent's neighbour table are asked for their NetBIOS node status (UDP 137) and their LLMNR reverse name (UDP 5355), 50 queries/s; enabled with `mdns` by `auto` |
 | Proxmox VE | `--proxmox-url https://127.0.0.1:8006 --proxmox-token 'lanscape@pve!discovery=<secret>'` (a token with the PVEAuditor role; `--proxmox-insecure` for the self-signed certificate). VMs and containers with status, addresses (QEMU guest agent), tags and notes; virtio guests inherit the link speed of the host bridge |
+| `libvirt` | an agent on a KVM/libvirt host with `virsh` (enabled by `auto` when the libvirt socket exists): guests with state, bridges, MAC and addresses (guest agent, DHCP leases or ARP); they are nested under the host on the map and inherit its bridge speed |
 
 The default `--discover auto` enables `sockets` on Linux, `docker` when the socket exists,
 `k8s` inside a cluster, `openwrt` on OpenWrt and `mdns`/`ssdp` everywhere else. HTTP endpoints are fingerprinted (title, headers, favicon, characteristic

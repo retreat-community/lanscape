@@ -37,7 +37,7 @@ type options struct {
 	adguardPassword, technitiumURL, technitiumToken, nut, smart, zfs                            string
 	discoverInterval                                                                            time.Duration
 	noProbe, proxmoxInsecure                                                                    bool
-	localSocket, openwrtParts, actions, scanAllow                                               string
+	localSocket, openwrtParts, actions, scanAllow, axfr                                         string
 }
 
 func parse(args []string) (*flag.FlagSet, *options, error) {
@@ -71,6 +71,7 @@ func parse(args []string) (*flag.FlagSet, *options, error) {
 	fs.StringVar(&o.adguardPassword, "adguard-password", "", "AdGuard Home password")
 	fs.StringVar(&o.technitiumURL, "technitium-url", "", "Technitium DNS server for zone records")
 	fs.StringVar(&o.technitiumToken, "technitium-token", "", "Technitium API token")
+	fs.StringVar(&o.axfr, "axfr", "", "zone transfers to read local names from, e.g. 192.168.1.11/home.arpa (comma-separated)")
 	fs.StringVar(&o.nut, "nut", "auto", `Network UPS Tools server host:port ("auto" = 127.0.0.1:3493 when it answers, "" = off)`)
 	fs.StringVar(&o.smart, "smart", "auto", `disk health with smartctl ("auto" = when installed and running as root, "off")`)
 	fs.StringVar(&o.zfs, "zfs", "auto", `ZFS pools ("auto" = when zpool is installed, "off")`)

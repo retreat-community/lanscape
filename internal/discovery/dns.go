@@ -38,6 +38,14 @@ func DNSRecords(ctx context.Context, cfg DNSConfig) ([]Item, error) {
 	if cfg.TechnitiumURL != "" {
 		collect(technitium(ctx, hc, strings.TrimRight(cfg.TechnitiumURL, "/"), cfg.TechnitiumToken))
 	}
+	for _, x := range cfg.AXFR {
+		server, zone, ok := strings.Cut(x, "/")
+		if !ok || zone == "" {
+			errs = append(errs, fmt.Sprintf("axfr: %q is not server/zone", x))
+			continue
+		}
+		collect(AXFR(ctx, server, zone))
+	}
 	by := map[string]*Item{}
 	for _, r := range recs {
 		name := strings.TrimSuffix(strings.ToLower(r.name), ".")

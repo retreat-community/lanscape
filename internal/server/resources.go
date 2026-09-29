@@ -89,7 +89,7 @@ func (s *Server) resourceResult(ctx context.Context, spec monitor.Spec) monitor.
 }
 
 // proxmoxSpeed lets virtio guests inherit the speed of the physical ports of the bridge they are
-// attached to on the Proxmox host (§7.4). The guest NIC is matched by MAC address.
+// attached to on the Proxmox or libvirt host (§7.4). The guest NIC is matched by MAC address.
 func proxmoxSpeed(s *Server, m topo.Member) int {
 	a, ok := s.hub.Get(m.Node)
 	if !ok {
@@ -112,7 +112,7 @@ func proxmoxSpeed(s *Server, m topo.Member) int {
 		return 0
 	}
 	for _, f := range fs {
-		if f.Source != discovery.SourceProxmox || f.Gone != 0 {
+		if !hypervisorSource(f.Source) || f.Gone != 0 {
 			continue
 		}
 		var it discovery.Item

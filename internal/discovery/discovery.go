@@ -22,6 +22,7 @@ const (
 	SourceDocker  = "docker"
 	SourceK8s     = "k8s"
 	SourceProxmox = "proxmox"
+	SourceLibvirt = "libvirt"
 )
 
 // Item kinds.
@@ -107,14 +108,17 @@ type Config struct {
 	K8s          bool
 	Kubeconfig   string // empty = in-cluster
 	Proxmox      ProxmoxConfig
+	Libvirt      bool // guests of the local libvirt/KVM hypervisor (virsh)
 	OpenWrt      bool // DHCP leases, Wi-Fi clients, port forwards, SQM (on the router)
 	OpenWrtParts OpenWrtParts
 	Proxy        ProxyConfig
 	DNS          DNSConfig
 	Host         HostConfig
-	MDNS         bool // DNS-SD browse on the local links
-	SSDP         bool // UPnP search
-	Probe        bool // HTTP fingerprinting of found endpoints
+	MDNS         bool            // DNS-SD browse on the local links
+	SSDP         bool            // UPnP search
+	NetBIOS      bool            // NetBIOS node status and LLMNR names of the neighbours
+	Neighbors    func() []string // addresses in the neighbour (ARP) table, for NetBIOS
+	Probe        bool            // HTTP fingerprinting of found endpoints
 	Interval     time.Duration
 	Signatures   []string // extra signature files
 }
@@ -155,7 +159,7 @@ func New(cfg Config, log *slog.Logger) (*Collector, error) {
 
 // Enabled reports whether any source is on.
 func (c *Collector) Enabled() bool {
-	return c.cfg.Sockets || c.cfg.Docker || c.cfg.K8s || c.cfg.Proxmox.URL != "" || c.cfg.MDNS || c.cfg.SSDP || c.cfg.OpenWrt ||
+	return c.cfg.Sockets || c.cfg.Docker || c.cfg.K8s || c.cfg.Proxmox.URL != "" || c.cfg.Libvirt || c.cfg.MDNS || c.cfg.SSDP || c.cfg.NetBIOS || c.cfg.OpenWrt ||
 		c.cfg.Proxy.Enabled() || c.cfg.DNS.Enabled() || c.cfg.Host.Enabled()
 }
 
@@ -190,6 +194,10 @@ func (c *Collector) Collect(ctx context.Context) Report {
 		items, err := Proxmox(ctx, c.cfg.Proxmox)
 		add(SourceProxmox, items, err)
 	}
+	if c.cfg.Libvirt {
+		items, err := Libvirt(ctx)
+		add(SourceLibvirt, items, err)
+	}
 	if c.cfg.Host.Enabled() {
 		items, err := Hardware(ctx, c.cfg.Host)
 		add(SourceHost, items, err)
@@ -213,6 +221,10 @@ func (c *Collector) Collect(ctx context.Context) Report {
 	if c.cfg.SSDP {
 		items, err := SSDP(ctx, 3*time.Second)
 		add(SourceSSDP, items, err)
+	}
+	if c.cfg.NetBIOS && c.cfg.Neighbors != nil {
+		items, err := NetBIOS(ctx, c.cfg.Neighbors(), 50, 2*time.Second)
+		add(SourceNetBIOS, items, err)
 	}
 	if c.cfg.Sockets {
 		items, err := Sockets()

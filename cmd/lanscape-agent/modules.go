@@ -74,7 +74,7 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 		Proxy:   discovery.ProxyConfig{TraefikURL: o.traefikURL, CaddyAdmin: o.caddyAdmin, NginxDir: o.nginxDir},
 		DNS: discovery.DNSConfig{PiholeURL: o.piholeURL, PiholePassword: o.piholePassword, AdGuardURL: o.adguardURL,
 			AdGuardUser: o.adguardUser, AdGuardPassword: o.adguardPassword, TechnitiumURL: o.technitiumURL,
-			TechnitiumToken: o.technitiumToken}}
+			TechnitiumToken: o.technitiumToken, AXFR: cli.SplitList(o.axfr)}}
 	cfg.Host = hostConfig(o)
 	cfg.OpenWrtParts = discovery.ParseOpenWrtParts(cli.SplitList(o.openwrtParts))
 	if cfg.Proxy.NginxDir == "auto" {
@@ -92,7 +92,9 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 			// multicast discovery belongs to hosts on the LAN, not to pods
 			cfg.MDNS = os.Getenv("KUBERNETES_SERVICE_HOST") == ""
 			cfg.SSDP = cfg.MDNS
+			cfg.NetBIOS = cfg.MDNS
 			cfg.OpenWrt = exists("/etc/openwrt_release")
+			cfg.Libvirt = discovery.LibvirtAvailable()
 		case discovery.SourceSockets:
 			cfg.Sockets = true
 		case discovery.SourceDocker:
@@ -105,6 +107,10 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 			cfg.OpenWrt = true
 		case discovery.SourceSSDP:
 			cfg.SSDP = true
+		case discovery.SourceLibvirt:
+			cfg.Libvirt = true
+		case discovery.SourceNetBIOS:
+			cfg.NetBIOS = true
 		case "none", "off":
 		default:
 			log.Warn("unknown discovery source", "source", src)
@@ -112,6 +118,16 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 	}
 	if o.mode != "respond-only" {
 		registerActions(a, cfg, cli.SplitList(o.actions), log)
+	}
+	cfg.Neighbors = func() []string {
+		_, _, neigh, _, _ := agent.CollectSystem()
+		ips := make([]string, 0, len(neigh))
+		for _, n := range neigh {
+			if n.MAC != "" && !strings.EqualFold(n.State, "failed") && !strings.EqualFold(n.State, "incomplete") {
+				ips = append(ips, n.IP)
+			}
+		}
+		return ips
 	}
 	col, err := discovery.New(cfg, log)
 	if err != nil {
@@ -121,7 +137,7 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 	if !col.Enabled() {
 		return
 	}
-	log.Info("discovery enabled", "sockets", cfg.Sockets, "docker", cfg.Docker, "k8s", cfg.K8s, "mdns", cfg.MDNS, "ssdp", cfg.SSDP, "openwrt", cfg.OpenWrt, "proxmox", cfg.Proxmox.URL != "",
+	log.Info("discovery enabled", "sockets", cfg.Sockets, "docker", cfg.Docker, "k8s", cfg.K8s, "mdns", cfg.MDNS, "ssdp", cfg.SSDP, "openwrt", cfg.OpenWrt, "proxmox", cfg.Proxmox.URL != "", "libvirt", cfg.Libvirt,
 		"interval", col.Interval())
 	// the server can ask for a fresh report (the "rescan" button)
 	a.Handle(proto.MsgDiscovery, func(ctx context.Context, _ proto.Envelope) (any, error) {

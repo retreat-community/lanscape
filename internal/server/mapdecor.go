@@ -11,6 +11,11 @@ import (
 	"github.com/retreat-community/lanscape/internal/discovery"
 )
 
+// hypervisorSource reports whether a discovery source lists virtual machines and containers.
+func hypervisorSource(src string) bool {
+	return src == discovery.SourceProxmox || src == discovery.SourceLibvirt
+}
+
 // decorateMap nests guests in their hypervisor and pods in their node, adds Proxmox guests
 // without an agent and attaches services to the devices they run on (§7.1).
 func (s *Server) decorateMap(ctx context.Context, g *MapGraph) {
@@ -50,22 +55,27 @@ func (s *Server) decorateMap(ctx context.Context, g *MapGraph) {
 			}
 		}
 	}
-	// Proxmox guests: agents inside a VM/CT are matched by MAC, the others are added as devices
+	// hypervisor guests (Proxmox, libvirt): agents inside a VM/CT are matched by MAC, the others
+	// are added as devices
 	fs, err := s.store.Findings(ctx, "", "")
 	if err != nil {
 		return
 	}
 	seen := map[string]bool{}
 	for _, f := range fs {
-		if f.Source != discovery.SourceProxmox || f.Gone != 0 || seen[f.Key] {
+		if !hypervisorSource(f.Source) || f.Gone != 0 || seen[f.Source+f.Key] {
 			continue
 		}
-		seen[f.Key] = true
+		seen[f.Source+f.Key] = true
 		var it discovery.Item
 		if json.Unmarshal(f.Data, &it) != nil {
 			continue
 		}
 		host, ok := byHost[strings.ToLower(it.Labels["node"])]
+		if !ok && f.Source == discovery.SourceLibvirt {
+			// libvirt reports the guests of the host the agent runs on
+			host, ok = f.AgentID, true
+		}
 		if !ok {
 			continue
 		}

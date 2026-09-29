@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -32,8 +33,25 @@ func Restart(ctx context.Context, cfg Config, source, key string) (string, error
 		return restartWorkload(ctx, cfg.Kubeconfig, key)
 	case SourceProxmox:
 		return rebootGuest(ctx, cfg.Proxmox, key)
+	case SourceLibvirt:
+		return rebootLibvirt(ctx, key)
 	}
 	return "", fmt.Errorf("restart is not supported for %s", source)
+}
+
+// rebootLibvirt reboots a libvirt guest ("libvirt/<name>").
+func rebootLibvirt(ctx context.Context, key string) (string, error) {
+	name, ok := strings.CutPrefix(key, "libvirt/")
+	if !ok || name == "" {
+		return "", fmt.Errorf("libvirt: bad key %q", key)
+	}
+	cctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	out, err := exec.CommandContext(cctx, "virsh", "reboot", "--domain", name).CombinedOutput() //nolint:gosec // name of a discovered guest
+	if err != nil {
+		return "", fmt.Errorf("libvirt: %s", strings.TrimSpace(string(out)))
+	}
+	return "rebooting " + name, nil
 }
 
 func orDefault(s, def string) string {

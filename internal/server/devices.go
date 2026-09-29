@@ -78,7 +78,7 @@ func (s *Server) devices(ctx context.Context) []Device {
 	if fs, err := s.store.Findings(ctx, "", ""); err == nil {
 		for _, f := range fs {
 			if f.Gone != 0 || (f.Source != discovery.SourceMDNS && f.Source != discovery.SourceSSDP && f.Source != discovery.SourceOpenWrt &&
-				f.Source != discovery.SourceScan && f.Source != SourceHomeAssistant) {
+				f.Source != discovery.SourceScan && f.Source != SourceHomeAssistant && f.Source != discovery.SourceNetBIOS) {
 				continue
 			}
 			var it discovery.Item

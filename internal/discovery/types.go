@@ -79,11 +79,12 @@ type DNSConfig struct {
 	AdGuardPassword string
 	TechnitiumURL   string
 	TechnitiumToken string
+	AXFR            []string // "server[:53]/zone" pairs whose zone transfer is allowed
 }
 
 // Enabled reports whether a DNS server is configured.
 func (c DNSConfig) Enabled() bool {
-	return c.PiholeURL != "" || c.AdGuardURL != "" || c.TechnitiumURL != ""
+	return c.PiholeURL != "" || c.AdGuardURL != "" || c.TechnitiumURL != "" || len(c.AXFR) > 0
 }
 
 // Host hardware source and kinds (dashboard widgets: UPS, SMART, storage pools).

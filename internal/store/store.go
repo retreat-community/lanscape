@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -116,4 +117,35 @@ func notFound(err error) error {
 		return ErrNotFound
 	}
 	return err
+}
+
+// Backup writes a consistent copy of the SQLite database to path.
+func (s *Store) Backup(ctx context.Context, path string) error {
+	if s.Dialect != SQLite {
+		return errors.New("store: use pg_dump for PostgreSQL")
+	}
+	_, err := s.DB.ExecContext(ctx, `VACUUM INTO ?`, path)
+	return err
+}
+
+// Restore replaces the SQLite database at dst with src (the server must be stopped).
+func Restore(src, dst string) error {
+	check, err := sql.Open("sqlite", "file:"+src+"?mode=ro")
+	if err != nil {
+		return err
+	}
+	var res string
+	err = check.QueryRow(`PRAGMA integrity_check`).Scan(&res)
+	check.Close()
+	if err != nil || res != "ok" {
+		return fmt.Errorf("store: %s is not a valid database: %v %s", src, err, res)
+	}
+	for _, suffix := range []string{"-wal", "-shm"} {
+		_ = os.Remove(dst + suffix)
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, 0o600)
 }

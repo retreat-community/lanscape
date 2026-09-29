@@ -161,6 +161,7 @@ func (s *Server) buildMap(ctx context.Context, segs []topo.Segment, rep *Report)
 	}
 	s.decorateMap(ctx, &g)
 	s.drawSwitches(ctx, &g)
+	s.drawExternal(ctx, &g)
 	if MapDecorator != nil {
 		MapDecorator(ctx, s, &g, rep)
 	}

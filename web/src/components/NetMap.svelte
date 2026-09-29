@@ -90,7 +90,21 @@
           "font-weight": "bold",
         },
       },
-      { selector: "node.service", style: { shape: "ellipse", width: 16, height: 16, "font-size": 9, "background-color": c.none } },
+      {
+        selector: "node.zone",
+        style: {
+          shape: "round-rectangle",
+          "background-opacity": 0.04,
+          "background-color": c.accent,
+          "border-width": 1,
+          "border-style": "dashed",
+          "border-color": c.muted,
+          "text-valign": "top",
+          color: c.muted,
+          padding: "16px",
+        },
+      },
+            { selector: "node.service", style: { shape: "ellipse", width: 16, height: 16, "font-size": 9, "background-color": c.none } },
       {
         selector: "node.switch",
         style: { shape: "rectangle", width: 70, height: 16, "background-color": c.card, "border-width": 2, "border-color": c.line,

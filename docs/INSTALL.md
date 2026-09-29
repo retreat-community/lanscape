@@ -410,6 +410,16 @@ measured from any agent: **Network → Options → iperf3 server**, host and opt
 `--max-duration`/`--max-streams`, and the test is written to the audit log
 (`POST /api/v1/iperf3`).
 
+### Map
+
+The map is built from the inventory and the last run: devices with their ports, segments as
+buses, guests inside their hypervisor and pods inside their node, services as badges, path edges
+coloured by verdict, bottleneck hypotheses that can be confirmed as switches, and an **External**
+zone with the Internet (the exits of routers and of the Internet test with their public
+addresses), agents that only have public addresses (cloud nodes) and VPN interfaces (WireGuard,
+Tailscale, ZeroTier). Layers and filters, PNG/SVG export, a link to the current view and the
+full-screen wall mode (`#/map?wall=1`) are in the toolbar; dragged positions are kept.
+
 ### Router traffic
 
 Agents report the throughput of their physical, bridge, VLAN, bond, WireGuard and PPP

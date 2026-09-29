@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+# PROVIDE: lanscape_agent
+# REQUIRE: NETWORKING
+# KEYWORD: shutdown
+#
+# Add to /etc/rc.conf:
+#   lanscape_agent_enable="YES"
+#   lanscape_agent_flags="--server lanscape.lan:8443 --token lsr_..."
+
+. /etc/rc.subr
+
+name="lanscape_agent"
+rcvar="lanscape_agent_enable"
+load_rc_config $name
+: ${lanscape_agent_enable:="NO"}
+: ${lanscape_agent_flags:=""}
+pidfile="/var/run/${name}.pid"
+procname="/usr/local/bin/lanscape-agent"
+command="/usr/sbin/daemon"
+command_args="-f -p ${pidfile} ${procname} --data-dir /var/db/lanscape-agent ${lanscape_agent_flags}"
+
+run_rc_command "$1"

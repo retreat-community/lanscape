@@ -1,0 +1,28 @@
+# nfpm config for the Lanscape Mini agent; used by scripts/package-mini-nfpm.sh
+name: lsm-agent
+arch: ${NFPM_ARCH}
+platform: linux
+version: ${NFPM_VERSION}
+section: net
+maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
+description: Lanscape Mini agent (tiny network path tester)
+vendor: Lanscape
+homepage: https://github.com/retreat-community/lanscape
+license: GPL-3.0-or-later
+contents:
+  - src: ${MINI_BIN}/lsm-agent
+    dst: /usr/bin/lsm-agent
+    file_info:
+      mode: 0755
+  - src: packaging/systemd/lsm-agent.service
+    dst: /lib/systemd/system/lsm-agent.service
+  - src: packaging/openrc/lsm-agent
+    dst: /etc/init.d/lsm-agent
+    packager: apk
+    file_info:
+      mode: 0755
+  - src: packaging/mini/agent.conf
+    dst: /etc/lsm/agent.conf
+    type: config|noreplace
+    file_info:
+      mode: 0644

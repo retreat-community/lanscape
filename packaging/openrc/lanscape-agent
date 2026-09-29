@@ -1,0 +1,25 @@
+#!/sbin/openrc-run
+# Lanscape agent
+
+name="lanscape-agent"
+description="Lanscape agent"
+command="/usr/bin/lanscape-agent"
+command_args="--data-dir /var/lib/lanscape-agent ${LANSCAPE_AGENT_ARGS}"
+command_background=true
+pidfile="/run/${RC_SVCNAME}.pid"
+output_log="/var/log/lanscape-agent.log"
+error_log="/var/log/lanscape-agent.log"
+
+depend() {
+	need net
+	after firewall
+}
+
+start_pre() {
+	if [ -f /etc/lanscape/agent.env ]; then
+		set -a
+		. /etc/lanscape/agent.env
+		set +a
+	fi
+	checkpath -d -m 0700 /var/lib/lanscape-agent
+}

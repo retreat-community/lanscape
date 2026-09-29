@@ -1,0 +1,180 @@
+# Lanscape (Full) builds and packages. The web UI is built into internal/server/webdist
+# before goreleaser runs (see the web job in .github/workflows/ci.yml).
+version: 2
+project_name: lanscape
+
+builds:
+  - id: lanscape
+    main: ./cmd/lanscape
+    binary: lanscape
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w
+      - -X github.com/retreat-community/lanscape/internal/buildinfo.Version={{ .Version }}
+      - -X github.com/retreat-community/lanscape/internal/buildinfo.Commit={{ .ShortCommit }}
+    goos: [linux, darwin, windows, freebsd]
+    goarch: [amd64, arm64, arm]
+    goarm: ["7"]
+    ignore:
+      - { goos: darwin, goarch: arm }
+      - { goos: windows, goarch: arm }
+      - { goos: windows, goarch: arm64 }
+      - { goos: freebsd, goarch: arm }
+      - { goos: freebsd, goarch: arm64 }
+
+  - id: lanscape-agent
+    main: ./cmd/lanscape-agent
+    binary: lanscape-agent
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w
+      - -X github.com/retreat-community/lanscape/internal/buildinfo.Version={{ .Version }}
+      - -X github.com/retreat-community/lanscape/internal/buildinfo.Commit={{ .ShortCommit }}
+    goos: [linux, darwin, windows, freebsd]
+    goarch: [amd64, "386", arm64, arm, mips, mipsle, mips64, mips64le, riscv64, ppc64le, s390x]
+    goarm: ["5", "6", "7"]
+    gomips: [softfloat]
+    ignore:
+      - { goos: darwin, goarch: "386" }
+      - { goos: darwin, goarch: arm }
+      - { goos: darwin, goarch: mips }
+      - { goos: darwin, goarch: mipsle }
+      - { goos: darwin, goarch: mips64 }
+      - { goos: darwin, goarch: mips64le }
+      - { goos: darwin, goarch: riscv64 }
+      - { goos: darwin, goarch: ppc64le }
+      - { goos: darwin, goarch: s390x }
+      - { goos: windows, goarch: "386" }
+      - { goos: windows, goarch: arm }
+      - { goos: windows, goarch: mips }
+      - { goos: windows, goarch: mipsle }
+      - { goos: windows, goarch: mips64 }
+      - { goos: windows, goarch: mips64le }
+      - { goos: windows, goarch: riscv64 }
+      - { goos: windows, goarch: ppc64le }
+      - { goos: windows, goarch: s390x }
+      - { goos: freebsd, goarch: "386" }
+      - { goos: freebsd, goarch: arm }
+      - { goos: freebsd, goarch: mips }
+      - { goos: freebsd, goarch: mipsle }
+      - { goos: freebsd, goarch: mips64 }
+      - { goos: freebsd, goarch: mips64le }
+      - { goos: freebsd, goarch: riscv64 }
+      - { goos: freebsd, goarch: ppc64le }
+      - { goos: freebsd, goarch: s390x }
+
+archives:
+  - id: lanscape
+    ids: [lanscape]
+    name_template: "lanscape_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - NOTICE
+      - README.md
+      - src: packaging/systemd/lanscape.service
+        dst: systemd/lanscape.service
+      - src: packaging/openrc/lanscape
+        dst: openrc/lanscape
+      - src: packaging/freebsd/lanscape
+        dst: freebsd/lanscape
+  - id: lanscape-agent
+    ids: [lanscape-agent]
+    name_template: "lanscape-agent_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - NOTICE
+      - src: packaging/systemd/lanscape-agent.service
+        dst: systemd/lanscape-agent.service
+      - src: packaging/openrc/lanscape-agent
+        dst: openrc/lanscape-agent
+      - src: packaging/freebsd/lanscape_agent
+        dst: freebsd/lanscape_agent
+      - src: packaging/launchd/org.lanscape.agent.plist
+        dst: launchd/org.lanscape.agent.plist
+
+nfpms:
+  - id: lanscape
+    package_name: lanscape
+    ids: [lanscape]
+    vendor: Lanscape
+    homepage: https://github.com/retreat-community/lanscape
+    maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
+    description: Network paths, map and service uptime in one panel (server)
+    license: GPL-3.0-or-later
+    formats: [deb, rpm, apk]
+    bindir: /usr/bin
+    section: net
+    contents:
+      - src: packaging/systemd/lanscape.service
+        dst: /lib/systemd/system/lanscape.service
+      - src: packaging/openrc/lanscape
+        dst: /etc/init.d/lanscape
+        packager: apk
+        file_info: { mode: 0755 }
+      - src: packaging/nfpm/lanscape.env
+        dst: /etc/lanscape/lanscape.env
+        type: config|noreplace
+        file_info: { mode: 0640 }
+    scripts:
+      postinstall: packaging/nfpm/lanscape-postinstall.sh
+      preremove: packaging/nfpm/lanscape-preremove.sh
+  - id: lanscape-agent
+    package_name: lanscape-agent
+    ids: [lanscape-agent]
+    vendor: Lanscape
+    homepage: https://github.com/retreat-community/lanscape
+    maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
+    description: Lanscape agent - inventory, network tests, discovery and checks
+    license: GPL-3.0-or-later
+    formats: [deb, rpm, apk]
+    bindir: /usr/bin
+    section: net
+    contents:
+      - src: packaging/systemd/lanscape-agent.service
+        dst: /lib/systemd/system/lanscape-agent.service
+      - src: packaging/openrc/lanscape-agent
+        dst: /etc/init.d/lanscape-agent
+        packager: apk
+        file_info: { mode: 0755 }
+      - src: packaging/nfpm/agent.env
+        dst: /etc/lanscape/agent.env
+        type: config|noreplace
+        file_info: { mode: 0600 }
+    scripts:
+      postinstall: packaging/nfpm/agent-postinstall.sh
+      preremove: packaging/nfpm/lanscape-agent-preremove.sh
+
+checksum:
+  name_template: checksums-full.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  use: git
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^feat(\(.+\))?!?:'
+      order: 0
+    - title: Bug fixes
+      regexp: '^fix(\(.+\))?!?:'
+      order: 1
+    - title: Performance
+      regexp: '^perf(\(.+\))?!?:'
+      order: 2
+    - title: Other
+      order: 99
+
+release:
+  disable: true

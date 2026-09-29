@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+# PROVIDE: lanscape
+# REQUIRE: NETWORKING
+# KEYWORD: shutdown
+#
+# Add to /etc/rc.conf:
+#   lanscape_enable="YES"
+#   lanscape_flags="--gateway-hosts lanscape.lan"
+
+. /etc/rc.subr
+
+name="lanscape"
+rcvar="lanscape_enable"
+load_rc_config $name
+: ${lanscape_enable:="NO"}
+: ${lanscape_flags:=""}
+pidfile="/var/run/${name}.pid"
+procname="/usr/local/bin/lanscape"
+command="/usr/sbin/daemon"
+command_args="-f -p ${pidfile} ${procname} serve --data-dir /var/db/lanscape ${lanscape_flags}"
+
+run_rc_command "$1"

@@ -1,0 +1,26 @@
+#!/sbin/openrc-run
+# Lanscape server
+
+name="lanscape"
+description="Lanscape server"
+command="/usr/bin/lanscape"
+command_args="serve --data-dir /var/lib/lanscape ${LANSCAPE_ARGS}"
+command_user="lanscape:lanscape"
+command_background=true
+pidfile="/run/${RC_SVCNAME}.pid"
+output_log="/var/log/lanscape.log"
+error_log="/var/log/lanscape.log"
+
+depend() {
+	need net
+}
+
+start_pre() {
+	if [ -f /etc/lanscape/lanscape.env ]; then
+		set -a
+		. /etc/lanscape/lanscape.env
+		set +a
+	fi
+	checkpath -d -o lanscape:lanscape -m 0750 /var/lib/lanscape
+	checkpath -f -o lanscape:lanscape -m 0640 /var/log/lanscape.log
+}

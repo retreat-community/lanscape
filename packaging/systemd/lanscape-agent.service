@@ -1,0 +1,23 @@
+[Unit]
+Description=Lanscape agent
+Documentation=https://github.com/retreat-community/lanscape
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=-/etc/lanscape/agent.env
+ExecStart=/usr/bin/lanscape-agent --data-dir /var/lib/lanscape-agent
+Restart=always
+RestartSec=5
+StateDirectory=lanscape-agent
+# network tests need raw sockets and SO_BINDTODEVICE; discovery reads /proc and the Docker socket
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_DAC_READ_SEARCH CAP_SYS_PTRACE
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+ReadWritePaths=/var/lib/lanscape-agent
+
+[Install]
+WantedBy=multi-user.target

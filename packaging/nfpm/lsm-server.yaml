@@ -1,0 +1,28 @@
+# nfpm config for the Lanscape Mini server; used by scripts/package-mini-nfpm.sh
+name: lsm-server
+arch: ${NFPM_ARCH}
+platform: linux
+version: ${NFPM_VERSION}
+section: net
+maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
+description: Lanscape Mini server (tiny network path tester)
+vendor: Lanscape
+homepage: https://github.com/retreat-community/lanscape
+license: GPL-3.0-or-later
+contents:
+  - src: ${MINI_BIN}/lsm-server
+    dst: /usr/bin/lsm-server
+    file_info:
+      mode: 0755
+  - src: packaging/systemd/lsm-server.service
+    dst: /lib/systemd/system/lsm-server.service
+  - src: packaging/openrc/lsm-server
+    dst: /etc/init.d/lsm-server
+    packager: apk
+    file_info:
+      mode: 0755
+  - src: packaging/mini/server.conf
+    dst: /etc/lsm/server.conf
+    type: config|noreplace
+    file_info:
+      mode: 0644

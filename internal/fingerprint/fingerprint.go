@@ -333,6 +333,9 @@ func (p *Prober) Probe(ctx context.Context, base string) (*Observation, Match, b
 	}
 	o := &Observation{URL: base, Status: root.status, Headers: root.headers, Body: root.body, Title: ExtractTitle(root.body),
 		PathHits: map[string]string{}}
+	if root.status < 400 {
+		o.PathHits["/"] = root.body // signatures probing "/" reuse the page already fetched
+	}
 	if root.tls != nil && len(root.tls.PeerCertificates) > 0 {
 		c := root.tls.PeerCertificates[0]
 		o.TLS = &TLSInfo{Names: c.DNSNames, NotAfter: c.NotAfter.UnixMilli(), Issuer: c.Issuer.CommonName}
@@ -343,7 +346,7 @@ func (p *Prober) Probe(ctx context.Context, base string) (*Observation, Match, b
 	}
 	// probe characteristic paths for the leading candidates and for signatures that only
 	// have paths (JSON APIs without a title)
-	tried := map[string]bool{}
+	tried := map[string]bool{"/": true}
 	cands := p.Lib.Candidates(o)
 	for _, s := range p.Lib.Sigs {
 		inCands := false

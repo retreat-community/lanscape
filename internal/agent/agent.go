@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -76,6 +77,26 @@ type Status struct {
 	Version   string `json:"version"`
 	Since     int64  `json:"since,omitempty"`
 	LastError string `json:"last_error,omitempty"`
+	Memory    Memory `json:"memory"`
+}
+
+// Memory is the Go runtime's view of the agent's memory (kB).
+type Memory struct {
+	HeapInUse  uint64 `json:"heap_in_use_kb"`
+	HeapIdle   uint64 `json:"heap_idle_kb"`
+	Released   uint64 `json:"heap_released_kb"`
+	Stacks     uint64 `json:"stacks_kb"`
+	Runtime    uint64 `json:"runtime_kb"` // spans, caches, GC metadata
+	Sys        uint64 `json:"sys_kb"`
+	Goroutines int    `json:"goroutines"`
+}
+
+func readMemory() Memory {
+	var ms runtime.MemStats
+	runtime.ReadMemStats(&ms)
+	return Memory{HeapInUse: ms.HeapInuse / 1024, HeapIdle: ms.HeapIdle / 1024, Released: ms.HeapReleased / 1024,
+		Stacks: ms.StackSys / 1024, Runtime: (ms.MSpanSys + ms.MCacheSys + ms.BuckHashSys + ms.GCSys + ms.OtherSys) / 1024,
+		Sys: ms.Sys / 1024, Goroutines: runtime.NumGoroutine()}
 }
 
 // Status returns the connection state.
@@ -84,6 +105,7 @@ func (a *Agent) Status() Status {
 	defer a.mu.Unlock()
 	st := a.status
 	st.Server, st.Name, st.Version, st.AgentID = a.cfg.Server, a.cfg.Name, a.cfg.Version, a.agentID
+	st.Memory = readMemory()
 	return st
 }
 
@@ -212,6 +234,7 @@ func (a *Agent) Run(ctx context.Context) error {
 			}
 		}()
 	}
+	go trimMemory(ctx)
 	backoff := time.Second
 	for ctx.Err() == nil {
 		err := a.session(ctx)
@@ -273,7 +296,7 @@ func (a *Agent) Register(ctx context.Context) error {
 			}
 			return errors.New("agent: server CA fingerprint mismatch")
 		}}
-	client := &http.Client{Timeout: 30 * time.Second, Transport: &http.Transport{TLSClientConfig: tlsCfg}}
+	client := &http.Client{Timeout: 30 * time.Second, Transport: &http.Transport{TLSClientConfig: tlsCfg, DisableKeepAlives: true}}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://"+a.cfg.Server+"/v1/register", bytes.NewReader(body))
 	if err != nil {
 		return err
@@ -368,12 +391,12 @@ func (a *Agent) session(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	client := &http.Client{Timeout: 30 * time.Second, Transport: &http.Transport{TLSClientConfig: tc}}
+	client := &http.Client{Timeout: 30 * time.Second, Transport: &http.Transport{TLSClientConfig: tc, DisableKeepAlives: true}}
 	a.renew(ctx, client)
 	if tc, err = a.tlsConfig(); err != nil {
 		return err
 	}
-	client = &http.Client{Transport: &http.Transport{TLSClientConfig: tc}}
+	client = &http.Client{Transport: &http.Transport{TLSClientConfig: tc, IdleConnTimeout: 30 * time.Second}}
 	dctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	c, resp, err := websocket.Dial(dctx, "wss://"+a.cfg.Server+"/v1/agent", &websocket.DialOptions{HTTPClient: client})
 	cancel()
@@ -507,6 +530,7 @@ func (a *Agent) dispatch(ctx context.Context, c *websocket.Conn, env proto.Envel
 			return
 		}
 		rtype, reply = proto.MsgTestResult, a.runTest(ctx, t)
+		go debug.FreeOSMemory() // throughput buffers are not needed until the next run
 	default:
 		fn, ok := a.extra[env.Type]
 		if !ok {
@@ -601,4 +625,19 @@ func hostID() string {
 		}
 	}
 	return ""
+}
+
+// trimMemory returns memory freed after tests, discovery and checks to the system once a
+// minute, so the idle agent stays small (§16: under 15 MB).
+func trimMemory(ctx context.Context) {
+	t := time.NewTicker(time.Minute)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			debug.FreeOSMemory()
+		}
+	}
 }

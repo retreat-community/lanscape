@@ -719,6 +719,15 @@ paths:
       description: "Server-sent events: run.started, run.progress, run.done, agent, inventory, discovery, change, services, monitor, incident, maintenance"
       responses:
         "200": {description: event stream, content: {text/event-stream: {}}}
+  /api/v1/ws:
+    get:
+      tags: [system]
+      operationId: eventsWebSocket
+      summary: Events over a WebSocket
+      description: "The events of /api/v1/events as JSON text messages {\"type\": \"monitor\", \"data\": {}}. Browsers must be same-origin; other clients authenticate with an API token."
+      responses:
+        "101": {description: switching to the WebSocket protocol}
+        "401": {$ref: "#/components/responses/Error"}
   /api/push/{token}:
     parameters:
       - {name: token, in: path, required: true, schema: {type: string}}

@@ -1,20 +1,24 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 )
 
 // Event is a server-sent event.
 type Event struct {
-	Type string
-	Data any
+	Type string `json:"type"`
+	Data any    `json:"data"`
 }
 
-// Broker fans out events to SSE subscribers.
+// Broker fans out events to SSE and WebSocket subscribers.
 type Broker struct {
 	mu   sync.Mutex
 	subs map[chan Event]struct{}
@@ -79,6 +83,41 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n", ev.Type, data)
 			fl.Flush()
+		}
+	}
+}
+
+// ServeWS streams the same events over a WebSocket as {"type", "data"} text messages (§15). The
+// handshake accepts only same-origin browsers; clients without an Origin use API tokens.
+func (b *Broker) ServeWS(w http.ResponseWriter, r *http.Request) {
+	c, err := websocket.Accept(w, r, nil)
+	if err != nil {
+		return
+	}
+	defer func() { _ = c.CloseNow() }()
+	ctx := c.CloseRead(r.Context()) // the stream is one-way; reading handles pings and close
+	ch := b.subscribe()
+	defer b.unsubscribe(ch)
+	ping := time.NewTicker(30 * time.Second)
+	defer ping.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ping.C:
+			pctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			err := c.Ping(pctx)
+			cancel()
+			if err != nil {
+				return
+			}
+		case ev := <-ch:
+			wctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			err := wsjson.Write(wctx, c, ev)
+			cancel()
+			if err != nil {
+				return
+			}
 		}
 	}
 }

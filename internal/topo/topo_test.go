@@ -156,3 +156,57 @@ func TestIPAMAndAnomalies(t *testing.T) {
 		}
 	}
 }
+
+// TestAcceptanceProblems covers the artificial problems of §18 that the e2e topology does not
+// build: a VLAN switched off, a 100M port where 1G is expected, and the path/loss/RTT/CPU findings.
+func TestAcceptanceProblems(t *testing.T) {
+	gig := func(n string) Member { return Member{Node: n, Iface: "eth0", Speed: 1000, Kind: "physical"} }
+	seg := Segment{ID: "s", CIDR: "10.0.0.0/24", VLAN: 300, Members: []Member{gig("a"), gig("b"), gig("c"),
+		{Node: "d", Iface: "eth0", Speed: 100, Kind: "physical"}}}
+	okPing := &Probe{Status: "ok", Sent: 20, Recv: 20, RTTAvgUS: 300}
+	tcp := func(mbps uint64, cpu int) *Throughput {
+		return &Throughput{Status: "ok", BPS: mbps * 1e6, CPULocal: cpu, PathOK: true}
+	}
+	path := func(src, dst string) PathResult {
+		return PathResult{Src: src, SrcIf: "eth0", Dst: dst, DstIf: "eth0", DstIP: "10.0.0.9"}
+	}
+	var paths []PathResult
+	// VLAN 300 switched off on the switch port of b: nothing answers
+	off := path("a", "b")
+	off.Ping, off.Echo = &Probe{Status: "timeout", Sent: 3}, &Probe{Status: "timeout"}
+	off.ExpectedMbps = 1000
+	paths = append(paths, off)
+	// d negotiated 100M on a gigabit segment: the path runs at a tenth of what a->c gets
+	slow := path("a", "d")
+	slow.Ping, slow.Echo, slow.MTU, slow.TCPN = okPing, &Probe{Status: "ok"}, &Probe{Status: "ok"}, tcp(94, 100)
+	slow.ExpectedMbps = 1000 // the uplink of d should be gigabit (manual expectation of the segment)
+	paths = append(paths, slow)
+	// the route to c leaves through another interface
+	wrong := path("b", "c")
+	wrong.Ping, wrong.TCPN = okPing, &Throughput{Status: "route_mismatch"}
+	wrong.ExpectedMbps = 1000
+	paths = append(paths, wrong)
+	// lossy, slow to answer and limited by the CPU of a router
+	busy := path("c", "a")
+	busy.Ping = &Probe{Status: "ok", Sent: 20, Recv: 17, RTTAvgUS: 40000}
+	busy.Echo, busy.MTU, busy.TCPN = &Probe{Status: "ok"}, &Probe{Status: "ok"}, tcp(400, 990)
+	busy.ExpectedMbps = 1000
+	paths = append(paths, busy)
+	for i := range paths {
+		Judge(&paths[i], 20000)
+	}
+	if paths[1].Verdict != Red || paths[2].Verdict != Red || paths[3].Verdict != Purple {
+		t.Errorf("verdicts: slow %s, mismatch %s, cpu %s", paths[1].Verdict, paths[2].Verdict, paths[3].Verdict)
+	}
+	got := map[string]string{}
+	for _, pr := range Problems([]Segment{seg}, paths, 47700) {
+		got[pr.Kind] += pr.Src + ">" + pr.Dst + " "
+	}
+	want := map[string]string{PUnreachable: "a>b ", PSlow: "a>d ", PPathMismatch: "b>c ", PLoss: "c>a ", PRTT: "c>a ",
+		PCPUBound: "c>a ", PLinkSpeed: "d> "}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("%s: got %q, want %q (all %v)", k, got[k], v, got)
+		}
+	}
+}

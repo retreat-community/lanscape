@@ -41,7 +41,7 @@ type Config struct {
 	MetricsToken  string // bearer token for /metrics; empty = public
 	AdminUser     string // bootstrap admin when there are no users
 	AdminPassword string
-	PublicURL     string // used in generated install commands
+	PublicURL     string // links in notifications (settings override)
 	Version       string
 }
 

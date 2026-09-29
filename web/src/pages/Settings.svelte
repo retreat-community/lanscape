@@ -79,6 +79,7 @@
       <label class="field">{t("set.rtt_warn")}<input type="number" min="0" bind:value={settings.rtt_warn_ms} /></label>
       <label class="field">{t("set.retention")}<input type="number" min="1" bind:value={settings.retention_days} /></label>
       <label class="field">{t("set.mini_token")}<input type="password" autocomplete="off" bind:value={settings.mini_token} /></label>
+      <label class="field">{t("set.public_url")}<input bind:value={settings.public_url} placeholder="https://lanscape.example.com" /></label>
       <label class="field">{t("set.webhooks")}<textarea rows="3" bind:value={webhooks}></textarea></label>
       <button
         class="primary"

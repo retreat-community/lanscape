@@ -31,6 +31,9 @@ type options struct {
 	server, token, name, dataDir, caFingerprint, exclude, dataListen, mode, logLevel, logFormat string
 	maxDuration                                                                                 time.Duration
 	maxStreams, maxUDPMbps                                                                      int
+	discover, dockerSocket, kubeconfig, signatures                                              string
+	discoverInterval                                                                            time.Duration
+	noProbe                                                                                     bool
 }
 
 func parse(args []string) (*flag.FlagSet, *options, error) {
@@ -47,6 +50,12 @@ func parse(args []string) (*flag.FlagSet, *options, error) {
 	fs.DurationVar(&o.maxDuration, "max-duration", 30*time.Second, "maximum test duration")
 	fs.IntVar(&o.maxStreams, "max-streams", 16, "maximum parallel streams per test")
 	fs.IntVar(&o.maxUDPMbps, "max-udp-mbps", 10000, "maximum UDP test rate")
+	fs.StringVar(&o.discover, "discover", "auto", `discovery sources: "auto", "none" or a list of sockets,docker,k8s`)
+	fs.StringVar(&o.dockerSocket, "docker-socket", "/var/run/docker.sock", "Docker (or Podman) API socket")
+	fs.StringVar(&o.kubeconfig, "kubeconfig", "", "kubeconfig for Kubernetes discovery (default in-cluster)")
+	fs.DurationVar(&o.discoverInterval, "discover-interval", 5*time.Minute, "discovery period")
+	fs.BoolVar(&o.noProbe, "no-probe", false, "do not fingerprint discovered HTTP endpoints")
+	fs.StringVar(&o.signatures, "signatures", "", "extra application signature files (YAML, comma-separated)")
 	fs.StringVar(&o.logLevel, "log-level", "info", "debug, info, warn or error")
 	fs.StringVar(&o.logFormat, "log-format", "text", "text or json")
 	if err := fs.Parse(args); err != nil {
@@ -89,7 +98,7 @@ func run(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	a := agent.New(cfg, log)
-	registerModules(a, log)
+	registerModules(ctx, a, o, log)
 	log.Info("lanscape-agent starting", "version", buildinfo.Version, "server", cfg.Server, "data_dir", cfg.DataDir)
 	return runService(ctx, a)
 }

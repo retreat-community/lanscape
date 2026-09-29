@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -293,6 +294,10 @@ func (a *Agent) session(ctx context.Context) error {
 	a.agentID = string(id)
 	host, _ := os.Hostname()
 	caps := []string{"icmp", "tcp", "udp", "bidir"}
+	for typ := range a.extra {
+		caps = append(caps, typ)
+	}
+	sort.Strings(caps[4:])
 	hello, _ := proto.NewEnvelope(proto.MsgHello, "", proto.HelloMsg{Proto: proto.ControlVersion, AgentID: a.agentID,
 		Name: a.cfg.Name, Version: a.cfg.Version, OS: runtime.GOOS, Arch: runtime.GOARCH, Hostname: host,
 		HostID: hostID(), Caps: caps, DataPort: dataPort(a.cfg.DataAddr)})

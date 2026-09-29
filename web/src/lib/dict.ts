@@ -108,6 +108,10 @@ export const en = {
   "map.wall": "Wall mode",
   "map.relayout": "Re-layout",
   "map.hypotheses": "Bottleneck hypotheses",
+  "map.switch_confirm": "Confirm as switches",
+  "map.switch_confirmed": "confirmed",
+  "map.switch_remove": "Remove",
+  "map.switch_name": "Name of the switches (drawn as A and B with the uplink between them)",
   "map.remeasure": "Measure again",
 
   "dev.agents": "Agents",
@@ -608,6 +612,10 @@ export const ru: Record<Key, string> = {
   "map.wall": "На стену",
   "map.relayout": "Перераскладка",
   "map.hypotheses": "Гипотезы узких мест",
+  "map.switch_confirm": "Подтвердить как коммутаторы",
+  "map.switch_confirmed": "подтверждено",
+  "map.switch_remove": "Убрать",
+  "map.switch_name": "Имя коммутаторов (на карте A и B с аплинком между ними)",
   "map.remeasure": "Перемерить",
 
   "dev.agents": "Агенты",

@@ -58,6 +58,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/ipam", v(RoleViewer, s.apiIPAM))
 	mux.HandleFunc("GET /api/v1/anomalies", v(RoleViewer, s.apiAnomalies))
 	mux.HandleFunc("GET /api/v1/map", v(RoleViewer, s.apiMap))
+	mux.HandleFunc("POST /api/v1/map/switches", v(RoleOperator, s.apiConfirmSwitch))
+	mux.HandleFunc("DELETE /api/v1/map/switches/{id}", v(RoleOperator, s.apiDeleteSwitch))
 
 	mux.HandleFunc("GET /api/v1/runs", v(RoleViewer, s.apiRuns))
 	mux.HandleFunc("POST /api/v1/runs", v(RoleOperator, s.apiStartRun))

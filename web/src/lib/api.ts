@@ -193,6 +193,8 @@ export const api = {
   addFound: (key: string, opts: { name?: string; group?: string; monitor: boolean; tile: boolean }) =>
     call<Service>("POST", "/found/add", { key, ...opts }),
   setFoundState: (key: string, status: "new" | "ignored" | "hidden") => call<undefined>("POST", "/found/state", { key, status }),
+  confirmSwitch: (hypothesis: string, name: string) => call<unknown>("POST", "/map/switches", { hypothesis, name }),
+  deleteSwitch: (id: string) => call<undefined>("DELETE", `/map/switches/${enc(id)}`),
   internet: (days = 30) => call<InternetExit[]>("GET", `/internet?days=${days}`),
   runInternet: (speed: boolean) => call<{ status: string }>("POST", "/internet/run", { speed }),
   wake: (mac: string, ip?: string) => call<ActionResponse>("POST", "/actions/wol", { mac, ip }),

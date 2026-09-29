@@ -39,6 +39,26 @@
 
   const segments = $derived(graph ? graph.nodes.filter((n) => n.type === "segment") : []);
 
+  async function confirmSwitch(id: string): Promise<void> {
+    const name = prompt(t("map.switch_name"), "switch");
+    if (name === null) return;
+    try {
+      await api.confirmSwitch(id, name);
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function unconfirm(id: string): Promise<void> {
+    try {
+      await api.deleteSwitch(id);
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   async function load(): Promise<void> {
     try {
       graph = await api.map();
@@ -180,7 +200,17 @@
           <h3>{t("map.hypotheses")}</h3>
           <ul class="small">
             {#each graph.hypotheses as h (h.id)}
-              <li>{h.detail}</li>
+              <li>
+                {h.detail}
+                {#if can("operator")}
+                  {#if h.accepted}
+                    <span class="tag">{t("map.switch_confirmed")}</span>
+                    <button class="small" onclick={() => void unconfirm(h.id)}>{t("map.switch_remove")}</button>
+                  {:else}
+                    <button class="small" onclick={() => void confirmSwitch(h.id)}>{t("map.switch_confirm")}</button>
+                  {/if}
+                {/if}
+              </li>
             {/each}
           </ul>
         {/if}

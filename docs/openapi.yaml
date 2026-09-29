@@ -1035,6 +1035,33 @@ paths:
       responses:
         "200": {$ref: "#/components/responses/ConfigPlan"}
         "400": {$ref: "#/components/responses/ConfigPlan"}
+  /api/v1/map/switches:
+    post:
+      tags: [network]
+      operationId: confirmSwitch
+      summary: Confirm a bottleneck hypothesis and draw it as switches (operator)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [hypothesis]
+              properties:
+                hypothesis: {type: string, description: id from the map hypotheses}
+                name: {type: string}
+      responses:
+        "200": {description: confirmed switches}
+        "404": {$ref: "#/components/responses/Error"}
+  /api/v1/map/switches/{id}:
+    delete:
+      tags: [network]
+      operationId: deleteSwitch
+      summary: Remove confirmed switches from the map (operator)
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "204": {description: removed}
   /api/v1/internet:
     get:
       tags: [network]

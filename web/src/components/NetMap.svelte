@@ -91,6 +91,12 @@
         },
       },
       { selector: "node.service", style: { shape: "ellipse", width: 16, height: 16, "font-size": 9, "background-color": c.none } },
+      {
+        selector: "node.switch",
+        style: { shape: "rectangle", width: 70, height: 16, "background-color": c.card, "border-width": 2, "border-color": c.line,
+          label: "data(label)", "font-size": 9, "text-valign": "center", color: c.muted },
+      },
+      { selector: "edge.link[label]", style: { label: "data(label)", "font-size": 9, color: c.muted, "text-background-opacity": 0.8, "text-background-color": c.card } },
       ...Object.entries(vc).map(([k, col]) => ({ selector: `node.service.s-${k}`, style: { "background-color": col } })),
       { selector: "edge", style: { width: 2, "curve-style": "bezier", "line-color": c.none } },
       ...Object.entries(vc).map(([k, col]) => ({ selector: `edge.v-${k}`, style: { "line-color": col } })),

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/retreat-community/lanscape/internal/agent"
 	"github.com/retreat-community/lanscape/internal/netio"
+	"github.com/retreat-community/lanscape/internal/store"
 	"github.com/retreat-community/lanscape/internal/store/storetest"
 	"github.com/retreat-community/lanscape/internal/testengine"
 )
@@ -245,5 +247,50 @@ func TestBottlenecks(t *testing.T) {
 	h := Bottlenecks(rep)
 	if len(h) != 1 || h[0].Mbps != 1000 {
 		t.Fatalf("hypotheses: %+v", h)
+	}
+}
+
+func TestConfirmSwitch(t *testing.T) {
+	s, ts := newTestServer(t)
+	c := client(t)
+	do(t, c, "POST", ts.URL+"/api/v1/auth/login", credentials{Username: "admin", Password: "correct-horse-battery"}, nil)
+	rep := &Report{Kind: KindFull, Status: "done", Segments: []topoSegment{{ID: "lan", Members: members("a", "b", "c", "d")}}}
+	for _, p := range [][3]any{{"a", "b", 2300}, {"c", "d", 2300}, {"a", "c", 940}, {"a", "d", 930}, {"b", "c", 945}, {"b", "d", 935}} {
+		rep.Paths = append(rep.Paths, pathResult(p[0].(string), p[1].(string), uint64(p[2].(int))))
+	}
+	raw, _ := json.Marshal(rep)
+	ctx := context.Background()
+	id, _ := s.store.CreateRun(ctx, store.Run{Kind: KindFull, Status: "running", Started: 1})
+	if err := s.store.FinishRun(ctx, id, "done", raw); err != nil {
+		t.Fatal(err)
+	}
+	h := Bottlenecks(rep)[0]
+	if code := do(t, c, "POST", ts.URL+"/api/v1/map/switches", map[string]string{"hypothesis": "nope"}, nil); code != 404 {
+		t.Errorf("unknown hypothesis: %d", code)
+	}
+	if code := do(t, c, "POST", ts.URL+"/api/v1/map/switches", map[string]string{"hypothesis": h.ID, "name": "rack"}, nil); code != 200 {
+		t.Fatalf("confirm: %d", code)
+	}
+	var g MapGraph
+	do(t, c, "GET", ts.URL+"/api/v1/map", nil, &g)
+	sw, uplink := 0, false
+	for _, n := range g.Nodes {
+		if n.Type == "switch" {
+			sw++
+		}
+	}
+	for _, e := range g.Edges {
+		if strings.HasSuffix(e.ID, ":uplink") && e.Label == "1000 Mbit/s" {
+			uplink = true
+		}
+	}
+	if sw != 2 || !uplink || len(g.Hypotheses) != 1 || !g.Hypotheses[0].Accepted {
+		t.Errorf("map: %d switches, uplink %v, %+v", sw, uplink, g.Hypotheses)
+	}
+	if code := do(t, c, "DELETE", ts.URL+"/api/v1/map/switches/"+url.PathEscape(h.ID), nil, nil); code != 204 {
+		t.Errorf("delete: %d", code)
+	}
+	if len(s.mapSwitches(ctx)) != 0 {
+		t.Error("switch not removed")
 	}
 }

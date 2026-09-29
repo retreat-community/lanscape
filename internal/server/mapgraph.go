@@ -160,6 +160,7 @@ func (s *Server) buildMap(ctx context.Context, segs []topo.Segment, rep *Report)
 		g.Hypotheses = Bottlenecks(rep)
 	}
 	s.decorateMap(ctx, &g)
+	s.drawSwitches(ctx, &g)
 	if MapDecorator != nil {
 		MapDecorator(ctx, s, &g, rep)
 	}

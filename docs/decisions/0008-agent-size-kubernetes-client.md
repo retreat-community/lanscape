@@ -20,3 +20,12 @@ transitive packages; the Docker SDK is not allowed.
 The agent stays within the OpenWrt budget. Kubernetes API changes that affect the few decoded
 fields have to be followed manually; the resources used are stable (`v1`, `apps/v1`,
 `networking.k8s.io/v1`, `gateway.networking.k8s.io/v1`).
+
+## Addendum: discovery and checks (v0.3)
+
+Service discovery, HTTP fingerprinting and availability checks add about 0.9 MB to the agent
+(`linux/mipsle`, stripped: 7.9 → 8.8 MB). The built-in signature library is embedded as JSON generated
+from `signatures.yaml` (`go generate ./internal/fingerprint`), so the parser for the built-in library
+does not need YAML. Builds with the `lanscape_small` tag (OpenWrt packages) also drop YAML support for
+user signature files and kubeconfig files (JSON only), which gives 8.45 MB. Further reductions for the
+OpenWrt package are part of the OpenWrt stage.

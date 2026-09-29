@@ -9,6 +9,7 @@ import (
 	"crypto/tls"
 	_ "embed"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"html"
 	"io"
@@ -18,11 +19,13 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"gopkg.in/yaml.v3"
 )
 
-//go:embed signatures.yaml
+//go:generate go run gen.go
+
+// builtin is generated from signatures.yaml by "go generate".
+//
+//go:embed signatures.json
 var builtin []byte
 
 // Monitor is the recommended monitor for an application.
@@ -64,10 +67,17 @@ type Library struct {
 	byID map[string]*Signature
 }
 
-// Parse compiles signatures from YAML.
+// Parse compiles signatures from JSON or (in builds with YAML support) YAML.
 func Parse(data []byte) ([]*Signature, error) {
 	var sigs []*Signature
-	if err := yaml.Unmarshal(data, &sigs); err != nil {
+	trimmed := strings.TrimSpace(string(data))
+	var err error
+	if strings.HasPrefix(trimmed, "[") {
+		err = json.Unmarshal(data, &sigs)
+	} else {
+		err = unmarshalYAML(data, &sigs)
+	}
+	if err != nil {
 		return nil, fmt.Errorf("fingerprint: %w", err)
 	}
 	for _, s := range sigs {
@@ -162,6 +172,14 @@ type Observation struct {
 	PathHits map[string]string // path -> body (filled by Probe for candidate paths)
 	Image    string
 	Port     int
+	TLS      *TLSInfo // leaf certificate of an https endpoint
+}
+
+// TLSInfo summarises the certificate presented by an endpoint.
+type TLSInfo struct {
+	Names    []string `json:"names,omitempty"`
+	NotAfter int64    `json:"not_after"` // unix ms
+	Issuer   string   `json:"issuer,omitempty"`
 }
 
 // Match is a recognised application with its score.
@@ -287,6 +305,7 @@ type page struct {
 	status  int
 	headers http.Header
 	body    string
+	tls     *tls.ConnectionState
 }
 
 func (p *Prober) get(ctx context.Context, url string, limit int64) (page, error) {
@@ -301,7 +320,7 @@ func (p *Prober) get(ctx context.Context, url string, limit int64) (page, error)
 	}
 	defer resp.Body.Close()
 	b, err := io.ReadAll(io.LimitReader(resp.Body, limit))
-	return page{status: resp.StatusCode, headers: resp.Header, body: string(b)}, err
+	return page{status: resp.StatusCode, headers: resp.Header, body: string(b), tls: resp.TLS}, err
 }
 
 // Probe fetches base (scheme://host:port), the favicon and characteristic paths of
@@ -314,6 +333,10 @@ func (p *Prober) Probe(ctx context.Context, base string) (*Observation, Match, b
 	}
 	o := &Observation{URL: base, Status: root.status, Headers: root.headers, Body: root.body, Title: ExtractTitle(root.body),
 		PathHits: map[string]string{}}
+	if root.tls != nil && len(root.tls.PeerCertificates) > 0 {
+		c := root.tls.PeerCertificates[0]
+		o.TLS = &TLSInfo{Names: c.DNSNames, NotAfter: c.NotAfter.UnixMilli(), Issuer: c.Issuer.CommonName}
+	}
 	if fav, err := p.get(ctx, base+"/favicon.ico", 64<<10); err == nil && fav.status == http.StatusOK && fav.body != "" {
 		s := sha256.Sum256([]byte(fav.body))
 		o.Favicon = hex.EncodeToString(s[:])

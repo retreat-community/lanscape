@@ -64,7 +64,9 @@ jobs:
             /root/.cache/go-build
           key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
       - name: go vet
-        run: go vet ./... && go vet -tags e2e ./test/e2e/
+        run: go vet ./... && go vet -tags e2e ./test/e2e/ && go vet -tags lanscape_small ./...
+      - name: Generated files are up to date
+        run: go generate ./internal/fingerprint && git diff --exit-code
       - uses: golangci/golangci-lint-action@v8
         with:
           version: v2.5.0

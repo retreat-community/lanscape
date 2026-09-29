@@ -51,11 +51,11 @@ func TestAgentUpdates(t *testing.T) {
 		switch r.URL.Path {
 		case "/releases":
 			_ = json.NewEncoder(w).Encode([]map[string]any{
-				{"tag_name": "v1.1.0", "assets": []map[string]string{{"name": "checksums-full.txt", "browser_download_url": rel.URL + "/dl/v1.1.0/checksums-full.txt"}}},
-				{"tag_name": "v1.2.0-beta.1", "prerelease": true, "assets": []map[string]string{{"name": "checksums-full.txt", "browser_download_url": rel.URL + "/dl/v1.2.0-beta.1/checksums-full.txt"}}},
+				{"tag_name": "v1.1.0", "assets": []map[string]string{{"name": "checksums.txt", "browser_download_url": rel.URL + "/dl/v1.1.0/checksums.txt"}}},
+				{"tag_name": "v1.2.0-beta.1", "prerelease": true, "assets": []map[string]string{{"name": "checksums.txt", "browser_download_url": rel.URL + "/dl/v1.2.0-beta.1/checksums.txt"}}},
 				{"tag_name": "v1.3.0", "draft": true},
 			})
-		case "/dl/v1.1.0/checksums-full.txt", "/dl/v1.2.0-beta.1/checksums-full.txt":
+		case "/dl/v1.1.0/checksums.txt", "/dl/v1.2.0-beta.1/checksums.txt":
 			_, _ = w.Write([]byte(strings.Repeat("a", 64) + "  lanscape-agent_x_linux_amd64.tar.gz\n"))
 		default:
 			http.NotFound(w, r)

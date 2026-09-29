@@ -137,7 +137,7 @@ func (s *Server) latestRelease(ctx context.Context, force bool) (*Release, error
 			continue
 		}
 		for _, a := range r.Assets {
-			if a.Name != "checksums-full.txt" {
+			if a.Name != "checksums.txt" {
 				continue
 			}
 			sums, err := fetchChecksums(ctx, hc, a.URL)

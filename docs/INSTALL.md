@@ -354,7 +354,7 @@ Import**.)
 **Settings → Agents → Agent updates** picks a release channel: `stable` (releases) or `beta`
 (pre-releases too). The panel then shows which agents are behind; **Update** (or **Update all**)
 sends the release to the agent, which downloads its archive, checks the SHA-256 from
-`checksums-full.txt`, runs the new binary once (`version`) and swaps it in, keeping the old one as
+`checksums.txt`, runs the new binary once (`version`) and swaps it in, keeping the old one as
 `lanscape-agent.old`; the service manager (systemd, procd, launchd, Windows service recovery)
 starts the new version. **Install new releases automatically** does this every 6 hours. Agents
 without Internet access download from the release list's URLs, so point **Release list** at a

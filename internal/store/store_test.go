@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"path/filepath"
 	"testing"
+
+	"github.com/retreat-community/lanscape/internal/store/storetest"
 )
 
 func open(t *testing.T) *Store {
 	t.Helper()
-	s, err := Open(context.Background(), filepath.Join(t.TempDir(), "db.sqlite"))
+	s, err := Open(context.Background(), storetest.DSN(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,11 +107,11 @@ func TestAgentsRunsSettings(t *testing.T) {
 	if isNew, _ := s.TouchMAC(ctx, "aa", "1.1.1.2", "", "arp"); isNew {
 		t.Error("second MAC new")
 	}
-	if s.q("a=? and b=?") != "a=? and b=?" {
+	lite, pg := &Store{Dialect: SQLite}, &Store{Dialect: Postgres}
+	if lite.q("a=? and b=?") != "a=? and b=?" {
 		t.Error("sqlite placeholders rewritten")
 	}
-	s.Dialect = Postgres
-	if s.q("a=? and b=?") != "a=$1 and b=$2" {
+	if pg.q("a=? and b=?") != "a=$1 and b=$2" {
 		t.Error("postgres placeholders")
 	}
 }

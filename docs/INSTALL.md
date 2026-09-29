@@ -151,8 +151,15 @@ from the release, install it, set options in `/etc/lanscape/lanscape.env`, then
 has an environment variable `LANSCAPE_<FLAG>`. Useful flags: `--expect 10.30.0.0/24=2500`,
 `--metrics-token`, `--mini-token`, `--secure-cookies` (behind a TLS proxy).
 
+**Database**: SQLite in the data directory by default (WAL mode, nothing to set up). For larger
+installations or an existing database cluster use PostgreSQL 13 or newer:
+`--db 'postgres://lanscape:secret@db:5432/lanscape?sslmode=require'` (Helm:
+`server.existingDatabaseSecret` with the URL under `url`). The schema is created and migrated on
+start. The data directory is still needed for the CA and agent certificates.
+
 **Backup and restore**: `lanscape backup /backup/lanscape.db` (consistent copy while running);
-restore with the server stopped: `lanscape restore /backup/lanscape.db`.
+restore with the server stopped: `lanscape restore /backup/lanscape.db`. With PostgreSQL use
+`pg_dump`/`pg_restore`, and back up the data directory (`pki/`) in both cases.
 
 **Single sign-on (OpenID Connect)**: register Lanscape as a client at your provider (Authentik,
 Keycloak, Authelia, Zitadel, Google, Entra ID) with the redirect URL

@@ -16,6 +16,7 @@ import (
 
 	"github.com/retreat-community/lanscape/internal/agent"
 	"github.com/retreat-community/lanscape/internal/netio"
+	"github.com/retreat-community/lanscape/internal/store/storetest"
 	"github.com/retreat-community/lanscape/internal/testengine"
 )
 
@@ -57,7 +58,7 @@ func newTestServer(t *testing.T) (*Server, *httptest.Server) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	s, err := New(ctx, Config{DataDir: t.TempDir(), AdminPassword: "correct-horse-battery", Version: "test",
+	s, err := New(ctx, Config{DataDir: t.TempDir(), DB: storetest.DSN(t), AdminPassword: "correct-horse-battery", Version: "test",
 		Expect: map[string]int{"10.31.0.0/24": 100}}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)

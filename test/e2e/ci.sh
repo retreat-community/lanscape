@@ -8,7 +8,7 @@ suite=${1:-all}
 GO_VERSION=${GO_VERSION:-1.23.12}
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq iproute2 iptables curl ca-certificates > /dev/null
+apt-get install -y -qq iproute2 iptables curl ca-certificates iperf3 > /dev/null
 if ! command -v go > /dev/null; then
     arch=$(dpkg --print-architecture)
     curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${arch}.tar.gz" | tar -C /usr/local -xz

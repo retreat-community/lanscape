@@ -257,6 +257,21 @@ func TestFull(t *testing.T) {
 	if udpC == 0 {
 		t.Error("no UDP results between full agents in segment C")
 	}
+	// the throughput engine agrees with iperf3 on the same path within ±5% (§16)
+	var ours uint64
+	for _, p := range r.Paths {
+		if p.Seg == segIdx["10.31.0.0/24"] && name[p.Src] == "n1" && name[p.Dst] == "n2" {
+			ours = p.BestBPS
+		}
+	}
+	if theirs, err := iperf3BPS("n1", "n2", "10.31.0.2"); err != nil {
+		t.Logf("iperf3 comparison skipped: %v", err)
+	} else if ratio := float64(ours) / theirs; ratio < 0.95 || ratio > 1.05 {
+		t.Errorf("n1->n2 in segment C: %.1f Mbit/s, iperf3 %.1f Mbit/s", float64(ours)/1e6, theirs/1e6)
+	} else {
+		t.Logf("n1->n2 in segment C: %.1f Mbit/s, iperf3 %.1f Mbit/s", float64(ours)/1e6, theirs/1e6)
+	}
+
 	has := func(kind, src, dst string) bool {
 		for _, pr := range r.Problems {
 			if pr.Kind == kind && name[pr.Src] == src && name[pr.Dst] == dst {

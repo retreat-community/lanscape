@@ -174,3 +174,37 @@ func residentKB(t *testing.T, pidFile string) []memKB {
 	}
 	return kb
 }
+
+// iperf3BPS measures TCP throughput from one topology node to another with iperf3 (4 streams,
+// 5 s, like the default full run).
+func iperf3BPS(from, to, addr string) (float64, error) {
+	if _, err := exec.LookPath("iperf3"); err != nil {
+		return 0, err
+	}
+	prefix := os.Getenv("E2E_PREFIX")
+	if prefix == "" {
+		prefix = "lse"
+	}
+	srv := exec.Command("ip", "netns", "exec", prefix+"-"+to, "iperf3", "-s", "-1", "-p", "5299", "-B", addr) //nolint:gosec // test topology
+	if err := srv.Start(); err != nil {
+		return 0, err
+	}
+	defer func() { _ = srv.Process.Kill(); _ = srv.Wait() }()
+	time.Sleep(500 * time.Millisecond)
+	out, err := exec.Command("ip", "netns", "exec", prefix+"-"+from, "iperf3", "-c", addr, "-p", "5299", //nolint:gosec // test topology
+		"-t", "5", "-P", "4", "-J").Output()
+	if err != nil {
+		return 0, fmt.Errorf("iperf3: %w", err)
+	}
+	var res struct {
+		End struct {
+			SumReceived struct {
+				BPS float64 `json:"bits_per_second"`
+			} `json:"sum_received"`
+		} `json:"end"`
+	}
+	if err := json.Unmarshal(out, &res); err != nil || res.End.SumReceived.BPS == 0 {
+		return 0, fmt.Errorf("iperf3 output: %v", err)
+	}
+	return res.End.SumReceived.BPS, nil
+}

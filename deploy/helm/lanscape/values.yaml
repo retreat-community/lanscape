@@ -1,0 +1,76 @@
+# Lanscape Helm chart. Install the server, open the panel, create a reusable registration token
+# (Settings → Agents → Add node) and set agent.token (plus agent.caFingerprint) to deploy agents.
+
+image:
+  registry: ghcr.io/retreat-community
+  # defaults to the chart appVersion
+  tag: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+server:
+  enabled: true
+  # bootstrap administrator (used only while there are no users); prefer an existing secret
+  adminUser: admin
+  adminPassword: ""
+  existingAdminSecret: ""  # key: admin-password
+  publicURL: ""
+  # expected speed per network, e.g. "10.0.0.0/24=1000,192.168.1.0/24=2500"
+  expect: ""
+  # extra names for the gateway certificate (the service DNS names are always included)
+  gatewayHosts: []
+  miniAgents:
+    enabled: true
+    token: ""
+  database: ""  # empty = SQLite on the volume; or a postgres:// URL
+  logLevel: info
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClass: ""
+    existingClaim: ""
+  service:
+    type: ClusterIP
+    # LoadBalancer IP / NodePorts make the gateway reachable for agents outside the cluster
+    loadBalancerIP: ""
+    annotations: {}
+  ingress:
+    enabled: false
+    className: ""
+    host: lanscape.example.com
+    tls: false
+    tlsSecret: ""
+    annotations: {}
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {memory: 512Mi}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+agent:
+  # registration token (lsr_...) from the panel; agents are not deployed without it
+  token: ""
+  existingTokenSecret: ""  # key: token
+  caFingerprint: ""
+  # gateway address; defaults to the in-cluster server service
+  server: ""
+  exclude: "wan*,pppoe-*,tailscale*,docker*,veth*,cni*,flannel*,cilium_*,lxc*,virbr*,kube-ipvs*,vxlan*,cali*"
+  discover: auto
+  # node network: measures the links between nodes
+  hostNetwork:
+    enabled: true
+  # pod network: measures the CNI overlay between pods on different nodes
+  podNetwork:
+    enabled: false
+  rbac:
+    # read-only access for Kubernetes discovery (services, ingresses, routes, workloads, PVCs)
+    create: true
+  resources:
+    requests: {cpu: 20m, memory: 32Mi}
+    limits: {memory: 256Mi}
+  # run on control-plane nodes too
+  tolerations:
+    - operator: Exists
+  nodeSelector: {}
+  priorityClassName: ""

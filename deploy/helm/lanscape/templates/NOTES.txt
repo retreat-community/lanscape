@@ -1,0 +1,8 @@
+Lanscape {{ .Chart.AppVersion }} is installed.
+
+Panel: {{ if .Values.server.ingress.enabled }}http{{ if .Values.server.ingress.tls }}s{{ end }}://{{ .Values.server.ingress.host }}{{ else }}kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "lanscape.fullname" . }} 8080{{ end }}
+{{- if not (or .Values.agent.token .Values.agent.existingTokenSecret) }}
+
+Agents are not deployed yet: create a reusable registration token in Settings → Agents → Add node
+and upgrade with --set agent.token=lsr_... --set agent.caFingerprint=<CA fingerprint>.
+{{- end }}

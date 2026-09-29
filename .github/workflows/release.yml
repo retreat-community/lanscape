@@ -79,6 +79,21 @@ jobs:
           body_path: notes.md
           files: assets/*
 
+  helm:
+    needs: release
+    runs-on: retreat-k8s
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package and push the chart (oci://ghcr.io/retreat-community/charts)
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -fsSL https://get.helm.sh/helm-v3.19.0-linux-amd64.tar.gz | tar -xz linux-amd64/helm
+          v=${GITHUB_REF_NAME#v}
+          echo "$TOKEN" | ./linux-amd64/helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          ./linux-amd64/helm package deploy/helm/lanscape --version "$v" --app-version "$v"
+          ./linux-amd64/helm push "lanscape-$v.tgz" oci://ghcr.io/retreat-community/charts
+
   pages:
     needs: release
     uses: ./.github/workflows/pages.yml

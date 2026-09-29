@@ -428,6 +428,13 @@ jobs:
         run: |
           curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz
           ./kubeconform -strict -summary deploy/k8s/mini/*.yaml
+      - name: Lint and validate the Helm chart
+        run: |
+          curl -fsSL https://get.helm.sh/helm-v3.19.0-linux-amd64.tar.gz | tar -xz linux-amd64/helm
+          ./linux-amd64/helm lint deploy/helm/lanscape --strict --set agent.token=lsr_x
+          for set in "" "agent.token=lsr_x,agent.podNetwork.enabled=true,server.ingress.enabled=true,server.ingress.tls=true,server.adminPassword=x"; do
+            ./linux-amd64/helm template t deploy/helm/lanscape ${set:+--set "$set"} | ./kubeconform -strict -summary -
+          done
       - name: Validate compose files
         run: |
           for f in deploy/compose/*.yaml; do

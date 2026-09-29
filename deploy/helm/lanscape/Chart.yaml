@@ -1,0 +1,11 @@
+apiVersion: v2
+name: lanscape
+description: Lanscape server and agents (network paths, map, service discovery and uptime)
+type: application
+# replaced with the release version by the release workflow
+version: 0.0.0
+appVersion: "0.0.0"
+home: https://github.com/retreat-community/lanscape
+sources:
+  - https://github.com/retreat-community/lanscape
+keywords: [network, monitoring, uptime, homelab]

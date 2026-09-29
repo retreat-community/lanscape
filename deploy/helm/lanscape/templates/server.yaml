@@ -1,0 +1,180 @@
+{{- if .Values.server.enabled }}
+{{- $name := include "lanscape.fullname" . }}
+{{- if and .Values.server.adminPassword (not .Values.server.existingAdminSecret) }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $name }}-admin
+  labels: {{- include "lanscape.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  admin-password: {{ .Values.server.adminPassword | quote }}
+---
+{{- end }}
+{{- if and .Values.server.persistence.enabled (not .Values.server.persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $name }}-data
+  labels: {{- include "lanscape.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.server.persistence.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.server.persistence.size }}
+---
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels: {{- include "lanscape.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {{- include "lanscape.selector" . | nindent 6 }}
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels: {{- include "lanscape.selector" . | nindent 8 }}
+        app.kubernetes.io/component: server
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: server
+          image: "{{ .Values.image.registry }}/lanscape:{{ include "lanscape.tag" . }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: [serve]
+          env:
+            - {name: LANSCAPE_DATA_DIR, value: /data}
+            - {name: LANSCAPE_LOG_LEVEL, value: {{ .Values.server.logLevel | quote }}}
+            - name: LANSCAPE_GATEWAY_HOSTS
+              value: {{ join "," (concat (list $name (printf "%s.%s" $name .Release.Namespace) (printf "%s.%s.svc" $name .Release.Namespace) (printf "%s.%s.svc.cluster.local" $name .Release.Namespace)) .Values.server.gatewayHosts) | quote }}
+            {{- if .Values.server.publicURL }}
+            - {name: LANSCAPE_PUBLIC_URL, value: {{ .Values.server.publicURL | quote }}}
+            {{- end }}
+            {{- if .Values.server.expect }}
+            - {name: LANSCAPE_EXPECT, value: {{ .Values.server.expect | quote }}}
+            {{- end }}
+            {{- if .Values.server.database }}
+            - {name: LANSCAPE_DB, value: {{ .Values.server.database | quote }}}
+            {{- end }}
+            {{- if .Values.server.miniAgents.enabled }}
+            - {name: LANSCAPE_MINI_TOKEN, value: {{ .Values.server.miniAgents.token | quote }}}
+            {{- else }}
+            - {name: LANSCAPE_MINI_LISTEN, value: ""}
+            {{- end }}
+            {{- if .Values.server.ingress.tls }}
+            - {name: LANSCAPE_SECURE_COOKIES, value: "true"}
+            {{- end }}
+            {{- if or .Values.server.adminPassword .Values.server.existingAdminSecret }}
+            - {name: LANSCAPE_ADMIN_USER, value: {{ .Values.server.adminUser | quote }}}
+            - name: LANSCAPE_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default (printf "%s-admin" $name) .Values.server.existingAdminSecret }}
+                  key: admin-password
+            {{- end }}
+          ports:
+            - {name: http, containerPort: 8080}
+            - {name: gateway, containerPort: 8443}
+            {{- if .Values.server.miniAgents.enabled }}
+            - {name: mini, containerPort: 47701}
+            {{- end }}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            initialDelaySeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources: {{- toYaml .Values.server.resources | nindent 12 }}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+      volumes:
+        - name: data
+          {{- if .Values.server.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-data" $name) .Values.server.persistence.existingClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.server.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels: {{- include "lanscape.labels" . | nindent 4 }}
+  {{- with .Values.server.service.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.server.service.type }}
+  {{- if .Values.server.service.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.server.service.loadBalancerIP }}
+  {{- end }}
+  selector: {{- include "lanscape.selector" . | nindent 4 }}
+    app.kubernetes.io/component: server
+  ports:
+    - {name: http, port: 8080, targetPort: http}
+    - {name: gateway, port: 8443, targetPort: gateway}
+    {{- if .Values.server.miniAgents.enabled }}
+    - {name: mini, port: 47701, targetPort: mini}
+    {{- end }}
+{{- if .Values.server.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name }}
+  labels: {{- include "lanscape.labels" . | nindent 4 }}
+  {{- with .Values.server.ingress.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.server.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- if .Values.server.ingress.tls }}
+  tls:
+    - hosts: [{{ .Values.server.ingress.host | quote }}]
+      {{- with .Values.server.ingress.tlsSecret }}
+      secretName: {{ . }}
+      {{- end }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.server.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $name }}
+                port: {name: http}
+{{- end }}
+{{- end }}

@@ -1840,7 +1840,7 @@ components:
         ping_count: {type: integer}
         rtt_warn_ms: {type: integer}
         mini_token: {type: string, description: masked on read}
-        webhooks: {type: array, items: {type: string}}
+        webhooks: {type: array, items: {type: string}, description: "URLs that receive {event, run|incident|change} JSON for run.finished, incident.opened, incident.resolved, incident.reminder and device.new"}
         retention_days: {type: integer}
         public_url: {type: string}
     AuditEntry:

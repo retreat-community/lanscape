@@ -191,6 +191,9 @@ func (s *Server) addChange(ctx context.Context, c store.Change) {
 	}
 	c.ID = id
 	s.events.Publish("change", c)
+	if c.Kind == catalog.ChangeDeviceNew || c.Kind == catalog.ChangeMACNew {
+		s.emit(ctx, "device.new", "change", c)
+	}
 }
 
 // cards returns the merged cards (cached until the next report).

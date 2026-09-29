@@ -245,13 +245,18 @@ func (s *Server) bootstrapAdmin(ctx context.Context) error {
 
 // notifyRun posts a run summary to the configured webhooks.
 func (s *Server) notifyRun(ctx context.Context, rep *Report) {
+	s.emit(ctx, "run.finished", "run", map[string]any{"id": rep.ID, "kind": rep.Kind, "status": rep.Status,
+		"started": rep.Started, "finished": rep.Finished, "paths": len(rep.Paths), "problems": rep.Problems})
+}
+
+// emit posts {"event": event, key: data} to the webhooks in Settings → General: run.finished,
+// incident.opened/resolved/reminder and device.new.
+func (s *Server) emit(ctx context.Context, event, key string, data any) {
 	st := s.settings(ctx)
 	if len(st.Webhooks) == 0 {
 		return
 	}
-	body, _ := json.Marshal(map[string]any{"event": "run.finished", "run": map[string]any{
-		"id": rep.ID, "kind": rep.Kind, "status": rep.Status, "started": rep.Started, "finished": rep.Finished,
-		"paths": len(rep.Paths), "problems": rep.Problems}})
+	body, _ := json.Marshal(map[string]any{"event": event, key: data})
 	for _, u := range st.Webhooks {
 		go s.postWebhook(u, body)
 	}

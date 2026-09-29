@@ -277,7 +277,9 @@ or TLS), ntfy, Gotify, Discord and Slack (incoming webhooks) and Matrix (a bot a
 room id). Each channel can have quiet hours, a repeat interval for unacknowledged
 incidents and a list of monitors it cares about. Set **Settings → General → Public URL** so
 notifications link back to the panel. **Account → Notifications on this device** turns on browser
-push notifications (Web Push; the panel must be served over HTTPS).
+push notifications (Web Push; the panel must be served over HTTPS). The webhooks in **Settings →
+General** receive every `run.finished`, `incident.opened`/`resolved`/`reminder` and `device.new`
+event as JSON (`{"event": …, "run"|"incident"|"change": …}`).
 
 ### Actions
 

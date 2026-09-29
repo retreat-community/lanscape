@@ -35,7 +35,7 @@ type options struct {
 	discover, dockerSocket, kubeconfig, signatures, proxmoxURL, proxmoxToken                    string
 	traefikURL, caddyAdmin, nginxDir, piholeURL, piholePassword, adguardURL, adguardUser        string
 	adguardPassword, technitiumURL, technitiumToken, nut, smart, zfs                            string
-	discoverInterval                                                                            time.Duration
+	discoverInterval, trafficInterval                                                           time.Duration
 	noProbe, proxmoxInsecure                                                                    bool
 	localSocket, openwrtParts, actions, scanAllow, axfr                                         string
 }
@@ -58,6 +58,7 @@ func parse(args []string) (*flag.FlagSet, *options, error) {
 	fs.StringVar(&o.dockerSocket, "docker-socket", "/var/run/docker.sock", "Docker (or Podman) API socket")
 	fs.StringVar(&o.kubeconfig, "kubeconfig", "", "kubeconfig for Kubernetes discovery (default in-cluster)")
 	fs.DurationVar(&o.discoverInterval, "discover-interval", 5*time.Minute, "discovery period")
+	fs.DurationVar(&o.trafficInterval, "traffic-interval", 30*time.Second, "interface throughput report period (0 disables)")
 	fs.StringVar(&o.proxmoxURL, "proxmox-url", "", "Proxmox VE API for VM/CT discovery, e.g. https://127.0.0.1:8006")
 	fs.StringVar(&o.proxmoxToken, "proxmox-token", "", "read-only Proxmox API token user@realm!id=secret (PVEAuditor)")
 	fs.BoolVar(&o.proxmoxInsecure, "proxmox-insecure", false, "accept a self-signed Proxmox certificate")
@@ -127,6 +128,7 @@ func run(args []string) error {
 	defer stop()
 	a := agent.New(cfg, log)
 	registerModules(ctx, a, o, log)
+	go a.RunTraffic(ctx, o.trafficInterval)
 	if o.localSocket != "" {
 		go func() {
 			if err := a.ServeLocal(ctx, o.localSocket); err != nil && !errors.Is(err, context.Canceled) {

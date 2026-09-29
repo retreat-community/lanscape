@@ -146,3 +146,19 @@ type InternetMsg struct {
 	IPURL       string `json:"ip_url"`
 	DownloadURL string `json:"download_url,omitempty"`
 }
+
+// MsgTraffic carries interface throughput sampled by an agent.
+const MsgTraffic = "traffic"
+
+// TrafficMsg lists the throughput of the interfaces since the previous sample.
+type TrafficMsg struct {
+	At     int64          `json:"at"`
+	Ifaces []IfaceTraffic `json:"ifaces"`
+}
+
+// IfaceTraffic is one interface's receive and transmit rate in bit/s.
+type IfaceTraffic struct {
+	Name  string `json:"name"`
+	RXbps uint64 `json:"rx_bps"`
+	TXbps uint64 `json:"tx_bps"`
+}

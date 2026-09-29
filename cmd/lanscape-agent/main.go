@@ -34,7 +34,7 @@ type options struct {
 	maxStreams, maxUDPMbps                                                                      int
 	discover, dockerSocket, kubeconfig, signatures, proxmoxURL, proxmoxToken                    string
 	traefikURL, caddyAdmin, nginxDir, piholeURL, piholePassword, adguardURL, adguardUser        string
-	adguardPassword, technitiumURL, technitiumToken, nut, smart, zfs                            string
+	adguardPassword, technitiumURL, technitiumToken, nut, smart, zfs, ipmi, plugs               string
 	discoverInterval, trafficInterval                                                           time.Duration
 	noProbe, proxmoxInsecure                                                                    bool
 	localSocket, openwrtParts, actions, scanAllow, axfr                                         string
@@ -76,6 +76,8 @@ func parse(args []string) (*flag.FlagSet, *options, error) {
 	fs.StringVar(&o.nut, "nut", "auto", `Network UPS Tools server host:port ("auto" = 127.0.0.1:3493 when it answers, "" = off)`)
 	fs.StringVar(&o.smart, "smart", "auto", `disk health with smartctl ("auto" = when installed and running as root, "off")`)
 	fs.StringVar(&o.zfs, "zfs", "auto", `ZFS pools ("auto" = when zpool is installed, "off")`)
+	fs.StringVar(&o.ipmi, "ipmi", "auto", `host power draw from the BMC with ipmitool ("auto" = when installed and running as root, "off")`)
+	fs.StringVar(&o.plugs, "power-plugs", "", "smart plugs with power metering (Shelly, Tasmota), e.g. nas=http://192.168.1.50 (comma-separated)")
 	fs.BoolVar(&o.noProbe, "no-probe", false, "do not fingerprint discovered HTTP endpoints")
 	fs.StringVar(&o.signatures, "signatures", "", "extra application signature files (YAML, comma-separated)")
 	fs.StringVar(&o.openwrtParts, "openwrt-parts", "", "OpenWrt source: leases,wifi,forwards,sqm (default all)")

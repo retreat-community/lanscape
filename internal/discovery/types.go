@@ -100,7 +100,44 @@ type HostConfig struct {
 	NUT   string // upsd address, e.g. 127.0.0.1:3493
 	SMART bool   // smartctl
 	ZFS   bool   // zpool
+	IPMI  bool   // ipmitool dcmi power reading
+	Plugs []Plug // smart plugs with power metering
 }
 
 // Enabled reports whether a hardware source is on.
-func (c HostConfig) Enabled() bool { return c.NUT != "" || c.SMART || c.ZFS }
+func (c HostConfig) Enabled() bool {
+	return c.NUT != "" || c.SMART || c.ZFS || c.IPMI || len(c.Plugs) > 0
+}
+
+// KindPower is a power reading: the host's BMC (IPMI) or a smart plug.
+const KindPower = "power"
+
+// Plug is a smart plug with power metering (Shelly Gen1/Gen2+, Tasmota) on the local network.
+type Plug struct {
+	Name string
+	URL  string // http://192.168.1.50
+}
+
+// ParsePlugs reads "name=http://host,other=http://host2" (a bare URL is named after its host).
+func ParsePlugs(s string) []Plug {
+	var out []Plug
+	for _, p := range strings.Split(s, ",") {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		name, u, ok := strings.Cut(p, "=")
+		if !ok {
+			u, name = p, ""
+		}
+		if !strings.Contains(u, "://") {
+			u = "http://" + u
+		}
+		u = strings.TrimRight(u, "/")
+		if name == "" {
+			name = strings.TrimPrefix(strings.TrimPrefix(u, "http://"), "https://")
+		}
+		out = append(out, Plug{Name: name, URL: u})
+	}
+	return out
+}

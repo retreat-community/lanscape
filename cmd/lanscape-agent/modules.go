@@ -221,5 +221,8 @@ func hostConfig(o *options) discovery.HostConfig {
 	c.SMART = o.smart == "on" || (o.smart == "auto" && errSmart == nil && os.Geteuid() == 0)
 	_, errZfs := exec.LookPath("zpool")
 	c.ZFS = o.zfs == "on" || (o.zfs == "auto" && errZfs == nil)
+	_, errIPMI := exec.LookPath("ipmitool")
+	c.IPMI = o.ipmi == "on" || (o.ipmi == "auto" && errIPMI == nil && os.Geteuid() == 0)
+	c.Plugs = discovery.ParsePlugs(o.plugs)
 	return c
 }

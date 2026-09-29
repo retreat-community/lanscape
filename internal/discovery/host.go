@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/http"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -30,6 +31,15 @@ func Hardware(ctx context.Context, cfg HostConfig) ([]Item, error) {
 	}
 	if cfg.ZFS {
 		items = append(items, zpools(ctx)...)
+	}
+	if cfg.IPMI {
+		items = append(items, ipmiPower(ctx)...)
+	}
+	if len(cfg.Plugs) > 0 {
+		hc := &http.Client{Timeout: 5 * time.Second}
+		for _, p := range cfg.Plugs {
+			items = append(items, plugPower(ctx, hc, p))
+		}
 	}
 	sortItems(items)
 	if len(items) == 0 && len(errs) > 0 {

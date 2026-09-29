@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import AppIcon from "../components/AppIcon.svelte";
   import { api, subscribe } from "../lib/api";
-  import { bytes, daysLeft, latency, pct, statusClass, when } from "../lib/format";
+  import { bytes, daysLeft, latency, pct, rate, statusClass, when } from "../lib/format";
   import { can, t, toast, ui } from "../lib/state.svelte";
   import type { Board, Dashboard, ServiceView } from "../lib/types";
 
@@ -62,8 +62,16 @@
           const iv = setInterval(() => void load(), 60000);
           return () => clearInterval(iv);
         })();
+    // router throughput changes all the time: poll it on its own while the widget is shown
+    const tr = setInterval(() => {
+      if (!ui.user || !d?.traffic?.length) return;
+      void api.traffic(true).then((x) => {
+        if (d) d.traffic = x;
+      }, () => undefined);
+    }, 30000);
     return () => {
       off();
+      clearInterval(tr);
       clearTimeout(pending);
     };
   });
@@ -220,6 +228,19 @@
           <div class="muted">{t("dash.network_none")}</div>
         {/if}
       </section>
+
+      {#if d.traffic?.length}
+        <section class="card">
+          <h3>{t("dash.traffic")}</h3>
+          {#each d.traffic as x (x.agent_id + x.iface)}
+            <div class="line small">
+              <b>{x.agent}</b>
+              <span class="muted">{x.role ? t(`dash.traffic_${x.role}`) : x.iface} ({x.iface})</span>
+              <span>↓ {rate(x.rx_bps)} · ↑ {rate(x.tx_bps)}</span>
+            </div>
+          {/each}
+        </section>
+      {/if}
 
       {#if d.internet?.length}
         <section class="card">

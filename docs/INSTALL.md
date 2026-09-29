@@ -337,6 +337,15 @@ the download URL contacted, and both can point to your own servers. The dashboar
 current address, the last speed and the outages of the last 30 days; an exit that goes down or
 comes back is written to the change feed.
 
+### Router traffic
+
+Agents report the throughput of their physical, bridge, VLAN, bond, WireGuard and PPP
+interfaces every 30 seconds (`--traffic-interval`, `0` turns it off), read from the kernel's
+byte counters — nothing is sent over the links. The dashboard shows the current WAN (interfaces
+holding a default route) and LAN (`br-lan`) traffic of routers (OpenWrt agents or hosts with a
+LAN bridge); every interface is available in `GET /api/v1/traffic` and on `/metrics` as
+`lanscape_interface_throughput_bits_per_second{agent,iface,direction}`.
+
 ### Actions
 
 Operators can wake devices and restart discovered objects from the panel (**Devices →

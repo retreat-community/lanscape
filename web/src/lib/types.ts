@@ -641,6 +641,17 @@ export interface Dashboard {
   backups: { monitor_id: number; name: string; status: string; last_push: number }[];
   internet?: InternetExit[];
   board?: Board;
+  traffic?: IfaceTraffic[];
+}
+
+export interface IfaceTraffic {
+  agent_id: string;
+  agent: string;
+  iface: string;
+  role?: "wan" | "lan";
+  rx_bps: number;
+  tx_bps: number;
+  at: number;
 }
 
 export interface Board {

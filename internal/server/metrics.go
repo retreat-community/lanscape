@@ -24,6 +24,7 @@ type Metrics struct {
 	monUp       *prometheus.GaugeVec
 	monLatency  *prometheus.GaugeVec
 	notifyFail  *prometheus.CounterVec
+	ifaceBPS    *prometheus.GaugeVec
 }
 
 var verdictValue = map[string]float64{topo.Green: 0, topo.None: 1, topo.Yellow: 2, topo.Purple: 3, topo.Red: 4}
@@ -58,9 +59,11 @@ func NewMetrics() *Metrics {
 			Help: "Response time of the last check."}, []string{"monitor", "name"}),
 		notifyFail: prometheus.NewCounterVec(prometheus.CounterOpts{Name: "lanscape_notification_failures_total",
 			Help: "Failed notification deliveries by channel type."}, []string{"type"}),
+		ifaceBPS: prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "lanscape_interface_throughput_bits_per_second",
+			Help: "Current interface throughput reported by agents."}, []string{"agent", "name", "iface", "direction"}),
 	}
 	r.MustRegister(m.agentUp, m.pathBPS, m.pathRTT, m.pathVerdict, m.pathLoss, m.runs, m.runSeconds, m.problems, m.devices,
-		m.monUp, m.monLatency, m.notifyFail)
+		m.monUp, m.monLatency, m.notifyFail, m.ifaceBPS)
 	return m
 }
 
@@ -128,3 +131,9 @@ func (m *Metrics) DeleteMonitor(id int64, name string) {
 
 // NotifyFailed counts a failed notification.
 func (m *Metrics) NotifyFailed(typ string) { m.notifyFail.WithLabelValues(typ).Inc() }
+
+// SetIfaceTraffic records the current receive and transmit rates of an agent interface.
+func (m *Metrics) SetIfaceTraffic(agent, name, iface string, rx, tx uint64) {
+	m.ifaceBPS.WithLabelValues(agent, name, iface, "rx").Set(float64(rx))
+	m.ifaceBPS.WithLabelValues(agent, name, iface, "tx").Set(float64(tx))
+}

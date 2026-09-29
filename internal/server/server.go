@@ -99,6 +99,7 @@ type Server struct {
 	oidc       oidcState
 	inet       internetState
 	restarts   restartCounts
+	traffic    trafficState
 }
 
 // New opens the store and the CA.
@@ -138,6 +139,7 @@ func New(ctx context.Context, cfg Config, log *slog.Logger) (*Server, error) {
 	s.runner = &Runner{s: s}
 	s.uptime = newUptime(s)
 	s.OnAgentMessage(s.onDiscovery)
+	s.OnAgentMessage(s.onTraffic)
 	s.hub.onConn = func(a *AgentState, up bool) {
 		s.metrics.SetAgent(a.ID, a.Name, a.Kind, up)
 		s.events.Publish("agent", map[string]any{"id": a.ID, "name": a.Name, "online": up})

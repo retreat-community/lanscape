@@ -1111,6 +1111,19 @@ paths:
                     outages: {type: array, items: {type: object, properties: {from: {type: integer}, to: {type: integer}, error: {type: string}}}}
                     checks: {type: integer}
                     failures: {type: integer}
+  /api/v1/traffic:
+    get:
+      tags: [network]
+      operationId: interfaceTraffic
+      summary: Current interface throughput reported by agents
+      parameters:
+        - {name: routers, in: query, description: "1 = only the WAN and LAN interfaces of routers", schema: {type: string, enum: ["1"]}}
+      responses:
+        "200":
+          description: latest sample per interface
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/IfaceTraffic"}}
   /api/v1/internet/run:
     post:
       tags: [network]
@@ -2358,6 +2371,18 @@ components:
               name: {type: string}
               status: {type: string}
               last_push: {type: integer}
+        traffic: {type: array, items: {$ref: "#/components/schemas/IfaceTraffic"}}
+    IfaceTraffic:
+      type: object
+      description: current throughput of an agent interface
+      properties:
+        agent_id: {type: string}
+        agent: {type: string}
+        iface: {type: string}
+        role: {type: string, enum: [wan, lan]}
+        rx_bps: {type: integer}
+        tx_bps: {type: integer}
+        at: {type: integer}
     SearchResult:
       type: object
       properties:

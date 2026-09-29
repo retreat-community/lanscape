@@ -1,6 +1,7 @@
 import type {
   ActionResponse,
   Board,
+  IfaceTraffic,
   InternetExit,
   Agent,
   Change,
@@ -199,6 +200,7 @@ export const api = {
   confirmSwitch: (hypothesis: string, name: string) => call<unknown>("POST", "/map/switches", { hypothesis, name }),
   deleteSwitch: (id: string) => call<undefined>("DELETE", `/map/switches/${enc(id)}`),
   internet: (days = 30) => call<InternetExit[]>("GET", `/internet?days=${days}`),
+  traffic: (routers = false) => call<IfaceTraffic[]>("GET", `/traffic${routers ? "?routers=1" : ""}`),
   runInternet: (speed: boolean) => call<{ status: string }>("POST", "/internet/run", { speed }),
   wake: (mac: string, ip?: string) => call<ActionResponse>("POST", "/actions/wol", { mac, ip }),
   restart: (agent: string, source: string, key: string) =>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { api } from "../lib/api";
+  import { api, applyConfig, type ConfigChange } from "../lib/api";
   import { t, toast } from "../lib/state.svelte";
 
   let prom = $state("");
@@ -14,6 +14,38 @@
       toast(e instanceof Error ? e.message : String(e));
     } finally {
       busy = false;
+    }
+  }
+
+  // declarative configuration: preview with a dry run, then apply the same text
+  let yaml = $state("");
+  let prune = $state(false);
+  let plan = $state<ConfigChange[] | null>(null);
+  let planError = $state("");
+  const changes = $derived((plan ?? []).filter((c) => c.action !== "unchanged"));
+
+  async function configRun(dryRun: boolean): Promise<void> {
+    busy = true;
+    try {
+      const r = await applyConfig(yaml, { dryRun, prune });
+      plan = r.plan;
+      planError = r.error ?? "";
+      if (!dryRun && !r.error) {
+        toast(t("imp.config_applied", { n: changes.length }));
+        plan = null;
+      }
+    } catch (e) {
+      planError = e instanceof Error ? e.message : String(e);
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function configFile(ev: Event): Promise<void> {
+    const f = (ev.target as HTMLInputElement).files?.[0];
+    if (f) {
+      yaml = await f.text();
+      await configRun(true);
     }
   }
 
@@ -53,6 +85,37 @@
   <p class="muted small">{t("imp.found_hint")}</p>
 </section>
 
+<section class="card form">
+  <h2>{t("imp.config")}</h2>
+  <p class="muted small">{t("imp.config_hint")}</p>
+  <div class="row">
+    <a class="button" href="/api/v1/config" download="lanscape.yaml">{t("imp.config_export")}</a>
+    <input type="file" accept=".yaml,.yml,application/yaml" disabled={busy} onchange={(e) => void configFile(e)} />
+  </div>
+  <textarea rows="8" spellcheck="false" bind:value={yaml} placeholder="apiVersion: lanscape/v1"></textarea>
+  <label><input type="checkbox" bind:checked={prune} /> {t("imp.config_prune")}</label>
+  <div class="row">
+    <button disabled={busy || !yaml} onclick={() => void configRun(true)}>{t("imp.config_preview")}</button>
+    <button class="primary" disabled={busy || !plan || !!planError || changes.length === 0} onclick={() => void configRun(false)}>
+      {t("imp.config_apply")}
+    </button>
+  </div>
+  {#if planError}<p class="error">{planError}</p>{/if}
+  {#if plan}
+    {#if changes.length === 0}
+      <p class="muted">{t("imp.config_nochange")}</p>
+    {:else}
+      <table class="small">
+        <tbody>
+          {#each changes as c (c.kind + c.name)}
+            <tr><td><span class="tag">{c.action}</span></td><td>{c.kind}</td><td>{c.name}</td></tr>
+          {/each}
+        </tbody>
+      </table>
+    {/if}
+  {/if}
+</section>
+
 <style>
   .form {
     display: grid;
@@ -60,5 +123,9 @@
   }
   .grow {
     flex: 1;
+  }
+  textarea {
+    width: 100%;
+    font-family: ui-monospace, monospace;
   }
 </style>

@@ -70,6 +70,31 @@ export async function call<T>(method: string, path: string, body?: unknown): Pro
   return data as T;
 }
 
+export interface ConfigChange {
+  kind: string;
+  name: string;
+  action: "create" | "update" | "delete" | "unchanged";
+}
+
+/** Applies a YAML configuration file (GitOps); the plan is returned for errors too. */
+export async function applyConfig(
+  yaml: string,
+  opts: { dryRun: boolean; prune: boolean },
+): Promise<{ plan: ConfigChange[]; error?: string }> {
+  const q = new URLSearchParams();
+  if (opts.dryRun) q.set("dry_run", "true");
+  if (opts.prune) q.set("prune", "true");
+  const r = await fetch(`/api/v1/config?${q.toString()}`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/yaml" },
+    body: yaml,
+  });
+  const data = (await r.json()) as { plan?: ConfigChange[]; error?: string };
+  if (r.status === 401) unauthorized();
+  return { plan: data.plan ?? [], error: r.ok ? undefined : (data.error ?? r.statusText) };
+}
+
 const enc = encodeURIComponent;
 
 export const api = {

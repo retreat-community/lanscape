@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/retreat-community/lanscape/internal/fingerprint"
 )
 
 const procTCP = `  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode
@@ -104,5 +106,28 @@ func TestProbeCache(t *testing.T) {
 	c.probe(context.Background(), ep)
 	if n != 1 {
 		t.Errorf("probe not cached: %d requests", n)
+	}
+}
+
+func TestSetSignatures(t *testing.T) {
+	c, _ := New(Config{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	items := []Item{{Image: "registry.lan/acme/inventory:2.1"}, {Image: "grafana/grafana:11"}}
+	c.identifyImages(items)
+	if items[0].App != nil || items[1].App == nil {
+		t.Fatalf("before: %+v %+v", items[0].App, items[1].App)
+	}
+	sigs, err := fingerprint.Parse([]byte(`[{"id":"acme-inventory","name":"ACME Inventory","category":"productivity","images":["acme/inventory"]},
+		{"id":"grafana","name":"Grafana (ours)","category":"monitoring","images":["grafana/grafana"]}]`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.SetSignatures(sigs)
+	items = []Item{{Image: "registry.lan/acme/inventory:2.1"}, {Image: "grafana/grafana:11"}}
+	c.identifyImages(items)
+	if items[0].App == nil || items[0].App.ID != "acme-inventory" || items[1].App == nil || items[1].App.Name != "Grafana (ours)" {
+		t.Errorf("after: %+v %+v", items[0].App, items[1].App)
+	}
+	if lib, _ := c.library(); len(lib.Sigs) != len(c.base.Sigs)+1 {
+		t.Errorf("library has %d signatures, base %d", len(lib.Sigs), len(c.base.Sigs))
 	}
 }

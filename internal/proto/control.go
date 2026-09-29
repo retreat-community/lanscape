@@ -180,3 +180,10 @@ type UpdateResultMsg struct {
 	To     string `json:"to"`
 	Detail string `json:"detail"`
 }
+
+// ConfigMsg carries settings the server distributes to agents.
+type ConfigMsg struct {
+	// Signatures are application signatures (JSON list, fingerprint format) added to the built-in
+	// library; they are updated independently of releases
+	Signatures json.RawMessage `json:"signatures,omitempty"`
+}

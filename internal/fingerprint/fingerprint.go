@@ -155,6 +155,25 @@ func Load(extraFiles ...string) (*Library, error) {
 	return lib, nil
 }
 
+// With returns a copy of the library with extra signatures added; an extra signature with the id of
+// an existing one replaces it. The receiver is not changed.
+func (l *Library) With(extra []*Signature) *Library {
+	out := &Library{Sigs: make([]*Signature, 0, len(l.Sigs)+len(extra)), byID: map[string]*Signature{}}
+	idx := map[string]int{}
+	for _, list := range [][]*Signature{l.Sigs, extra} {
+		for _, s := range list {
+			if i, ok := idx[s.ID]; ok {
+				out.Sigs[i] = s
+			} else {
+				idx[s.ID] = len(out.Sigs)
+				out.Sigs = append(out.Sigs, s)
+			}
+			out.byID[s.ID] = s
+		}
+	}
+	return out
+}
+
 // Get returns a signature by id.
 func (l *Library) Get(id string) (*Signature, bool) {
 	s, ok := l.byID[id]

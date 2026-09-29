@@ -125,13 +125,14 @@ type Config struct {
 
 // Collector runs the enabled sources.
 type Collector struct {
-	cfg    Config
-	log    *slog.Logger
-	lib    *fingerprint.Library
-	prober *fingerprint.Prober
+	cfg  Config
+	log  *slog.Logger
+	base *fingerprint.Library // built-in and --signatures files
 
-	mu    sync.Mutex
-	cache map[string]probeEntry // endpoint -> last probe
+	mu     sync.Mutex
+	lib    *fingerprint.Library // base plus the signatures pushed by the server
+	prober *fingerprint.Prober
+	cache  map[string]probeEntry // endpoint -> last probe
 }
 
 type probeEntry struct {
@@ -154,7 +155,22 @@ func New(cfg Config, log *slog.Logger) (*Collector, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Collector{cfg: cfg, log: log, lib: lib, prober: fingerprint.NewProber(lib), cache: map[string]probeEntry{}}, nil
+	return &Collector{cfg: cfg, log: log, base: lib, lib: lib, prober: fingerprint.NewProber(lib), cache: map[string]probeEntry{}}, nil
+}
+
+// SetSignatures adds signatures distributed by the server (updated independently of releases,
+// §8.2) to the built-in ones and forgets earlier identifications.
+func (c *Collector) SetSignatures(sigs []*fingerprint.Signature) {
+	lib := c.base.With(sigs)
+	c.mu.Lock()
+	c.lib, c.prober, c.cache = lib, fingerprint.NewProber(lib), map[string]probeEntry{}
+	c.mu.Unlock()
+}
+
+func (c *Collector) library() (*fingerprint.Library, *fingerprint.Prober) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.lib, c.prober
 }
 
 // Enabled reports whether any source is on.
@@ -237,11 +253,12 @@ func (c *Collector) Collect(ctx context.Context) Report {
 }
 
 func (c *Collector) identifyImages(items []Item) {
+	lib, _ := c.library()
 	for i := range items {
 		if items[i].Image == "" {
 			continue
 		}
-		if m, ok := c.lib.IdentifyImage(items[i].Image); ok {
+		if m, ok := lib.IdentifyImage(items[i].Image); ok {
 			items[i].App = &m
 		}
 	}
@@ -332,11 +349,12 @@ func (c *Collector) probe(ctx context.Context, ep string) probeEntry {
 		return e
 	}
 	e = probeEntry{at: time.Now()}
+	_, prober := c.library()
 	pctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	for _, scheme := range schemesFor(ep) {
 		base := scheme + "://" + ep
-		o, m, ok := c.prober.Probe(pctx, base)
+		o, m, ok := prober.Probe(pctx, base)
 		if o == nil {
 			continue
 		}

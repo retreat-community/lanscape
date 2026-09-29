@@ -17,6 +17,7 @@ import (
 	"github.com/retreat-community/lanscape/internal/buildinfo"
 	"github.com/retreat-community/lanscape/internal/cli"
 	"github.com/retreat-community/lanscape/internal/discovery"
+	"github.com/retreat-community/lanscape/internal/fingerprint"
 	"github.com/retreat-community/lanscape/internal/monitor"
 	"github.com/retreat-community/lanscape/internal/proto"
 	"github.com/retreat-community/lanscape/internal/testengine"
@@ -144,6 +145,23 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 	// the server can ask for a fresh report (the "rescan" button)
 	a.Handle(proto.MsgDiscovery, func(ctx context.Context, _ proto.Envelope) (any, error) {
 		return col.Collect(ctx), nil
+	})
+	// signatures distributed by the server (Settings → Signatures)
+	a.Handle(proto.MsgConfig, func(_ context.Context, env proto.Envelope) (any, error) {
+		var m proto.ConfigMsg
+		if err := json.Unmarshal(env.Data, &m); err != nil {
+			return nil, err
+		}
+		if len(m.Signatures) == 0 {
+			return map[string]int{"signatures": 0}, nil
+		}
+		sigs, err := fingerprint.Parse(m.Signatures)
+		if err != nil {
+			return nil, err
+		}
+		col.SetSignatures(sigs)
+		log.Info("signatures from the server", "count", len(sigs))
+		return map[string]int{"signatures": len(sigs)}, nil
 	})
 	go col.Run(ctx, func(r discovery.Report) error { return a.Send(ctx, proto.MsgDiscovery, r) })
 }

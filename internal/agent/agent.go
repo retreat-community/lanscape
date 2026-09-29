@@ -507,8 +507,6 @@ func (a *Agent) dispatch(ctx context.Context, c *websocket.Conn, env proto.Envel
 			return
 		}
 		rtype, reply = proto.MsgTestResult, a.runTest(ctx, t)
-	case proto.MsgConfig:
-		return
 	default:
 		fn, ok := a.extra[env.Type]
 		if !ok {

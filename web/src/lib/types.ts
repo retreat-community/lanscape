@@ -556,7 +556,7 @@ export interface Maintenance {
   created_at: number;
 }
 
-export type ChannelType = "telegram" | "webhook" | "email" | "ntfy";
+export type ChannelType = "telegram" | "webhook" | "email" | "ntfy" | "gotify" | "discord" | "slack" | "matrix";
 
 export interface Channel {
   id: number;

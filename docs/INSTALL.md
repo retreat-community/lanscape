@@ -214,6 +214,7 @@ Maintenance windows (planned, or "right now for 30 minutes") mute notifications.
 
 Notification channels (**Settings → Notifications**): Telegram (bot token and chat id), webhook
 (JSON body, optional HMAC-SHA256 signature in `X-Lanscape-Signature`), email (SMTP with STARTTLS
-or TLS) and ntfy. Each channel can have quiet hours, a repeat interval for unacknowledged
+or TLS), ntfy, Gotify, Discord and Slack (incoming webhooks) and Matrix (a bot access token and a
+room id). Each channel can have quiet hours, a repeat interval for unacknowledged
 incidents and a list of monitors it cares about. Set **Settings → General → Public URL** so
 notifications link back to the panel.

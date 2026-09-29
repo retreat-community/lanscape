@@ -29,6 +29,18 @@
       { key: "topic", label: "ch.topic" },
       { key: "token", label: "ch.token", type: "password" },
     ],
+    gotify: [
+      { key: "url", label: "ch.server_url", placeholder: "https://gotify.example.com" },
+      { key: "token", label: "ch.app_token", type: "password" },
+      { key: "priority", label: "ch.priority", type: "number", placeholder: "8" },
+    ],
+    discord: [{ key: "url", label: "ch.webhook_url", type: "password", placeholder: "https://discord.com/api/webhooks/…" }],
+    slack: [{ key: "url", label: "ch.webhook_url", type: "password", placeholder: "https://hooks.slack.com/services/…" }],
+    matrix: [
+      { key: "homeserver", label: "ch.homeserver", placeholder: "https://matrix.org" },
+      { key: "access_token", label: "ch.access_token", type: "password" },
+      { key: "room_id", label: "ch.room_id", placeholder: "!abc:matrix.org" },
+    ],
   };
 
   let channels = $state<Channel[]>([]);

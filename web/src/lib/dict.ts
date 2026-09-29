@@ -403,6 +403,12 @@ export const en = {
   "mon.type.vm": "VM / CT",
   "mon.target_hint_resource": "source:agent:key, e.g. proxmox:*:qemu/100 (added from Found)",
   "map.history": "Path history",
+  "ch.app_token": "Application token",
+  "ch.priority": "Priority",
+  "ch.webhook_url": "Webhook URL",
+  "ch.homeserver": "Homeserver",
+  "ch.access_token": "Access token",
+  "ch.room_id": "Room ID",
 } as const;
 
 export type Key = keyof typeof en;
@@ -810,6 +816,12 @@ export const ru: Record<Key, string> = {
   "mon.type.vm": "VM / CT",
   "mon.target_hint_resource": "источник:агент:ключ, например proxmox:*:qemu/100 (из «Найдено»)",
   "map.history": "История пути",
+  "ch.app_token": "Токен приложения",
+  "ch.priority": "Приоритет",
+  "ch.webhook_url": "URL вебхука",
+  "ch.homeserver": "Homeserver",
+  "ch.access_token": "Токен доступа",
+  "ch.room_id": "ID комнаты",
 };
 
 export type Lang = "en" | "ru";

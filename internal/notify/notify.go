@@ -16,6 +16,7 @@ import (
 	"net"
 	"net/http"
 	"net/smtp"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -27,10 +28,14 @@ const (
 	Webhook  = "webhook"
 	Email    = "email"
 	Ntfy     = "ntfy"
+	Gotify   = "gotify"
+	Discord  = "discord"
+	Slack    = "slack"
+	Matrix   = "matrix"
 )
 
 // Types lists supported channel types.
-var Types = []string{Telegram, Webhook, Email, Ntfy}
+var Types = []string{Telegram, Webhook, Email, Ntfy, Gotify, Discord, Slack, Matrix}
 
 // Severity of a message.
 const (
@@ -149,6 +154,10 @@ var secretFields = map[string][]string{
 	Webhook:  {"secret"},
 	Email:    {"password"},
 	Ntfy:     {"token"},
+	Gotify:   {"token"},
+	Discord:  {"url"},
+	Slack:    {"url"},
+	Matrix:   {"access_token"},
 }
 
 // Mask is shown instead of stored secrets.
@@ -238,8 +247,137 @@ func New(typ string, cfg json.RawMessage, client *http.Client) (Sender, error) {
 			c.URL = "https://ntfy.sh"
 		}
 		return &ntfy{c, client}, nil
+	case Gotify:
+		var c gotifyCfg
+		if err := json.Unmarshal(cfg, &c); err != nil {
+			return nil, err
+		}
+		if !httpURL(c.URL) || c.Token == "" {
+			return nil, errors.New("gotify: url and application token are required")
+		}
+		return &gotify{c, client}, nil
+	case Discord, Slack:
+		var c struct {
+			URL string `json:"url"`
+		}
+		if err := json.Unmarshal(cfg, &c); err != nil {
+			return nil, err
+		}
+		if !strings.HasPrefix(c.URL, "https://") {
+			return nil, fmt.Errorf("%s: webhook url must be https", typ)
+		}
+		return &chatHook{typ: typ, url: c.URL, cl: client}, nil
+	case Matrix:
+		var c matrixCfg
+		if err := json.Unmarshal(cfg, &c); err != nil {
+			return nil, err
+		}
+		if !httpURL(c.Homeserver) || c.AccessToken == "" || c.RoomID == "" {
+			return nil, errors.New("matrix: homeserver, access_token and room_id are required")
+		}
+		return &matrix{c, client}, nil
 	}
 	return nil, fmt.Errorf("unknown channel type %q", typ)
+}
+
+func httpURL(u string) bool {
+	return strings.HasPrefix(u, "http://") || strings.HasPrefix(u, "https://")
+}
+
+func plain(m Message) string {
+	text := icon(m.Severity) + " " + m.Title
+	if m.Text != "" {
+		text += "\n" + m.Text
+	}
+	if m.URL != "" {
+		text += "\n" + m.URL
+	}
+	return text
+}
+
+type gotifyCfg struct {
+	URL      string `json:"url"`
+	Token    string `json:"token"`
+	Priority int    `json:"priority,omitempty"`
+}
+
+type gotify struct {
+	c  gotifyCfg
+	cl *http.Client
+}
+
+func (g *gotify) Send(ctx context.Context, m Message) error {
+	prio := g.c.Priority
+	if prio == 0 {
+		prio = 5
+		if m.Severity == SevDown {
+			prio = 8
+		}
+	}
+	msg := m.Text
+	if m.URL != "" {
+		msg += "\n" + m.URL
+	}
+	body, _ := json.Marshal(map[string]any{"title": m.Title, "message": msg, "priority": prio})
+	err := post(ctx, g.cl, strings.TrimRight(g.c.URL, "/")+"/message", body,
+		map[string]string{"Content-Type": "application/json", "X-Gotify-Key": g.c.Token})
+	if err != nil {
+		return fmt.Errorf("gotify: %w", err)
+	}
+	return nil
+}
+
+// chatHook posts to Discord or Slack incoming webhooks.
+type chatHook struct {
+	typ, url string
+	cl       *http.Client
+}
+
+func (h *chatHook) Send(ctx context.Context, m Message) error {
+	var body []byte
+	if h.typ == Discord {
+		body, _ = json.Marshal(map[string]any{"content": plain(m), "allowed_mentions": map[string]any{"parse": []string{}}})
+	} else {
+		body, _ = json.Marshal(map[string]any{"text": plain(m)})
+	}
+	if err := post(ctx, h.cl, h.url, body, map[string]string{"Content-Type": "application/json"}); err != nil {
+		// the webhook URL is the secret
+		return errors.New(h.typ + ": " + strings.ReplaceAll(err.Error(), h.url, Mask))
+	}
+	return nil
+}
+
+type matrixCfg struct {
+	Homeserver  string `json:"homeserver"`
+	AccessToken string `json:"access_token"`
+	RoomID      string `json:"room_id"`
+}
+
+type matrix struct {
+	c  matrixCfg
+	cl *http.Client
+}
+
+func (x *matrix) Send(ctx context.Context, m Message) error {
+	txn := strconv.FormatInt(time.Now().UnixNano(), 36)
+	u := strings.TrimRight(x.c.Homeserver, "/") + "/_matrix/client/v3/rooms/" + url.PathEscape(x.c.RoomID) + "/send/m.room.message/" + txn
+	body, _ := json.Marshal(map[string]string{"msgtype": "m.text", "body": plain(m)})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, u, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+x.c.AccessToken)
+	resp, err := x.cl.Do(req)
+	if err != nil {
+		return fmt.Errorf("matrix: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 300))
+		return fmt.Errorf("matrix: %s: %s", resp.Status, strings.TrimSpace(string(b)))
+	}
+	return nil
 }
 
 func icon(sev string) string {
@@ -281,13 +419,7 @@ type telegram struct {
 }
 
 func (t *telegram) Send(ctx context.Context, m Message) error {
-	text := icon(m.Severity) + " " + m.Title
-	if m.Text != "" {
-		text += "\n" + m.Text
-	}
-	if m.URL != "" {
-		text += "\n" + m.URL
-	}
+	text := plain(m)
 	body, _ := json.Marshal(map[string]any{"chat_id": t.c.ChatID, "text": text, "disable_web_page_preview": true})
 	err := post(ctx, t.cl, strings.TrimRight(t.c.APIURL, "/")+"/bot"+t.c.BotToken+"/sendMessage", body,
 		map[string]string{"Content-Type": "application/json"})

@@ -1747,7 +1747,7 @@ components:
       properties:
         id: {type: integer, readOnly: true}
         name: {type: string}
-        type: {type: string, enum: [telegram, webhook, email, ntfy]}
+        type: {type: string, enum: [telegram, webhook, email, ntfy, gotify, discord, slack, matrix]}
         enabled: {type: boolean}
         config:
           type: object
@@ -1755,6 +1755,7 @@ components:
             Type-specific settings plus common ones (quiet "22:00-07:00", repeat_minutes, monitors, no_resolved).
             telegram: bot_token, chat_id, api_url. webhook: url, headers, secret (HMAC-SHA256 in X-Lanscape-Signature).
             email: host, port, username, password, from, to, tls (starttls, tls, none). ntfy: url, topic, token, priority.
+            gotify: url, token, priority. discord, slack: url (incoming webhook). matrix: homeserver, access_token, room_id.
           additionalProperties: true
         created_at: {type: integer, readOnly: true}
     Change:

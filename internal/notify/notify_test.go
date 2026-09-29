@@ -198,3 +198,60 @@ func TestQuietAndFilter(t *testing.T) {
 		t.Error("monitor filter")
 	}
 }
+
+func TestChatChannels(t *testing.T) {
+	ch := make(chan capture, 4)
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		ch <- capture{r.Method + " " + r.URL.Path, string(b), r.Header}
+	}))
+	defer srv.Close()
+	cl := srv.Client()
+	ctx := context.Background()
+
+	s, err := New(Gotify, json.RawMessage(`{"url":"`+srv.URL+`","token":"gt"}`), cl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Send(ctx, msg); err != nil {
+		t.Fatal(err)
+	}
+	c := <-ch
+	if c.path != "POST /message" || c.hdr.Get("X-Gotify-Key") != "gt" || !strings.Contains(c.body, `"priority":8`) {
+		t.Errorf("gotify: %+v", c)
+	}
+
+	for _, typ := range []string{Discord, Slack} {
+		s, err := New(typ, json.RawMessage(`{"url":"`+srv.URL+`/hook/secret"}`), cl)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := s.Send(ctx, msg); err != nil {
+			t.Fatal(err)
+		}
+		c := <-ch
+		key := map[string]string{Discord: `"content":`, Slack: `"text":`}[typ]
+		if c.path != "POST /hook/secret" || !strings.Contains(c.body, key) || !strings.Contains(c.body, "Gitea is down") {
+			t.Errorf("%s: %+v", typ, c)
+		}
+	}
+	if _, err := New(Discord, json.RawMessage(`{"url":"http://insecure"}`), nil); err == nil {
+		t.Error("plain http discord webhook accepted")
+	}
+
+	s, err = New(Matrix, json.RawMessage(`{"homeserver":"`+srv.URL+`","access_token":"mx","room_id":"!room:example.org"}`), cl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Send(ctx, msg); err != nil {
+		t.Fatal(err)
+	}
+	c = <-ch
+	if !strings.HasPrefix(c.path, "PUT /_matrix/client/v3/rooms/!room:example.org/send/m.room.message/") ||
+		c.hdr.Get("Authorization") != "Bearer mx" || !strings.Contains(c.body, `"msgtype":"m.text"`) {
+		t.Errorf("matrix: %+v", c)
+	}
+	if red := Redact(Discord, json.RawMessage(`{"url":"https://discord.com/api/webhooks/1/abc"}`)); strings.Contains(string(red), "abc") {
+		t.Errorf("discord url not redacted: %s", red)
+	}
+}

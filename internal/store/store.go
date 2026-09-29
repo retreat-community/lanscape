@@ -31,6 +31,7 @@ const (
 type Store struct {
 	DB      *sql.DB
 	Dialect Dialect
+	Secrets *Secrets // encrypts monitor and channel secrets at rest when set
 }
 
 // Open opens a database. dsn is a file path for SQLite or a postgres:// URL.

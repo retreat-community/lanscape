@@ -155,7 +155,7 @@ func (s *Server) ExportConfig(ctx context.Context) (ConfigFile, error) {
 	}
 	mons := []ConfMonitor{}
 	for _, m := range s.uptime.snapshot() {
-		mons = append(mons, n.confMonitor(m))
+		mons = append(mons, n.confMonitor(maskMonitor(m))) // secrets are exported as the mask
 	}
 	sort.Slice(mons, func(i, j int) bool { return mons[i].Name < mons[j].Name })
 	segCfg, _ := s.store.SegmentConfigs(ctx)
@@ -581,8 +581,13 @@ func (s *Server) applyMonitors(ctx context.Context, n *names, list []ConfMonitor
 		current[m.Name] = m
 	}
 	var pending []ConfMonitor
-	for _, c := range list {
+	for i, c := range list {
 		old, ok := current[c.Name]
+		if ok {
+			// masked or left-out secrets keep their stored values
+			c.Check = withStoredSecrets(c.Check, old.Spec)
+			list[i] = c
+		}
 		switch {
 		case ok && reflect.DeepEqual(normMonitor(n.confMonitor(old)), normMonitor(c)):
 			plan = append(plan, ConfigChange{"monitor", c.Name, "unchanged"})
@@ -634,6 +639,19 @@ func (s *Server) applyMonitors(ctx context.Context, n *names, list []ConfMonitor
 		}
 	}
 	return plan, nil
+}
+
+// withStoredSecrets fills masked or missing secrets of a check from the stored spec.
+func withStoredSecrets(check map[string]any, old json.RawMessage) map[string]any {
+	raw, err := json.Marshal(check)
+	if err != nil {
+		return check
+	}
+	var out map[string]any
+	if json.Unmarshal(keepMaskedSecrets(raw, old, true), &out) != nil {
+		return check
+	}
+	return out
 }
 
 // normMonitor applies the defaults the server fills in, so an exported file compares equal.

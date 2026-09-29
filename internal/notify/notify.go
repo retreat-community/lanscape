@@ -160,6 +160,15 @@ var secretFields = map[string][]string{
 	Matrix:   {"access_token"},
 }
 
+// SecretFields returns the secret configuration fields per channel type.
+func SecretFields() map[string][]string {
+	out := make(map[string][]string, len(secretFields))
+	for k, v := range secretFields {
+		out[k] = append([]string(nil), v...)
+	}
+	return out
+}
+
 // Mask is shown instead of stored secrets.
 const Mask = "********"
 

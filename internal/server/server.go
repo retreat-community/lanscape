@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/retreat-community/lanscape/internal/agent"
+	"github.com/retreat-community/lanscape/internal/notify"
 	"github.com/retreat-community/lanscape/internal/pki"
 	"github.com/retreat-community/lanscape/internal/proto"
 	"github.com/retreat-community/lanscape/internal/store"
@@ -42,6 +43,7 @@ type Config struct {
 	AdminUser     string // bootstrap admin when there are no users
 	AdminPassword string
 	PublicURL     string // links in notifications (settings override)
+	SecretKey     string // base64 key for secrets at rest; default <data-dir>/secret.key
 	OIDC          OIDCConfig
 	Version       string
 }
@@ -119,6 +121,13 @@ func New(ctx context.Context, cfg Config, log *slog.Logger) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	key, err := secretKey(cfg)
+	if err != nil {
+		return nil, err
+	}
+	if st.Secrets, err = store.NewSecrets(key, notify.SecretFields()); err != nil {
+		return nil, err
+	}
 	ca, err := pki.LoadOrCreate(filepath.Join(cfg.DataDir, "pki"))
 	if err != nil {
 		return nil, fmt.Errorf("server: pki: %w", err)
@@ -140,6 +149,9 @@ func New(ctx context.Context, cfg Config, log *slog.Logger) (*Server, error) {
 	}
 	if err := s.bootstrapAdmin(ctx); err != nil {
 		return nil, err
+	}
+	if err := s.sealStoredSecrets(ctx); err != nil {
+		return nil, fmt.Errorf("server: encrypt stored secrets: %w", err)
 	}
 	return s, nil
 }

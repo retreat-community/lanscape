@@ -164,6 +164,12 @@ installations or an existing database cluster use PostgreSQL 13 or newer:
 `server.existingDatabaseSecret` with the URL under `url`). The schema is created and migrated on
 start. The data directory is still needed for the CA and agent certificates.
 
+**Secrets at rest**: passwords, tokens and header values of monitors and the secrets of
+notification channels are stored encrypted (AES-256-GCM) and never returned by the API. The key is
+`<data-dir>/secret.key`, created on the first start, or `--secret-key` (`LANSCAPE_SECRET_KEY`,
+`openssl rand -base64 32`). Back it up with the database: without it the stored secrets have to
+be entered again.
+
 **Backup and restore**: `lanscape backup /backup/lanscape.db` (consistent copy while running);
 restore with the server stopped: `lanscape restore /backup/lanscape.db`. With PostgreSQL use
 `pg_dump`/`pg_restore`, and back up the data directory (`pki/`) in both cases.

@@ -425,7 +425,7 @@ func (s *Server) apiMonitors(w http.ResponseWriter, r *http.Request) {
 	out := make([]MonitorView, 0, len(ms))
 	for _, m := range ms {
 		up, _ := s.uptimeStats(r.Context(), m.ID)
-		v := MonitorView{Monitor: m, Uptime: up}
+		v := MonitorView{Monitor: maskMonitor(m), Uptime: up}
 		for _, i := range open {
 			if i.MonitorID == m.ID {
 				v.IncidentID = i.ID
@@ -464,7 +464,7 @@ func (s *Server) apiMonitor(w http.ResponseWriter, r *http.Request) {
 	if ninety == nil {
 		ninety = []store.DayStat{}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"monitor": m, "uptime": up, "days": ninety, "checks": checks, "incidents": incs})
+	writeJSON(w, http.StatusOK, map[string]any{"monitor": maskMonitor(m), "uptime": up, "days": ninety, "checks": checks, "incidents": incs})
 }
 
 type monitorReq struct {
@@ -580,6 +580,7 @@ func (s *Server) saveMonitor(ctx context.Context, id int64, req monitorReq) (sto
 	if !ok {
 		return store.Monitor{}, errNotFound
 	}
+	m.Spec = keepMaskedSecrets(m.Spec, old.Spec, false)
 	m.ID, m.CreatedAt, m.PushToken, m.LastPush = id, old.CreatedAt, old.PushToken, old.LastPush
 	if spec.Type == monitor.TypeHeartbeat && m.PushToken == "" {
 		m.PushToken = NewSecret("lsh_")
@@ -626,6 +627,7 @@ func (s *Server) apiSaveMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	mv, _ := s.uptime.get(m.ID)
+	mv = maskMonitor(mv)
 	if id == 0 {
 		s.audit(r, "monitor.create", strconv.FormatInt(m.ID, 10), "ok", m.Name)
 		writeJSON(w, http.StatusCreated, mv)

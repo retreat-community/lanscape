@@ -47,7 +47,7 @@ Flags can also be set with LANSCAPE_<FLAG> environment variables.
 type flags struct {
 	listen, gatewayListen, miniListen, miniToken, dataDir, db, gatewayHosts, expect string
 	tlsCert, tlsKey, metricsToken, adminUser, adminPassword, publicURL, logLevel    string
-	logFormat, configFile                                                           string
+	logFormat, configFile, secretKey                                                string
 	configPrune                                                                     bool
 	oidcIssuer, oidcClientID, oidcClientSecret, oidcName, oidcRoleClaim             string
 	oidcAdminGroups, oidcOperatorGroups, oidcDefaultRole                            string
@@ -77,6 +77,7 @@ func parse(name string, args []string) (*flag.FlagSet, *flags, error) {
 	fs.StringVar(&f.logFormat, "log-format", "text", "text or json")
 	fs.IntVar(&f.parallel, "parallel", 8, "parallel reachability tests")
 	fs.BoolVar(&f.secureCookies, "secure-cookies", false, "mark session cookies Secure (behind a TLS proxy)")
+	fs.StringVar(&f.secretKey, "secret-key", "", "base64 32-byte key for monitor and channel secrets at rest (default: data-dir/secret.key)")
 	fs.StringVar(&f.configFile, "config", "", "declarative configuration (YAML) applied on start; ${VAR} reads the environment")
 	fs.BoolVar(&f.configPrune, "config-prune", false, "with -config: delete objects of the listed sections that the file does not contain")
 	fs.StringVar(&f.oidcIssuer, "oidc-issuer", "", "OpenID Connect issuer URL (enables single sign-on)")
@@ -100,7 +101,7 @@ func (f *flags) config() (server.Config, error) {
 	cfg := server.Config{Listen: f.listen, GatewayListen: f.gatewayListen, MiniListen: f.miniListen,
 		MiniToken: f.miniToken, DataDir: f.dataDir, DB: f.db, TLSCert: f.tlsCert, TLSKey: f.tlsKey,
 		MetricsToken: f.metricsToken, AdminUser: f.adminUser, AdminPassword: f.adminPassword, PublicURL: f.publicURL,
-		Parallel: f.parallel, SecureCookies: f.secureCookies, Version: buildinfo.Version, Expect: map[string]int{}}
+		Parallel: f.parallel, SecureCookies: f.secureCookies, SecretKey: f.secretKey, Version: buildinfo.Version, Expect: map[string]int{}}
 	cfg.OIDC = server.OIDCConfig{Issuer: f.oidcIssuer, ClientID: f.oidcClientID, ClientSecret: f.oidcClientSecret,
 		Name: f.oidcName, RoleClaim: f.oidcRoleClaim, AdminGroups: cli.SplitList(f.oidcAdminGroups),
 		OperatorGroups: cli.SplitList(f.oidcOperatorGroups), DefaultRole: f.oidcDefaultRole}

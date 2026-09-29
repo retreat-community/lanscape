@@ -347,6 +347,7 @@ func (s *Store) SaveMonitor(ctx context.Context, m Monitor) (int64, error) {
 	}
 	points, _ := json.Marshal(m.Points)
 	parents, _ := json.Marshal(m.Parents)
+	m.Spec = s.sealMonitor(m.Spec)
 	if m.ID == 0 {
 		return s.Insert(ctx, `INSERT INTO monitors(service_id, name, spec, interval_s, retries, points, min_failing, sla, enabled,
 			status, created_at, push_token, parents) VALUES (?,?,?,?,?,?,?,?,?,'pending',?,?,?)`, m.ServiceID, m.Name, string(m.Spec),
@@ -374,6 +375,7 @@ func (s *Store) SetMonitorPush(ctx context.Context, id, ts int64) error {
 // MonitorByID returns one monitor.
 func (s *Store) MonitorByID(ctx context.Context, id int64) (Monitor, error) {
 	m, err := scanMonitor(s.QueryRow(ctx, `SELECT `+monitorCols+` FROM monitors WHERE id=?`, id))
+	m.Spec = s.openMonitor(m.Spec)
 	return m, notFound(err)
 }
 
@@ -387,6 +389,7 @@ func (s *Store) Monitors(ctx context.Context) ([]Monitor, error) {
 	out := []Monitor{}
 	for rows.Next() {
 		m, err := scanMonitor(rows)
+		m.Spec = s.openMonitor(m.Spec)
 		if err != nil {
 			return nil, err
 		}
@@ -704,11 +707,12 @@ func (s *Store) SaveChannel(ctx context.Context, c Channel) (int64, error) {
 	if len(c.Config) == 0 {
 		c.Config = json.RawMessage("{}")
 	}
+	sealed := s.sealChannel(c.Type, c.Config)
 	if c.ID == 0 {
 		return s.Insert(ctx, `INSERT INTO channels(name, type, config, enabled, created_at) VALUES (?,?,?,?,?)`,
-			c.Name, c.Type, string(c.Config), b2i(c.Enabled), now())
+			c.Name, c.Type, string(sealed), b2i(c.Enabled), now())
 	}
-	_, err := s.Exec(ctx, `UPDATE channels SET name=?, type=?, config=?, enabled=? WHERE id=?`, c.Name, c.Type, string(c.Config),
+	_, err := s.Exec(ctx, `UPDATE channels SET name=?, type=?, config=?, enabled=? WHERE id=?`, c.Name, c.Type, string(sealed),
 		b2i(c.Enabled), c.ID)
 	return c.ID, err
 }
@@ -728,7 +732,7 @@ func (s *Store) Channels(ctx context.Context) ([]Channel, error) {
 		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &cfg, &en, &c.CreatedAt); err != nil {
 			return nil, err
 		}
-		c.Config, c.Enabled = json.RawMessage(cfg), en != 0
+		c.Config, c.Enabled = s.openChannel(c.Type, json.RawMessage(cfg)), en != 0
 		out = append(out, c)
 	}
 	return out, rows.Err()
@@ -741,7 +745,7 @@ func (s *Store) ChannelByID(ctx context.Context, id int64) (Channel, error) {
 	var en int
 	err := s.QueryRow(ctx, `SELECT id, name, type, config, enabled, created_at FROM channels WHERE id=?`, id).
 		Scan(&c.ID, &c.Name, &c.Type, &cfg, &en, &c.CreatedAt)
-	c.Config, c.Enabled = json.RawMessage(cfg), en != 0
+	c.Config, c.Enabled = s.openChannel(c.Type, json.RawMessage(cfg)), en != 0
 	return c, notFound(err)
 }
 

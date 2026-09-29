@@ -1,0 +1,91 @@
+package server
+
+import (
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/retreat-community/lanscape/internal/topo"
+)
+
+// Metrics exported on /metrics.
+type Metrics struct {
+	Registry    *prometheus.Registry
+	agentUp     *prometheus.GaugeVec
+	pathBPS     *prometheus.GaugeVec
+	pathRTT     *prometheus.GaugeVec
+	pathVerdict *prometheus.GaugeVec
+	pathLoss    *prometheus.GaugeVec
+	runs        *prometheus.CounterVec
+	runSeconds  *prometheus.HistogramVec
+	problems    *prometheus.GaugeVec
+	devices     prometheus.Gauge
+}
+
+var verdictValue = map[string]float64{topo.Green: 0, topo.None: 1, topo.Yellow: 2, topo.Purple: 3, topo.Red: 4}
+
+// NewMetrics registers all collectors.
+func NewMetrics() *Metrics {
+	r := prometheus.NewRegistry()
+	r.MustRegister(prometheus.NewGoCollector(), prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	m := &Metrics{Registry: r,
+		agentUp: prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "lanscape_agent_up",
+			Help: "Agent control channel connected (1) or not (0)."}, []string{"agent", "name", "kind"}),
+		pathBPS: prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "lanscape_path_throughput_bits_per_second",
+			Help: "Best TCP throughput of the last run per path."}, []string{"segment", "src", "src_if", "dst", "dst_if"}),
+		pathRTT: prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "lanscape_path_rtt_seconds",
+			Help: "Average ICMP RTT of the last run per path."}, []string{"segment", "src", "src_if", "dst", "dst_if"}),
+		pathVerdict: prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "lanscape_path_verdict",
+			Help: "Verdict per path: 0 green, 1 none, 2 yellow, 3 purple (CPU-bound), 4 red."},
+			[]string{"segment", "src", "src_if", "dst", "dst_if"}),
+		pathLoss: prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "lanscape_path_loss_ratio",
+			Help: "ICMP packet loss ratio of the last run per path."}, []string{"segment", "src", "src_if", "dst", "dst_if"}),
+		runs: prometheus.NewCounterVec(prometheus.CounterOpts{Name: "lanscape_runs_total",
+			Help: "Finished runs."}, []string{"kind", "status"}),
+		runSeconds: prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "lanscape_run_duration_seconds",
+			Help: "Run duration.", Buckets: prometheus.ExponentialBuckets(5, 2, 10)}, []string{"kind"}),
+		problems: prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "lanscape_problems",
+			Help: "Problems found by the last run by kind."}, []string{"kind"}),
+		devices: prometheus.NewGauge(prometheus.GaugeOpts{Name: "lanscape_devices",
+			Help: "Known devices (agents and discovered)."}),
+	}
+	r.MustRegister(m.agentUp, m.pathBPS, m.pathRTT, m.pathVerdict, m.pathLoss, m.runs, m.runSeconds, m.problems, m.devices)
+	return m
+}
+
+// SetAgent updates the agent gauge.
+func (m *Metrics) SetAgent(id, name, kind string, up bool) {
+	v := 0.0
+	if up {
+		v = 1
+	}
+	m.agentUp.WithLabelValues(id, name, kind).Set(v)
+}
+
+// ObserveReport exports the paths of a finished run.
+func (m *Metrics) ObserveReport(rep *Report) {
+	if rep.Kind != "full" && rep.Kind != "reachability" {
+		return
+	}
+	m.pathBPS.Reset()
+	m.pathRTT.Reset()
+	m.pathVerdict.Reset()
+	m.pathLoss.Reset()
+	for _, p := range rep.Paths {
+		l := []string{p.SegID, p.Src, p.SrcIf, p.Dst, p.DstIf}
+		if p.BestBPS > 0 {
+			m.pathBPS.WithLabelValues(l...).Set(float64(p.BestBPS))
+		}
+		if p.Ping != nil && p.Ping.Recv > 0 {
+			m.pathRTT.WithLabelValues(l...).Set(float64(p.Ping.RTTAvgUS) / 1e6)
+			m.pathLoss.WithLabelValues(l...).Set(float64(p.Ping.Sent-p.Ping.Recv) / float64(p.Ping.Sent))
+		}
+		m.pathVerdict.WithLabelValues(l...).Set(verdictValue[p.Verdict])
+	}
+	m.problems.Reset()
+	for _, pr := range rep.Problems {
+		m.problems.WithLabelValues(pr.Kind).Inc()
+	}
+	m.runs.WithLabelValues(rep.Kind, rep.Status).Inc()
+	if rep.Finished > rep.Started {
+		m.runSeconds.WithLabelValues(rep.Kind).Observe(float64(rep.Finished-rep.Started) / 1000)
+	}
+}

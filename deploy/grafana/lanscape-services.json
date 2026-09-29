@@ -1,0 +1,100 @@
+{
+  "__inputs": [
+    {"name": "DS_PROMETHEUS", "label": "Prometheus", "type": "datasource", "pluginId": "prometheus", "pluginName": "Prometheus"}
+  ],
+  "__requires": [
+    {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0"},
+    {"type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0"}
+  ],
+  "title": "Lanscape — services",
+  "uid": "lanscape-services",
+  "description": "Monitor status, response times and notification delivery exported by the Lanscape server (/metrics).",
+  "tags": ["lanscape", "uptime"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "1m",
+  "time": {"from": "now-24h", "to": "now"},
+  "templating": {
+    "list": [
+      {
+        "name": "monitor",
+        "label": "Monitor",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+        "query": {"query": "label_values(lanscape_monitor_up, name)", "refId": "monitor"},
+        "includeAll": true,
+        "multi": true,
+        "current": {"text": "All", "value": "$__all"},
+        "refresh": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Up",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "targets": [{"refId": "A", "expr": "count(lanscape_monitor_up{name=~\"$monitor\"} == 1) or vector(0)"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "green"}}},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"}
+    },
+    {
+      "id": 2, "type": "stat", "title": "Degraded",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "targets": [{"refId": "A", "expr": "count(lanscape_monitor_up{name=~\"$monitor\"} == 0.5) or vector(0)"}],
+      "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}]}}},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"}
+    },
+    {
+      "id": 3, "type": "stat", "title": "Down",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "targets": [{"refId": "A", "expr": "count(lanscape_monitor_up{name=~\"$monitor\"} == 0) or vector(0)"}],
+      "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"}
+    },
+    {
+      "id": 4, "type": "stat", "title": "Failed notifications (24 h)",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "targets": [{"refId": "A", "expr": "sum(increase(lanscape_notification_failures_total[24h])) or vector(0)"}],
+      "fieldConfig": {"defaults": {"decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"}
+    },
+    {
+      "id": 5, "type": "state-timeline", "title": "Monitor status",
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "targets": [{"refId": "A", "expr": "lanscape_monitor_up{name=~\"$monitor\"}", "legendFormat": "{{name}}"}],
+      "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {
+        "0": {"text": "down", "color": "red"}, "0.5": {"text": "degraded", "color": "yellow"}, "1": {"text": "up", "color": "green"}}}]}},
+      "options": {"showValue": "never", "mergeValues": true}
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Response time",
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 16},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "targets": [{"refId": "A", "expr": "lanscape_monitor_latency_seconds{name=~\"$monitor\"}", "legendFormat": "{{name}}"}],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "id": 7, "type": "table", "title": "Availability over the selected range",
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 26},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "targets": [{"refId": "A", "expr": "avg_over_time(lanscape_monitor_up{name=~\"$monitor\"}[$__range])", "format": "table", "instant": true}],
+      "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "__name__": true, "instance": true, "job": true, "monitor": true},
+        "renameByName": {"Value": "availability"}}}],
+      "fieldConfig": {"defaults": {"unit": "percentunit", "decimals": 3}}
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Failed notifications by channel",
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 26},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "targets": [{"refId": "A", "expr": "sum by (type) (increase(lanscape_notification_failures_total[$__rate_interval]))", "legendFormat": "{{type}}"}],
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "bars"}}}
+    }
+  ]
+}

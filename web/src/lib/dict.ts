@@ -402,6 +402,7 @@ export const en = {
   "mon.type.k8s": "Kubernetes workload",
   "mon.type.vm": "VM / CT",
   "mon.target_hint_resource": "source:agent:key, e.g. proxmox:*:qemu/100 (added from Found)",
+  "map.history": "Path history",
 } as const;
 
 export type Key = keyof typeof en;
@@ -808,6 +809,7 @@ export const ru: Record<Key, string> = {
   "mon.type.k8s": "Workload Kubernetes",
   "mon.type.vm": "VM / CT",
   "mon.target_hint_resource": "источник:агент:ключ, например proxmox:*:qemu/100 (из «Найдено»)",
+  "map.history": "История пути",
 };
 
 export type Lang = "en" | "ru";

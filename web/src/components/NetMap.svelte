@@ -164,6 +164,7 @@
   onMount(() => {
     cy = cytoscape({ container: el, wheelSensitivity: 0.3, minZoom: 0.1, maxZoom: 3 });
     cy.on("tap", "node", (e) => onselect(e.target.id(), String(e.target.data("type"))));
+    cy.on("tap", "edge.path", (e) => onselect(e.target.id(), "path"));
     cy.on("dragfree", "node", savePositions);
     render();
   });

@@ -27,6 +27,7 @@ type MapEdge struct {
 	Type    string `json:"type"` // link, path
 	Verdict string `json:"verdict,omitempty"`
 	Label   string `json:"label,omitempty"`
+	Segment string `json:"segment,omitempty"` // path edges
 }
 
 // Hypothesis is an inferred bottleneck (unmanaged switch or uplink).
@@ -83,7 +84,7 @@ func (s *Server) buildMap(ctx context.Context, segs []topo.Segment, rep *Report)
 			e := pairs[k]
 			if e == nil {
 				e = &MapEdge{ID: fmt.Sprintf("path:%s:%s:%s", a, b, p.SegID), Source: "dev:" + a, Target: "dev:" + b,
-					Type: "path", Verdict: p.Verdict}
+					Type: "path", Verdict: p.Verdict, Segment: p.SegID}
 				pairs[k] = e
 			}
 			e.Verdict = worse(e.Verdict, p.Verdict)
@@ -158,6 +159,7 @@ func (s *Server) buildMap(ctx context.Context, segs []topo.Segment, rep *Report)
 	if rep != nil {
 		g.Hypotheses = Bottlenecks(rep)
 	}
+	s.decorateMap(ctx, &g)
 	if MapDecorator != nil {
 		MapDecorator(ctx, s, &g, rep)
 	}

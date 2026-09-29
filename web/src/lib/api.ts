@@ -10,6 +10,7 @@ import type {
   Maintenance,
   MonitorDetail,
   MonitorView,
+  PathPoint,
   Rule,
   SearchResult,
   Service,
@@ -110,6 +111,8 @@ export const api = {
   ipam: () => call<IPAM[]>("GET", "/ipam"),
   anomalies: () => call<Anomaly[]>("GET", "/anomalies"),
   map: () => call<MapGraph>("GET", "/map"),
+  pathHistory: (src: string, dst: string, seg = "") =>
+    call<PathPoint[]>("GET", `/paths/history?src=${enc(src)}&dst=${enc(dst)}${seg ? `&seg=${enc(seg)}` : ""}`),
 
   runs: (limit = 50) => call<RunSummary[]>("GET", `/runs?limit=${limit}`),
   run: (id: number) => call<Report>("GET", `/runs/${id}`),

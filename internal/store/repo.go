@@ -590,3 +590,30 @@ func b2i(b bool) int {
 	}
 	return 0
 }
+
+// RunReports returns the reports of the newest finished runs of the given kinds.
+func (s *Store) RunReports(ctx context.Context, kinds []string, limit int) ([]Run, error) {
+	rows, err := s.Query(ctx, `SELECT id, kind, status, started, finished, report FROM runs WHERE status='done' ORDER BY id DESC LIMIT ?`,
+		limit*4)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	want := map[string]bool{}
+	for _, k := range kinds {
+		want[k] = true
+	}
+	out := []Run{}
+	for rows.Next() && len(out) < limit {
+		var r Run
+		var rep string
+		if err := rows.Scan(&r.ID, &r.Kind, &r.Status, &r.Started, &r.Finished, &rep); err != nil {
+			return nil, err
+		}
+		if want[r.Kind] {
+			r.Report = json.RawMessage(rep)
+			out = append(out, r)
+		}
+	}
+	return out, rows.Err()
+}

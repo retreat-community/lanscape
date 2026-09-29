@@ -486,3 +486,56 @@ func TestResourceMonitorsAndProxmoxSpeed(t *testing.T) {
 		t.Errorf("unknown container: %+v", r)
 	}
 }
+
+func TestMapDecorationAndPathHistory(t *testing.T) {
+	s, ts := newTestServer(t)
+	ctx := context.Background()
+	c := client(t)
+	do(t, c, "POST", ts.URL+"/api/v1/auth/login", credentials{Username: "admin", Password: "correct-horse-battery"}, nil)
+	s.hub.Connected(AgentState{ID: "pve", Name: "pve1", Hostname: "pve1", Kind: "full"}, &fakeConn{id: "pve"})
+	s.hub.Connected(AgentState{ID: "nas", Name: "nas", Kind: "full", Inv: agent.Inventory{Env: agent.Env{Kind: "vm"},
+		Ifaces: []netio.Iface{{Name: "eth0", MAC: "bc:24:11:aa:bb:cc"}}}}, &fakeConn{id: "nas"})
+	s.hub.Connected(AgentState{ID: "pod1", Name: "pve1-pod", Kind: "full", Inv: agent.Inventory{Env: agent.Env{Kind: "k8s-pod", K8sNode: "pve1"}}},
+		&fakeConn{id: "pod1"})
+	rep := discovery.Report{Sources: []discovery.SourceReport{{Source: discovery.SourceProxmox, Items: []discovery.Item{
+		{Key: "qemu/100", Kind: discovery.KindVM, Name: "nas", State: "running", Labels: map[string]string{"node": "pve1"},
+			NICs: []discovery.NIC{{MAC: "bc:24:11:aa:bb:cc", Bridge: "vmbr0"}}},
+		{Key: "lxc/200", Kind: discovery.KindCT, Name: "dns", State: "running", Labels: map[string]string{"node": "pve1"}},
+	}}}}
+	if err := s.ingestDiscovery(ctx, "pve", rep); err != nil {
+		t.Fatal(err)
+	}
+	var svc store.Service
+	do(t, c, "POST", ts.URL+"/api/v1/found/add", map[string]any{"key": "proxmox:lxc/200", "monitor": true, "tile": true}, &svc)
+	var g MapGraph
+	do(t, c, "GET", ts.URL+"/api/v1/map", nil, &g)
+	parent := map[string]string{}
+	for _, n := range g.Nodes {
+		parent[n.ID] = n.Parent
+	}
+	if parent["dev:nas"] != "dev:pve" || parent["dev:pod1"] != "dev:pve" || parent["guest:lxc/200"] != "dev:pve" {
+		t.Errorf("nesting: %v", parent)
+	}
+	if _, ok := parent["guest:qemu/100"]; ok {
+		t.Error("a VM with an agent must not be duplicated")
+	}
+	if parent["svc:"+strconv.FormatInt(svc.ID, 10)] != "guest:lxc/200" {
+		t.Errorf("service badge: %v", parent)
+	}
+
+	for i, bps := range []uint64{900e6, 400e6} {
+		id, _ := s.store.CreateRun(ctx, store.Run{Kind: KindFull, Status: "running", Started: int64(i)})
+		b, _ := json.Marshal(Report{ID: id, Kind: KindFull, Status: "done", Paths: []topo.PathResult{
+			{SegID: "lan", Src: "a", Dst: "b", SrcIf: "eth0", DstIf: "eth0", BestBPS: bps, Verdict: "green"},
+			{SegID: "lan", Src: "a", Dst: "c", BestBPS: 1}}})
+		_ = s.store.FinishRun(ctx, id, "done", b)
+	}
+	var hist []PathPoint
+	do(t, c, "GET", ts.URL+"/api/v1/paths/history?src=b&dst=a&seg=lan", nil, &hist)
+	if len(hist) != 2 || hist[0].BestBPS != 900e6 || hist[1].BestBPS != 400e6 {
+		t.Errorf("history: %+v", hist)
+	}
+	if code := do(t, c, "GET", ts.URL+"/api/v1/paths/history", nil, nil); code != 400 {
+		t.Errorf("missing params: %d", code)
+	}
+}

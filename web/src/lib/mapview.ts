@@ -53,6 +53,11 @@ export function elements(g: MapGraph, f: MapFilter, positions: Record<string, { 
       position: positions[n.id],
     });
   }
+  // a nested node whose container was filtered out is shown at the top level
+  for (const el of out) {
+    const parent = el.data.parent as string | undefined;
+    if (parent && !kept.has(parent)) el.data.parent = undefined;
+  }
   for (const e of g.edges) {
     if (!kept.has(e.source) || !kept.has(e.target)) continue;
     if (e.type === "path" && !f.paths) continue;

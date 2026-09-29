@@ -440,6 +440,36 @@ paths:
           content:
             application/json:
               schema: {$ref: "#/components/schemas/MapGraph"}
+  /api/v1/paths/history:
+    get:
+      tags: [network]
+      operationId: pathHistory
+      summary: Path history
+      description: Measurements of the paths between two nodes in the newest full and reachability runs, oldest first.
+      parameters:
+        - {name: src, in: query, required: true, schema: {type: string}}
+        - {name: dst, in: query, required: true, schema: {type: string}}
+        - {name: seg, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, default: 30, maximum: 200}}
+      responses:
+        "200":
+          description: measurements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    run_id: {type: integer}
+                    finished: {type: integer}
+                    src_if: {type: string}
+                    dst_if: {type: string}
+                    best_bps: {type: integer}
+                    rtt_us: {type: integer}
+                    verdict: {type: string}
+                    status: {type: string}
+        "400": {$ref: "#/components/responses/Error"}
   /api/v1/runs:
     get:
       tags: [runs]
@@ -1421,6 +1451,7 @@ components:
               type: {type: string, enum: [link, path, dependency]}
               verdict: {type: string}
               label: {type: string}
+              segment: {type: string, description: segment of a path edge}
         hypotheses:
           type: array
           items:

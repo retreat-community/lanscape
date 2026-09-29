@@ -252,6 +252,18 @@ export interface MapEdge {
   type: string;
   verdict?: string;
   label?: string;
+  segment?: string;
+}
+
+export interface PathPoint {
+  run_id: number;
+  finished: number;
+  src_if: string;
+  dst_if: string;
+  best_bps: number;
+  rtt_us?: number;
+  verdict: string;
+  status?: string;
 }
 
 export interface Hypothesis {

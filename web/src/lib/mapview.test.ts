@@ -34,3 +34,21 @@ describe("map elements", () => {
     expect(queryToFilter(filterToQuery(f))).toEqual(f);
   });
 });
+
+describe("nesting", () => {
+  it("drops the parent of a node whose container is filtered out", () => {
+    const g = {
+      nodes: [
+        { id: "dev:host", label: "host", type: "device", status: "red" },
+        { id: "dev:vm", label: "vm", type: "device", parent: "dev:host", status: "red" },
+        { id: "dev:ok", label: "ok", type: "device", parent: "dev:host", status: "green" },
+      ],
+      edges: [],
+      hypotheses: [],
+    };
+    const els = elements(g, { paths: true, services: true, onlyProblems: false, segment: "" }, {});
+    expect(els.find((e) => e.data.id === "dev:vm")?.data.parent).toBe("dev:host");
+    const onlyVM = elements({ ...g, nodes: g.nodes.slice(1) }, { paths: true, services: true, onlyProblems: false, segment: "" }, {});
+    expect(onlyVM.find((e) => e.data.id === "dev:vm")?.data.parent).toBeUndefined();
+  });
+});

@@ -62,6 +62,7 @@ func (s *Server) servicesRoutes(mux *http.ServeMux, v func(string, http.HandlerF
 	mux.HandleFunc("GET /api/v1/changes", v(RoleViewer, s.apiChanges))
 	mux.HandleFunc("GET /api/v1/dashboard", v(RoleViewer, s.apiDashboard))
 	mux.HandleFunc("GET /api/v1/search", v(RoleViewer, s.apiSearch))
+	mux.HandleFunc("GET /api/v1/paths/history", v(RoleViewer, s.apiPathHistory))
 }
 
 func (s *Server) actor(r *http.Request) string {

@@ -4,13 +4,36 @@
   import { api, subscribe } from "../lib/api";
   import { filterToQuery, queryToFilter, type MapFilter } from "../lib/mapview";
   import { can, t, toast } from "../lib/state.svelte";
-  import type { MapGraph, MapNode } from "../lib/types";
+  import { rate, when } from "../lib/format";
+  import type { MapEdge, MapGraph, MapNode, PathPoint } from "../lib/types";
 
   let graph = $state<MapGraph | null>(null);
   const q = location.hash.split("?")[1] ?? "";
   let filter = $state<MapFilter>(queryToFilter(q));
   let wall = $state(new URLSearchParams(q).get("wall") === "1");
   let selected = $state<MapNode | null>(null);
+  let selEdge = $state<MapEdge | null>(null);
+  let hist = $state<PathPoint[]>([]);
+
+  async function select(id: string, type: string): Promise<void> {
+    if (type !== "path") {
+      selEdge = null;
+      selected = graph?.nodes.find((n) => n.id === id) ?? null;
+      return;
+    }
+    selected = null;
+    selEdge = graph?.edges.find((e) => e.id === id) ?? null;
+    hist = [];
+    if (!selEdge) return;
+    try {
+      hist = await api.pathHistory(selEdge.source.slice(4), selEdge.target.slice(4), selEdge.segment ?? "");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  const nodeName = (id: string) => graph?.nodes.find((n) => n.id === id)?.label ?? id;
+  const histMax = $derived(Math.max(1, ...hist.map((p) => p.best_bps)));
   let mapRef = $state<ReturnType<typeof NetMap> | null>(null);
   let box: HTMLDivElement;
 
@@ -96,12 +119,12 @@
   <div class="body">
     <div class="card canvas">
       {#if graph}
-        <NetMap bind:this={mapRef} {graph} {filter} onselect={(id) => (selected = graph?.nodes.find((n) => n.id === id) ?? null)} />
+        <NetMap bind:this={mapRef} {graph} {filter} onselect={(id, type) => void select(id, type)} />
       {:else}
         <p class="muted">{t("common.loading")}</p>
       {/if}
     </div>
-    {#if selected || graph?.hypotheses.length}
+    {#if selected || selEdge || graph?.hypotheses.length}
       <aside class="card side">
         {#if selected}
           <h2>{selected.label}</h2>
@@ -118,6 +141,39 @@
           {/if}
           {#if typeof selected.data?.url === "string"}
             <a href={String(selected.data.url)} target="_blank" rel="noopener">{selected.data.url}</a>
+          {/if}
+        {/if}
+        {#if selEdge}
+          <h2>{nodeName(selEdge.source)} ↔ {nodeName(selEdge.target)}</h2>
+          <div class="muted small">{selEdge.segment} · {selEdge.label ?? ""}</div>
+          <h3>{t("map.history")}</h3>
+          {#if hist.length}
+            <svg class="spark" viewBox="0 0 {hist.length * 12} 60" preserveAspectRatio="none" role="img" aria-label={t("map.history")}>
+              {#each hist as p, i (p.run_id + p.src_if + p.dst_if)}
+                <rect
+                  x={i * 12 + 1}
+                  width="10"
+                  y={60 - Math.max(2, (p.best_bps / histMax) * 58)}
+                  height={Math.max(2, (p.best_bps / histMax) * 58)}
+                  class="bar-{p.verdict || 'none'}"
+                >
+                  <title>#{p.run_id} {when(p.finished, "en")}: {rate(p.best_bps)} {p.status ?? ""}</title>
+                </rect>
+              {/each}
+            </svg>
+            <table class="small">
+              <tbody>
+                {#each hist.slice(-8).reverse() as p (p.run_id + p.src_if + p.dst_if)}
+                  <tr>
+                    <td><a href="#/runs/{p.run_id}">#{p.run_id}</a></td>
+                    <td><span class="dot v-{p.verdict || 'none'}"></span>{rate(p.best_bps)}</td>
+                    <td class="muted">{p.src_if}→{p.dst_if}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          {:else}
+            <p class="muted small">{t("common.loading")}</p>
           {/if}
         {/if}
         {#if graph?.hypotheses.length}
@@ -164,6 +220,25 @@
   .side {
     width: 300px;
     flex: none;
+  }
+  .spark {
+    width: 100%;
+    height: 60px;
+  }
+  .spark rect {
+    fill: var(--none);
+  }
+  .spark .bar-green {
+    fill: var(--green);
+  }
+  .spark .bar-yellow {
+    fill: var(--yellow);
+  }
+  .spark .bar-red {
+    fill: var(--red);
+  }
+  .spark .bar-purple {
+    fill: var(--purple);
   }
   @media (max-width: 800px) {
     .body {

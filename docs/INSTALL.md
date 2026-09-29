@@ -176,3 +176,38 @@ and modes: `--max-duration`, `--max-streams`, `--max-udp-mbps`, `--exclude 'wan*
 `--mode respond-only` (never initiate tests) or `--mode checks-only` (no test responder).
 Certificates are stored in the data directory and renewed automatically 30 days before expiry.
 Deleting an agent in the panel revokes its access.
+
+### Service discovery
+
+Agents report what runs on their hosts every 5 minutes (`--discover-interval`); the panel merges
+the findings into cards in **Services → Found**. Sources are chosen with `--discover`:
+
+| Source | What it needs |
+|---|---|
+| `sockets` | Linux; root (or `CAP_SYS_PTRACE`) to see the processes behind other users' sockets |
+| `docker` | read access to the Docker (or Podman) socket, `--docker-socket /var/run/docker.sock`; mount it read-only in containers |
+| `k8s` | in-cluster service account with read-only access to Services, Ingresses, HTTPRoutes, Deployments, StatefulSets, DaemonSets and PVCs, or `--kubeconfig` |
+
+The default `--discover auto` enables `sockets` on Linux, `docker` when the socket exists and
+`k8s` inside a cluster. HTTP endpoints are fingerprinted (title, headers, favicon, characteristic
+paths) against the built-in library of application signatures; `--no-probe` turns this off and
+`--signatures my-apps.yaml` adds your own signatures in the format of
+[`internal/fingerprint/signatures.yaml`](../internal/fingerprint/signatures.yaml).
+
+Found services wait in the queue until you add, ignore or hide them. Rules in
+**Settings → Discovery** triage new cards automatically, for example "every Ingress with TLS →
+add with an HTTPS monitor and a dashboard tile".
+
+### Monitors and notifications
+
+Monitors check HTTP(S), TCP, UDP, ICMP, DNS and TLS certificates from the server or from any
+Full agent (**Check from**); with several observation points an incident opens only when at
+least *N* points fail, which separates "the service is down" from "the path to it is down". An
+incident opens after the configured number of failed checks in a row and closes automatically.
+Maintenance windows (planned, or "right now for 30 minutes") mute notifications.
+
+Notification channels (**Settings → Notifications**): Telegram (bot token and chat id), webhook
+(JSON body, optional HMAC-SHA256 signature in `X-Lanscape-Signature`), email (SMTP with STARTTLS
+or TLS) and ntfy. Each channel can have quiet hours, a repeat interval for unacknowledged
+incidents and a list of monitors it cares about. Set **Settings → General → Public URL** so
+notifications link back to the panel.

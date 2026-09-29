@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/retreat-community/lanscape/internal/discovery"
@@ -75,6 +76,14 @@ func (s *Server) resourceResult(ctx context.Context, spec monitor.Spec) monitor.
 			res.Status, res.Message = monitor.Degraded, fmt.Sprintf("%s %s", it.State, it.Ready)
 		default:
 			res.Status, res.Message = monitor.Down, strings.TrimSpace(it.State+" "+it.Ready)
+		}
+		if n, _ := strconv.Atoi(it.Labels["pending"]); n > 0 && res.Status == monitor.Up {
+			res.Status, res.Message = monitor.Degraded, fmt.Sprintf("%d pods pending", n)
+		}
+		if n, err := strconv.Atoi(it.Labels["restarts"]); err == nil {
+			if prev, ok := s.restarts.swap(spec.Target, n); ok && n > prev && res.Status == monitor.Up {
+				res.Status, res.Message = monitor.Degraded, fmt.Sprintf("pods restarted (%d → %d restarts)", prev, n)
+			}
 		}
 		if it.Kind == discovery.KindService {
 			res.Status, res.Message = monitor.Up, ""
@@ -233,4 +242,22 @@ func (s *Server) pathResult(ctx context.Context, spec monitor.Spec) monitor.Resu
 		res.Status, res.Message = monitor.Up, fmt.Sprintf("%d paths green", n)
 	}
 	return res
+}
+
+// restartCounts remembers the pod restart count per workload monitor target.
+type restartCounts struct {
+	mu sync.Mutex
+	m  map[string]int
+}
+
+// swap stores n and returns the previous count.
+func (r *restartCounts) swap(key string, n int) (int, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.m == nil {
+		r.m = map[string]int{}
+	}
+	prev, ok := r.m[key]
+	r.m[key] = n
+	return prev, ok
 }

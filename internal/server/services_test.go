@@ -605,3 +605,35 @@ func TestPathMonitor(t *testing.T) {
 		t.Error("bad target accepted")
 	}
 }
+
+func TestK8sRestartsAndPending(t *testing.T) {
+	s, _ := newTestServer(t)
+	ctx := context.Background()
+	s.hub.Connected(AgentState{ID: "k", Name: "k8s-0", Kind: "full"}, &fakeConn{id: "k"})
+	w := discovery.Item{Key: "deploy/forge/gitea", Kind: discovery.KindDeployment, Name: "gitea", State: "ready", Ready: "2/2",
+		Labels: map[string]string{"restarts": "4"}}
+	report := func() {
+		if err := s.ingestDiscovery(ctx, "k", discovery.Report{Sources: []discovery.SourceReport{{Source: discovery.SourceK8s,
+			Items: []discovery.Item{w}}}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	spec := monitor.Spec{Type: monitor.TypeK8s, Target: "k8s:*:deploy/forge/gitea"}
+	report()
+	if r := s.resourceResult(ctx, spec); r.Status != monitor.Up {
+		t.Fatalf("first check: %+v", r)
+	}
+	w.Labels = map[string]string{"restarts": "6"}
+	report()
+	if r := s.resourceResult(ctx, spec); r.Status != monitor.Degraded || !strings.Contains(r.Message, "4 → 6") {
+		t.Errorf("restart: %+v", r)
+	}
+	if r := s.resourceResult(ctx, spec); r.Status != monitor.Up {
+		t.Errorf("stable after restart: %+v", r)
+	}
+	w.Labels = map[string]string{"restarts": "6", "pending": "1"}
+	report()
+	if r := s.resourceResult(ctx, spec); r.Status != monitor.Degraded || !strings.Contains(r.Message, "pending") {
+		t.Errorf("pending: %+v", r)
+	}
+}

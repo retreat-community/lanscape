@@ -68,7 +68,12 @@ func TestKubernetes(t *testing.T) {
 		"/apis/networking.k8s.io/v1/ingresses": `{"items":[{"metadata":{"name":"gitea","namespace":"forge"},
 			"spec":{"tls":[{"hosts":["git.example"]}],"rules":[{"host":"git.example","http":{"paths":[
 			{"backend":{"service":{"name":"gitea-http","port":{"number":3000}}}}]}}]}}]}`,
-		"/apis/apps/v1/deployments": `{"items":[{"metadata":{"name":"gitea","namespace":"forge"},"spec":{"replicas":2,
+		"/api/v1/pods": `{"items":[
+			{"metadata":{"name":"gitea-1","namespace":"forge","labels":{"app":"gitea","pod-template-hash":"x"}},
+			 "status":{"phase":"Running","containerStatuses":[{"restartCount":3},{"restartCount":1}]}},
+			{"metadata":{"name":"gitea-2","namespace":"forge","labels":{"app":"gitea"}},"status":{"phase":"Pending"}},
+			{"metadata":{"name":"other","namespace":"default","labels":{"app":"gitea"}},"status":{"phase":"Pending"}}]}`,
+		"/apis/apps/v1/deployments": `{"items":[{"metadata":{"name":"gitea","namespace":"forge"},"spec":{"replicas":2,"selector":{"matchLabels":{"app":"gitea"}},
 			"template":{"metadata":{"labels":{"app":"gitea"}},"spec":{"containers":[{"image":"gitea/gitea:1.22"}]}}},
 			"status":{"replicas":2,"readyReplicas":1}}]}`,
 		"/apis/apps/v1/statefulsets":     `{"items":[]}`,
@@ -120,6 +125,9 @@ users:
 	}
 	if in := byKey["ingress/forge/gitea"]; !in.TLS || in.Hosts[0] != "git.example" || in.Backends[0] != "forge/gitea-http:3000" {
 		t.Errorf("ingress: %+v", in)
+	}
+	if d := byKey["deploy/forge/gitea"]; d.Labels["restarts"] != "4" || d.Labels["pending"] != "1" {
+		t.Errorf("pod stats: %+v", d.Labels)
 	}
 	if d := byKey["deploy/forge/gitea"]; d.State != "degraded" || d.Ready != "1/2" || d.PodLabels["app"] != "gitea" {
 		t.Errorf("deployment: %+v", d)

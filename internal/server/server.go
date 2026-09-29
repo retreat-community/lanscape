@@ -98,6 +98,7 @@ type Server struct {
 	pushClient *http.Client // Web Push delivery (tests swap it)
 	oidc       oidcState
 	inet       internetState
+	restarts   restartCounts
 }
 
 // New opens the store and the CA.

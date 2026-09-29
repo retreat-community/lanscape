@@ -161,7 +161,10 @@ type podTemplate struct {
 type k8sWorkload struct {
 	Metadata meta `json:"metadata"`
 	Spec     struct {
-		Replicas *int        `json:"replicas"`
+		Replicas *int `json:"replicas"`
+		Selector struct {
+			MatchLabels map[string]string `json:"matchLabels"`
+		} `json:"selector"`
 		Template podTemplate `json:"template"`
 	} `json:"spec"`
 	Status struct {
@@ -170,6 +173,59 @@ type k8sWorkload struct {
 		DesiredNumberScheduled int `json:"desiredNumberScheduled"`
 		NumberReady            int `json:"numberReady"`
 	} `json:"status"`
+}
+
+type k8sPod struct {
+	Metadata meta `json:"metadata"`
+	Status   struct {
+		Phase             string `json:"phase"`
+		ContainerStatuses []struct {
+			RestartCount int `json:"restartCount"`
+		} `json:"containerStatuses"`
+	} `json:"status"`
+}
+
+// podStats adds restarts and Pending pods to the workloads whose selector matches (§9.1).
+func podStats(items []Item, ws []k8sWorkload, kind string, pods []k8sPod) {
+	idx := map[string]int{}
+	for i, it := range items {
+		idx[it.Key] = i
+	}
+	for _, w := range ws {
+		i, ok := idx[kindPrefix[kind]+w.Metadata.Namespace+"/"+w.Metadata.Name]
+		sel := w.Spec.Selector.MatchLabels
+		if !ok || len(sel) == 0 {
+			continue
+		}
+		restarts, pending := 0, 0
+		for _, p := range pods {
+			if p.Metadata.Namespace != w.Metadata.Namespace || !matches(sel, p.Metadata.Labels) {
+				continue
+			}
+			for _, c := range p.Status.ContainerStatuses {
+				restarts += c.RestartCount
+			}
+			if p.Status.Phase == "Pending" {
+				pending++
+			}
+		}
+		if items[i].Labels == nil {
+			items[i].Labels = map[string]string{}
+		}
+		items[i].Labels["restarts"] = strconv.Itoa(restarts)
+		if pending > 0 {
+			items[i].Labels["pending"] = strconv.Itoa(pending)
+		}
+	}
+}
+
+func matches(sel, labels map[string]string) bool {
+	for k, v := range sel {
+		if labels[k] != v {
+			return false
+		}
+	}
+	return true
 }
 
 type k8sPVC struct {
@@ -212,6 +268,10 @@ func Kubernetes(ctx context.Context, kubeconfig string) ([]Item, error) {
 	}
 	items = append(items, routeItems(routes.Items)...)
 
+	var pods k8sList[k8sPod]
+	if err := c.list(ctx, "/api/v1/pods", &pods); err != nil && !errors.Is(err, errNotFound) {
+		errs = append(errs, err)
+	}
 	for _, w := range []struct{ path, kind string }{
 		{"/apis/apps/v1/deployments", KindDeployment},
 		{"/apis/apps/v1/statefulsets", KindStatefulSet},
@@ -222,7 +282,9 @@ func Kubernetes(ctx context.Context, kubeconfig string) ([]Item, error) {
 			errs = append(errs, err)
 			continue
 		}
-		items = append(items, workloadItems(ws.Items, w.kind)...)
+		wi := workloadItems(ws.Items, w.kind)
+		podStats(wi, ws.Items, w.kind, pods.Items)
+		items = append(items, wi...)
 	}
 
 	var pvcs k8sList[k8sPVC]

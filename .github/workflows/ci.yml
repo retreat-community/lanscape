@@ -103,6 +103,38 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
       - run: go test -count=1 ./...
 
+  web:
+    runs-on: retreat-k8s
+    container: node:22-bookworm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable pnpm
+        run: corepack enable && corepack prepare pnpm@9.15.9 --activate
+      - uses: actions/cache@v4
+        with:
+          path: /root/.local/share/pnpm/store
+          key: pnpm-${{ hashFiles('web/pnpm-lock.yaml') }}
+      - name: Install
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+      - name: svelte-check
+        working-directory: web
+        run: pnpm run check
+      - name: eslint
+        working-directory: web
+        run: pnpm run lint
+      - name: vitest
+        working-directory: web
+        run: pnpm run test
+      - name: vite build
+        working-directory: web
+        run: pnpm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webdist
+          path: internal/server/webdist/
+          include-hidden-files: true
+
   mini:
     needs: meta
     runs-on: retreat-k8s

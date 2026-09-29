@@ -74,7 +74,7 @@
   async function remeasure(n: MapNode): Promise<void> {
     const id = String(n.data?.agent ?? "");
     try {
-      await api.startRun({ kind: "full", nodes: [id] });
+      await api.startRun({ kind: "full", involve: [id] });
       toast(t("net.running", { done: 0, total: "…", eta: "…" }));
     } catch (e) {
       toast(e instanceof Error ? e.message : String(e));

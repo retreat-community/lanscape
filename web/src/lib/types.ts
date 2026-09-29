@@ -193,6 +193,7 @@ export interface RunOptions {
   bidir?: boolean;
   segments?: string[];
   nodes?: string[];
+  involve?: string[];
 }
 
 export interface AggregateSeg {

@@ -66,8 +66,26 @@
       : [],
   );
 
+  // agents get "measure the network to …": every path to and from that node
+  const measureActions = $derived<Action[]>(
+    can("operator")
+      ? results
+          .filter((r) => r.type === "agent")
+          .map((r) => ({
+            id: `measure:${r.id}`,
+            title: t("pal.action.measure", { name: r.title }),
+            role: "operator" as const,
+            run: async () => {
+              await api.startRun({ kind: "full", involve: [r.id] });
+              navigate("/network");
+            },
+          }))
+      : [],
+  );
+
   const items = $derived<Item[]>([
     ...results.map((r) => ({ kind: "result" as const, r })),
+    ...measureActions.map((a) => ({ kind: "action" as const, a })),
     ...wakeActions.map((a) => ({ kind: "action" as const, a })),
     ...actions
       .filter((a) => can(a.role) && (!q || t(a.title).toLowerCase().includes(q.toLowerCase())))

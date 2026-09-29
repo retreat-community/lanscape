@@ -130,6 +130,12 @@ func TestRunEndToEnd(t *testing.T) {
 	if est["paths"] != 4 || est["seconds"] <= 0 {
 		t.Errorf("estimate: %v", est)
 	}
+	s.hub.Connected(AgentState{ID: "c", Name: "n3", Kind: "full", Inv: node("10.31.0.3", "10.10.1.3")}, &fakeConn{id: "c"})
+	do(t, c, "GET", ts.URL+"/api/v1/runs/estimate?kind=full&involve=n3", nil, &est)
+	if est["paths"] != 8 { // n3 to and from n1 and n2 on both segments
+		t.Errorf("involve estimate: %v", est)
+	}
+	s.hub.Remove("c")
 	var started map[string]int64
 	if code := do(t, c, "POST", ts.URL+"/api/v1/runs", RunOptions{Kind: KindFull, DurationMS: 1000}, &started); code != 202 {
 		t.Fatalf("start run: %d", code)

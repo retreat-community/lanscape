@@ -33,7 +33,10 @@ type RunOptions struct {
 	Bidir       bool     `json:"bidir,omitempty"`
 	Segments    []string `json:"segments,omitempty"`
 	Nodes       []string `json:"nodes,omitempty"`
-	Actor       string   `json:"actor,omitempty"`
+	// Involve keeps every node but measures only the paths to or from these nodes ("measure
+	// the network to …")
+	Involve []string `json:"involve,omitempty"`
+	Actor   string   `json:"actor,omitempty"`
 }
 
 func (o *RunOptions) defaults(s Settings) {
@@ -221,12 +224,21 @@ func (r *Runner) plan(ctx context.Context, opts RunOptions) ([]topo.Segment, []p
 		st, _ := s.hub.Get(n.ID)
 		infos = append(infos, NodeInfo{ID: n.ID, Name: n.Name, Kind: st.Kind, Env: n.Env, Arch: st.Arch, Parent: n.Parent})
 	}
+	involve := map[string]bool{}
+	for _, n := range opts.Involve {
+		involve[n] = true
+	}
+	for _, n := range nodes {
+		if involve[n.Name] {
+			involve[n.ID] = true
+		}
+	}
 	var paths []pathRef
 	for si := range segs {
 		sg := &segs[si]
 		for _, a := range sg.Members {
 			for _, b := range sg.Members {
-				if a.Node == b.Node {
+				if a.Node == b.Node || (len(involve) > 0 && !involve[a.Node] && !involve[b.Node]) {
 					continue
 				}
 				src, ok1 := s.hub.Conn(a.Node)

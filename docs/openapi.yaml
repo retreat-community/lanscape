@@ -1826,7 +1826,8 @@ components:
         udp_rate_kbps: {type: integer}
         bidir: {type: boolean}
         segments: {type: array, items: {type: string}}
-        nodes: {type: array, items: {type: string}}
+        nodes: {type: array, items: {type: string}, description: only these nodes take part}
+        involve: {type: array, items: {type: string}, description: "only paths to or from these nodes (agent ids or names)"}
     RunSummary:
       type: object
       properties:

@@ -743,6 +743,9 @@ func (s *Server) apiStartRun(w http.ResponseWriter, r *http.Request) {
 func (s *Server) apiEstimate(w http.ResponseWriter, r *http.Request) {
 	opts := RunOptions{Kind: r.URL.Query().Get("kind"), UDP: r.URL.Query().Get("udp") == "1",
 		Bidir: r.URL.Query().Get("bidir") == "1"}
+	if v := r.URL.Query().Get("involve"); v != "" {
+		opts.Involve = strings.Split(v, ",")
+	}
 	paths, secs, err := s.runner.Estimate(r.Context(), opts)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())

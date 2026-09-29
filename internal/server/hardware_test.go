@@ -4,7 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/retreat-community/lanscape/internal/agent"
 	"github.com/retreat-community/lanscape/internal/discovery"
+	"github.com/retreat-community/lanscape/internal/store"
 )
 
 func TestHardwareWidgets(t *testing.T) {
@@ -25,5 +27,18 @@ func TestHardwareWidgets(t *testing.T) {
 	do(t, c, "GET", ts.URL+"/api/v1/dashboard", nil, &d)
 	if len(d.UPS) != 1 || len(d.Storage) != 1 || len(d.Power) != 2 || d.Power[0].Agent != "nas" {
 		t.Fatalf("widgets: ups %+v storage %+v power %+v", d.UPS, d.Storage, d.Power)
+	}
+}
+
+func TestTileMetric(t *testing.T) {
+	agents := map[string]AgentState{"nas": {ID: "nas", Inv: agent.Inventory{Resources: agent.Resources{Disks: []agent.Disk{
+		{Mount: "/", Total: 32 << 30, Used: 30 << 30}, {Mount: "/volume1", Total: 8 << 40, Used: 6 << 40}}}}}}
+	nas := store.Service{AppID: "truenas", Addresses: []store.Address{{Type: "hostport", Value: "nas:443", Agent: "nas"}}}
+	if m := tileMetric(&nas, agents); m != "2.0 TB free" {
+		t.Errorf("nas metric %q", m)
+	}
+	web := store.Service{AppID: "grafana", Category: "monitoring", Addresses: nas.Addresses}
+	if m := tileMetric(&web, agents); m != "" {
+		t.Errorf("grafana has a storage metric %q", m)
 	}
 }

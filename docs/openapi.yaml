@@ -2249,6 +2249,7 @@ components:
             url: {type: string, description: "internal URL for local clients, external otherwise"}
             uptime_day: {type: number, nullable: true}
             incident_id: {type: integer}
+            metric: {type: string, description: "short tile metric, e.g. free space of the host of a storage service"}
     CheckSpec:
       type: object
       required: [type, target]

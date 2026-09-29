@@ -511,6 +511,7 @@ export interface ServiceView extends Service {
   url: string;
   uptime_day: number | null;
   incident_id?: number;
+  metric?: string;
 }
 
 export interface Monitor {

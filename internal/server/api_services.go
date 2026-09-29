@@ -241,6 +241,54 @@ type ServiceView struct {
 	URL        string   `json:"url"` // smart link for the requesting client
 	UptimeDay  *float64 `json:"uptime_day"`
 	IncidentID int64    `json:"incident_id,omitempty"`
+	Metric     string   `json:"metric,omitempty"` // short tile metric, e.g. free space of a NAS
+}
+
+// nasApps are storage appliances whose tile shows the free space of their host.
+var nasApps = map[string]bool{"truenas": true, "synology": true, "qnap": true, "unraid": true, "openmediavault": true,
+	"terramaster": true, "xigmanas": true, "asustor": true, "ugreen": true, "nextcloud": true, "seafile": true,
+	"minio": true, "garage": true, "samba": true, "nfs": true, "pbs": true}
+
+// tileMetric returns the free space of the largest disk of the host running a storage service.
+func tileMetric(v *store.Service, agents map[string]AgentState) string {
+	if !nasApps[v.AppID] && v.Category != "storage" && v.Category != "files" {
+		return ""
+	}
+	for _, a := range v.Addresses {
+		st, ok := agents[a.Agent]
+		if a.Agent == "" || !ok {
+			continue
+		}
+		var total, used uint64
+		for _, d := range st.Inv.Resources.Disks {
+			if d.Total > total {
+				total, used = d.Total, d.Used
+			}
+		}
+		if total == 0 {
+			continue
+		}
+		return humanBytes(total-used) + " free"
+	}
+	return ""
+}
+
+// humanBytes formats a size with a binary unit ("1.2 TB").
+func humanBytes(n uint64) string {
+	const unit = 1024
+	if n < unit {
+		return fmt.Sprintf("%d B", n)
+	}
+	div, exp := uint64(unit), 0
+	for m := n / unit; m >= unit && exp < 4; m /= unit {
+		div *= unit
+		exp++
+	}
+	v := float64(n) / float64(div)
+	if v >= 100 {
+		return fmt.Sprintf("%.0f %cB", v, "KMGTP"[exp])
+	}
+	return fmt.Sprintf("%.1f %cB", v, "KMGTP"[exp])
 }
 
 var statusRank = map[string]int{monitor.Down: 5, monitor.Degraded: 4, StatusPending: 3, StatusMaintenance: 2, monitor.Up: 1, StatusPaused: 0}
@@ -287,9 +335,14 @@ func (s *Server) serviceViews(ctx context.Context, r *http.Request) ([]ServiceVi
 		incByMon[i.MonitorID] = i.ID
 	}
 	local := clientIsLocal(r)
+	agents := map[string]AgentState{}
+	for _, a := range s.hub.List() {
+		agents[a.ID] = a
+	}
 	out := make([]ServiceView, 0, len(svcs))
 	for i := range svcs {
-		v := ServiceView{Service: svcs[i], Monitors: []int64{}, URL: smartURL(&svcs[i], local)}
+		v := ServiceView{Service: svcs[i], Monitors: []int64{}, URL: smartURL(&svcs[i], local),
+			Metric: tileMetric(&svcs[i], agents)}
 		for _, m := range mons {
 			if m.ServiceID != v.ID {
 				continue

@@ -189,6 +189,7 @@
                   {#if s.status}<span class="dot {statusClass(s.status)}" title={t(`mon.status.${s.status}`)}></span>{/if}
                   {s.status ? latency(s.latency_ms) : ""}
                   {s.uptime_day !== null ? ` · ${pct(s.uptime_day)}` : ""}
+                  {s.metric ? ` · ${s.metric}` : ""}
                 </span>
               </span>
             </a>

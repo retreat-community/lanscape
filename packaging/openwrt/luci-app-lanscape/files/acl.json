@@ -1,0 +1,13 @@
+{
+	"luci-app-lanscape": {
+		"description": "Grant access to the Lanscape agent",
+		"read": {
+			"ubus": { "lanscape": [ "status", "last" ] },
+			"uci": [ "lanscape" ]
+		},
+		"write": {
+			"ubus": { "lanscape": [ "check" ] },
+			"uci": [ "lanscape" ]
+		}
+	}
+}

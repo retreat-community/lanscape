@@ -1,3 +1,5 @@
+//go:build !lanscape_small
+
 package discovery
 
 import (
@@ -15,19 +17,6 @@ import (
 	"sync"
 	"time"
 )
-
-// Proxmox kinds.
-const (
-	KindVM = "vm" // QEMU guest
-	KindCT = "ct" // LXC container
-)
-
-// ProxmoxConfig is a read-only API token (PVEAuditor role is enough).
-type ProxmoxConfig struct {
-	URL      string // https://pve:8006
-	Token    string // user@realm!tokenid=uuid
-	Insecure bool   // self-signed PVE certificate
-}
 
 type pveClient struct {
 	cfg ProxmoxConfig
@@ -67,15 +56,6 @@ type pveResource struct {
 	Status string `json:"status"`
 	Tags   string `json:"tags"`
 	Tmpl   int    `json:"template"`
-}
-
-// NIC is a guest network interface from the VM/CT configuration.
-type NIC struct {
-	Name   string `json:"name"`             // net0
-	MAC    string `json:"mac"`              // lower case
-	Bridge string `json:"bridge,omitempty"` // vmbr0
-	Model  string `json:"model,omitempty"`  // virtio, e1000 …
-	VLAN   int    `json:"vlan,omitempty"`
 }
 
 // ParsePVENet parses a Proxmox netN value: "virtio=BC:24:11:AA:BB:CC,bridge=vmbr0,tag=30" (QEMU) or

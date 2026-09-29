@@ -212,6 +212,8 @@ func (s *Server) handleAgentWS(w http.ResponseWriter, r *http.Request) {
 				_ = s.store.UpsertAgent(ctx, rec)
 			}
 		case proto.MsgPong:
+		case proto.MsgRunRequest, proto.MsgRunSummary:
+			go s.agentRequest(ctx, id, c, env)
 		default:
 			s.onAgentMessage(ctx, id, env)
 		}

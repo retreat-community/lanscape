@@ -59,6 +59,90 @@ type Agent struct {
 	agentID string
 	extra   map[string]func(ctx context.Context, env proto.Envelope) (any, error)
 	lastInv []byte
+
+	pmu     sync.Mutex
+	seq     uint64
+	pending map[string]chan proto.Envelope
+	status  Status
+}
+
+// Status is the local view of the agent (LuCI, "lanscape-agent status").
+type Status struct {
+	Connected bool   `json:"connected"`
+	Server    string `json:"server"`
+	AgentID   string `json:"agent_id,omitempty"`
+	Name      string `json:"name"`
+	Version   string `json:"version"`
+	Since     int64  `json:"since,omitempty"`
+	LastError string `json:"last_error,omitempty"`
+}
+
+// Status returns the connection state.
+func (a *Agent) Status() Status {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	st := a.status
+	st.Server, st.Name, st.Version, st.AgentID = a.cfg.Server, a.cfg.Name, a.cfg.Version, a.agentID
+	return st
+}
+
+// Request sends a message to the server and waits for the reply with the same id.
+func (a *Agent) Request(ctx context.Context, typ string, data any) (json.RawMessage, error) {
+	a.pmu.Lock()
+	a.seq++
+	id := fmt.Sprintf("a%d", a.seq)
+	ch := make(chan proto.Envelope, 1)
+	if a.pending == nil {
+		a.pending = map[string]chan proto.Envelope{}
+	}
+	a.pending[id] = ch
+	a.pmu.Unlock()
+	defer func() {
+		a.pmu.Lock()
+		delete(a.pending, id)
+		a.pmu.Unlock()
+	}()
+	env, err := proto.NewEnvelope(typ, id, data)
+	if err != nil {
+		return nil, err
+	}
+	a.mu.Lock()
+	c := a.conn
+	a.mu.Unlock()
+	if c == nil {
+		return nil, errors.New("agent: not connected")
+	}
+	if err := a.write(ctx, c, env); err != nil {
+		return nil, err
+	}
+	select {
+	case r := <-ch:
+		if r.Type == proto.MsgError {
+			var e struct {
+				Error string `json:"error"`
+			}
+			_ = json.Unmarshal(r.Data, &e)
+			return nil, errors.New(e.Error)
+		}
+		return r.Data, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+// deliver hands a reply to a pending Request.
+func (a *Agent) deliver(env proto.Envelope) bool {
+	if env.ID == "" || !strings.HasPrefix(env.ID, "a") {
+		return false
+	}
+	a.pmu.Lock()
+	ch := a.pending[env.ID]
+	a.pmu.Unlock()
+	if ch == nil {
+		return false
+	}
+	ch <- env
+	return true
 }
 
 // New creates an agent.
@@ -129,6 +213,11 @@ func (a *Agent) Run(ctx context.Context) error {
 			return nil //nolint:nilerr // shutdown, not a failure
 		}
 		a.log.Warn("control channel down", "err", err, "retry_in", backoff.String())
+		if err != nil {
+			a.mu.Lock()
+			a.status.LastError = err.Error()
+			a.mu.Unlock()
+		}
 		select {
 		case <-ctx.Done():
 			return nil
@@ -311,10 +400,12 @@ func (a *Agent) session(ctx context.Context) error {
 	a.mu.Lock()
 	a.conn = c
 	a.lastInv = nil
+	a.status = Status{Connected: true, Since: time.Now().UnixMilli()}
 	a.mu.Unlock()
 	defer func() {
 		a.mu.Lock()
 		a.conn = nil
+		a.status.Connected = false
 		a.mu.Unlock()
 	}()
 	a.log.Info("connected", "server", a.cfg.Server, "agent_id", a.agentID)
@@ -325,6 +416,9 @@ func (a *Agent) session(ctx context.Context) error {
 		var env proto.Envelope
 		if err := wsjson.Read(sctx, c, &env); err != nil {
 			return err
+		}
+		if a.deliver(env) {
+			continue
 		}
 		go a.dispatch(sctx, c, env)
 	}

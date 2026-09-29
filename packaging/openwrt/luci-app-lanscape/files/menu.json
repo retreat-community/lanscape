@@ -1,0 +1,14 @@
+{
+	"admin/services/lanscape": {
+		"title": "Lanscape",
+		"order": 90,
+		"action": {
+			"type": "view",
+			"path": "lanscape/agent"
+		},
+		"depends": {
+			"acl": [ "luci-app-lanscape" ],
+			"uci": { "lanscape": true }
+		}
+	}
+}

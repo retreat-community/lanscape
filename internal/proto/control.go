@@ -7,15 +7,18 @@ const ControlVersion = 1
 
 // Full control-plane message types (JSON over WebSocket, see docs/PROTOCOL.md §4).
 const (
-	MsgHello        = "hello"
-	MsgWelcome      = "welcome"
-	MsgInventory    = "inventory"
-	MsgGrant        = "grant"
-	MsgGrantAck     = "grant_ack"
-	MsgTest         = "test"
-	MsgTestResult   = "test_result"
-	MsgDiscovery    = "discovery"
-	MsgScan         = "scan"
+	MsgHello      = "hello"
+	MsgWelcome    = "welcome"
+	MsgInventory  = "inventory"
+	MsgGrant      = "grant"
+	MsgGrantAck   = "grant_ack"
+	MsgTest       = "test"
+	MsgTestResult = "test_result"
+	MsgDiscovery  = "discovery"
+	MsgScan       = "scan"
+	// agent → server requests (LuCI "check from this router")
+	MsgRunRequest   = "run_request"
+	MsgRunSummary   = "run_summary"
 	MsgCheck        = "check"
 	MsgCheckResult  = "check_result"
 	MsgAction       = "action"
@@ -90,4 +93,27 @@ type TestMsg struct {
 	DurationMS  int    `json:"duration_ms,omitempty"`
 	UDPRateKbps int    `json:"udp_rate_kbps,omitempty"`
 	PktSize     int    `json:"pkt_size,omitempty"`
+}
+
+// RunRequestMsg asks the server to test the paths of the requesting agent.
+type RunRequestMsg struct {
+	Kind string `json:"kind"` // full or reachability
+}
+
+// RunSummaryMsg is the part of a run report that concerns one agent.
+type RunSummaryMsg struct {
+	RunID    int64         `json:"run_id"`
+	Status   string        `json:"status"`
+	Finished int64         `json:"finished"`
+	Paths    []PathSummary `json:"paths"`
+	Problems []string      `json:"problems"`
+}
+
+// PathSummary is one path as seen from the agent.
+type PathSummary struct {
+	Peer    string  `json:"peer"`
+	Segment string  `json:"segment"`
+	Mbps    float64 `json:"mbps"`
+	Verdict string  `json:"verdict"`
+	RTTMS   float64 `json:"rtt_ms"`
 }

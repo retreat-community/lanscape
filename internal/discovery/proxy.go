@@ -1,3 +1,5 @@
+//go:build !lanscape_small
+
 package discovery
 
 import (
@@ -5,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,24 +16,6 @@ import (
 	"strings"
 	"time"
 )
-
-// Reverse-proxy source and kind.
-const (
-	SourceProxy    = "proxy"
-	KindProxyRoute = "proxy_route"
-)
-
-// ProxyConfig selects reverse proxies to read.
-type ProxyConfig struct {
-	TraefikURL string // http://traefik:8080 (API enabled)
-	CaddyAdmin string // http://127.0.0.1:2019
-	NginxDir   string // /etc/nginx
-}
-
-// Enabled reports whether any proxy is configured.
-func (c ProxyConfig) Enabled() bool {
-	return c.TraefikURL != "" || c.CaddyAdmin != "" || c.NginxDir != ""
-}
 
 var hostRuleRe = regexp.MustCompile(`Host(?:SNI)?\(([^)]*)\)`)
 var quotedRe = regexp.MustCompile("[`\"']([^`\"']+)[`\"']")
@@ -318,22 +301,6 @@ func serverBlocks(text string) []string {
 		}
 	}
 	return out
-}
-
-// BackendHostPort normalises a backend ("http://127.0.0.1:3000/", "gitea:3000") to host:port.
-func BackendHostPort(b string) string {
-	if !strings.Contains(b, "://") {
-		b = "http://" + b
-	}
-	u, err := url.Parse(b)
-	if err != nil || u.Host == "" {
-		return ""
-	}
-	host, port := u.Hostname(), u.Port()
-	if port == "" {
-		port = map[string]string{"https": "443", "http": "80"}[u.Scheme]
-	}
-	return net.JoinHostPort(host, port)
 }
 
 // sorted helper for tests

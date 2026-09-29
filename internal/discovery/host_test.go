@@ -1,3 +1,5 @@
+//go:build !lanscape_small
+
 package discovery
 
 import (

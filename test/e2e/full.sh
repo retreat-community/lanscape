@@ -34,7 +34,8 @@ agents() {
     for n in n1 n2 n3 rt; do
         rm -rf "$OUT/full-agent-$n"
         ip netns exec "$P-$n" "$BIN/lanscape-agent" --server "$GW" --token "$token" --name "$n" \
-            --data-dir "$OUT/full-agent-$n" --exclude 'mgmt*' --log-level debug > "$OUT/full-agent-$n.log" 2>&1 &
+            --data-dir "$OUT/full-agent-$n" --exclude 'mgmt*' --local-socket "$OUT/full-agent-$n.sock" \
+            --log-level debug > "$OUT/full-agent-$n.log" 2>&1 &
         echo $! >> "$OUT/full.pids"
     done
     ip netns exec "$P-pod" "$MINI/lsm-agent" -s 192.168.250.1:47711 -t "$MINI_TOKEN" -n pod -x 'mgmt*' \

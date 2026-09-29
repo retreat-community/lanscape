@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/xml"
+	"html"
 	"io"
 	"net"
 	"net/http"
@@ -235,12 +235,22 @@ func DeviceType(services []string, model string) string {
 
 type upnpDesc struct {
 	Device struct {
-		DeviceType   string `xml:"deviceType"`
-		FriendlyName string `xml:"friendlyName"`
-		Manufacturer string `xml:"manufacturer"`
-		ModelName    string `xml:"modelName"`
-		Presentation string `xml:"presentationURL"`
-	} `xml:"device"`
+		DeviceType, FriendlyName, Manufacturer, ModelName, Presentation string
+	}
+}
+
+// xmlText returns the text of the first <tag>…</tag> (a full XML decoder is not worth its size here).
+func xmlText(doc, tag string) string {
+	i := strings.Index(doc, "<"+tag+">")
+	if i < 0 {
+		return ""
+	}
+	rest := doc[i+len(tag)+2:]
+	j := strings.Index(rest, "</"+tag+">")
+	if j < 0 {
+		return ""
+	}
+	return strings.TrimSpace(html.UnescapeString(rest[:j]))
 }
 
 // SSDP searches UPnP devices and reads their descriptions.
@@ -329,7 +339,11 @@ func fetchDesc(ctx context.Context, hc *http.Client, loc string) (upnpDesc, erro
 		return d, err
 	}
 	defer resp.Body.Close()
-	err = xml.NewDecoder(io.LimitReader(resp.Body, 256<<10)).Decode(&d)
+	b, err := io.ReadAll(io.LimitReader(resp.Body, 256<<10))
+	doc := string(b)
+	d.Device.DeviceType, d.Device.FriendlyName = xmlText(doc, "deviceType"), xmlText(doc, "friendlyName")
+	d.Device.Manufacturer, d.Device.ModelName = xmlText(doc, "manufacturer"), xmlText(doc, "modelName")
+	d.Device.Presentation = xmlText(doc, "presentationURL")
 	return d, err
 }
 

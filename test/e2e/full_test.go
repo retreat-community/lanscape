@@ -275,6 +275,19 @@ func TestFull(t *testing.T) {
 		t.Errorf("macvlan (lite pod) not recognised: %+v", r.Problems)
 	}
 
+	// the local socket of an agent (LuCI "last results") reports its paths of the finished run
+	if out := os.Getenv("E2E_OUT"); out != "" {
+		bin := os.Getenv("LANSCAPE_BIN") + "/lanscape-agent"
+		st, err := exec.Command(bin, "status", "--local-socket", out+"/full-agent-n1.sock").CombinedOutput() //nolint:gosec // test paths
+		if err != nil || !strings.Contains(string(st), `"connected":true`) {
+			t.Errorf("agent status: %v %s", err, st)
+		}
+		last, err := exec.Command(bin, "last", "--local-socket", out+"/full-agent-n1.sock").CombinedOutput() //nolint:gosec // test paths
+		if err != nil || !strings.Contains(string(last), `"peer":"n2"`) {
+			t.Errorf("agent last run: %v %s", err, last)
+		}
+	}
+
 	// Prometheus metrics expose the paths of the finished run
 	resp, err := http.Get(fullURL + "/metrics")
 	if err != nil {

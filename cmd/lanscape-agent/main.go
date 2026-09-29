@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -36,6 +37,7 @@ type options struct {
 	adguardPassword, technitiumURL, technitiumToken, nut, smart, zfs                            string
 	discoverInterval                                                                            time.Duration
 	noProbe, proxmoxInsecure                                                                    bool
+	localSocket, openwrtParts                                                                   string
 }
 
 func parse(args []string) (*flag.FlagSet, *options, error) {
@@ -74,6 +76,8 @@ func parse(args []string) (*flag.FlagSet, *options, error) {
 	fs.StringVar(&o.zfs, "zfs", "auto", `ZFS pools ("auto" = when zpool is installed, "off")`)
 	fs.BoolVar(&o.noProbe, "no-probe", false, "do not fingerprint discovered HTTP endpoints")
 	fs.StringVar(&o.signatures, "signatures", "", "extra application signature files (YAML, comma-separated)")
+	fs.StringVar(&o.openwrtParts, "openwrt-parts", "", "OpenWrt source: leases,wifi,forwards,sqm (default all)")
+	fs.StringVar(&o.localSocket, "local-socket", defaultSocket(), `Unix socket for local tools ("lanscape-agent status", LuCI); "" disables`)
 	fs.StringVar(&o.logLevel, "log-level", "info", "debug, info, warn or error")
 	fs.StringVar(&o.logFormat, "log-format", "text", "text or json")
 	if err := fs.Parse(args); err != nil {
@@ -92,6 +96,9 @@ func run(args []string) error {
 	}
 	if len(args) > 0 && args[0] == "service" {
 		return serviceCommand(args[1:])
+	}
+	if len(args) > 0 && (args[0] == "status" || args[0] == "check" || args[0] == "last") {
+		return localCommand(args[0], args[1:])
 	}
 	if len(args) > 0 && args[0] == "run" {
 		args = args[1:]
@@ -117,6 +124,43 @@ func run(args []string) error {
 	defer stop()
 	a := agent.New(cfg, log)
 	registerModules(ctx, a, o, log)
+	if o.localSocket != "" {
+		go func() {
+			if err := a.ServeLocal(ctx, o.localSocket); err != nil && !errors.Is(err, context.Canceled) {
+				log.Warn("local socket disabled", "path", o.localSocket, "err", err)
+			}
+		}()
+	}
 	log.Info("lanscape-agent starting", "version", buildinfo.Version, "server", cfg.Server, "data_dir", cfg.DataDir)
 	return runService(ctx, a)
+}
+
+func defaultSocket() string {
+	if runtime.GOOS == "windows" {
+		return ""
+	}
+	return "/var/run/lanscape-agent.sock"
+}
+
+// localCommand queries a running agent: status, check [reachability|full], last.
+func localCommand(cmd string, args []string) error {
+	fs := flag.NewFlagSet(cmd, flag.ContinueOnError)
+	sock := fs.String("local-socket", defaultSocket(), "agent socket")
+	kind := fs.String("kind", "reachability", "check: reachability or full")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	line := cmd
+	if cmd == "check" {
+		line = "run " + *kind
+	}
+	out, err := agent.LocalCall(*sock, line)
+	if err != nil {
+		return fmt.Errorf("is the agent running? %w", err)
+	}
+	fmt.Println(strings.TrimSpace(string(out)))
+	if strings.HasPrefix(string(out), `{"error"`) {
+		return errors.New("the agent reported an error")
+	}
+	return nil
 }

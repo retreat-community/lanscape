@@ -29,3 +29,16 @@ from `signatures.yaml` (`go generate ./internal/fingerprint`), so the parser for
 does not need YAML. Builds with the `lanscape_small` tag (OpenWrt packages) also drop YAML support for
 user signature files and kubeconfig files (JSON only), which gives 8.45 MB. Further reductions for the
 OpenWrt package are part of the OpenWrt stage.
+
+## Addendum: the OpenWrt package (v0.5)
+
+The `lanscape_small` build for the `lanscape-agent` OpenWrt package also leaves out the Kubernetes,
+Docker, Proxmox, reverse-proxy, DNS-server and NUT/SMART/ZFS sources (routers keep sockets, the
+OpenWrt source, mDNS, SSDP, the scanner and all checks). The local socket for LuCI speaks a
+one-line protocol instead of HTTP (an HTTP server adds ~0.25 MB) and SSDP descriptions are read
+without `encoding/xml`. Inlining is disabled with `-gcflags=all=-l` except in the data plane
+(`testengine`, `netio`) and in `runtime`, `syscall`, `internal/poll` and `net`, which saves about
+0.85 MB on MIPS without touching the test hot paths.
+
+Result (stripped, `scripts/build-openwrt-agents.sh`): 8.06 MB on `mips`/`mipsle`, 8.19 MB on
+`mips64`, 6.9–7.5 MB on ARM, x86 and RISC-V. CI fails when a router build exceeds 8 MiB.

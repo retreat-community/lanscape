@@ -163,6 +163,13 @@ jobs:
         with:
           version: "~> v2"
           args: release --clean --skip=publish ${{ inputs.release && '--parallelism=4' || '--snapshot' }}
+      - name: Agents for the OpenWrt packages (lanscape_small, 8 MiB budget)
+        shell: bash
+        run: ./scripts/build-openwrt-agents.sh out/openwrt-agents "${{ needs.meta.outputs.version }}" | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openwrt-agents
+          path: out/openwrt-agents/
       - name: Collect
         run: |
           mkdir -p out/packages out/linux-amd64
@@ -284,7 +291,7 @@ jobs:
             test/e2e/screenshots/
 
   openwrt:
-    needs: [meta, mini]
+    needs: [meta, mini, build-full]
     runs-on: retreat-k8s
     strategy:
       fail-fast: false
@@ -298,6 +305,10 @@ jobs:
           pattern: mini-linux-*
           path: bins
           merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: openwrt-agents
+          path: bins
       - name: Build packages in the OpenWrt SDK
         run: |
           case "${{ matrix.branch }}" in 24.10) v=$OPENWRT_24 ;; *) v=$OPENWRT_25 ;; esac
@@ -305,9 +316,9 @@ jobs:
           docker run --rm -v "$PWD:/src:ro" -v "$PWD/bins:/bins:ro" -v "$PWD/out:/out" \
             "openwrt/sdk:${{ matrix.target }}-$v" \
             /src/packaging/openwrt/sdk-build.sh /src /bins /out "${{ needs.meta.outputs.pkg_version }}" \
-            lsm-agent lsm-server
+            lsm-agent lsm-server lanscape-agent luci-app-lanscape
           echo "ARCH=$(cat out/ARCH)" >> "$GITHUB_ENV"
-      - name: Check package size (≤ 64 KiB)
+      - name: Check Mini package size (≤ 64 KiB)
         run: |
           for f in out/lsm-*; do
             s=$(wc -c < "$f"); echo "$f $s"
@@ -316,11 +327,12 @@ jobs:
       - name: Install smoke test in OpenWrt rootfs
         if: matrix.target == 'x86-64'
         run: |
-          case "${{ matrix.branch }}" in 24.10) v=$OPENWRT_24; inst="opkg install /pkgs/lsm-agent_*.ipk /pkgs/lsm-server_*.ipk" ;;
-            *) v=$OPENWRT_25; inst="apk add --allow-untrusted /pkgs/lsm-agent-*.apk /pkgs/lsm-server-*.apk" ;; esac
+          case "${{ matrix.branch }}" in
+            24.10) v=$OPENWRT_24; inst="opkg install /pkgs/lsm-agent_*.ipk /pkgs/lsm-server_*.ipk /pkgs/lanscape-agent_*.ipk" ;;
+            *) v=$OPENWRT_25; inst="apk add --allow-untrusted /pkgs/lsm-agent-*.apk /pkgs/lsm-server-*.apk /pkgs/lanscape-agent-*.apk" ;; esac
           docker run --rm -v "$PWD/out:/pkgs:ro" "openwrt/rootfs:x86-64-$v" /bin/sh -c "
-            mkdir -p /var/lock /var/run && $inst && lsm-agent -V && lsm-server -V &&
-            uci -q get lsm.agent.exclude && uci -q get lsm.server.listen"
+            mkdir -p /var/lock /var/run && $inst && lsm-agent -V && lsm-server -V && lanscape-agent version &&
+            uci -q get lsm.agent.exclude && uci -q get lsm.server.listen && uci -q get lanscape.agent.exclude"
       - uses: actions/upload-artifact@v4
         with:
           name: openwrt-${{ matrix.branch }}-${{ env.ARCH }}
@@ -407,10 +419,10 @@ jobs:
         if: inputs.release
         run: |
           o=ghcr.io/${GITHUB_REPOSITORY_OWNER}
-          cosign sign --yes $o/lsm-agent@${{ steps.agent.outputs.digest }}
-          cosign sign --yes $o/lsm-server@${{ steps.server.outputs.digest }}
-          cosign sign --yes $o/lanscape@${{ steps.full.outputs.digest }}
-          cosign sign --yes $o/lanscape-agent@${{ steps.fullagent.outputs.digest }}
+          cosign sign --yes "$o/lsm-agent@${{ steps.agent.outputs.digest }}"
+          cosign sign --yes "$o/lsm-server@${{ steps.server.outputs.digest }}"
+          cosign sign --yes "$o/lanscape@${{ steps.full.outputs.digest }}"
+          cosign sign --yes "$o/lanscape-agent@${{ steps.fullagent.outputs.digest }}"
 
   openapi:
     runs-on: retreat-k8s

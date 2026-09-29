@@ -177,6 +177,35 @@ and modes: `--max-duration`, `--max-streams`, `--max-udp-mbps`, `--exclude 'wan*
 Certificates are stored in the data directory and renewed automatically 30 days before expiry.
 Deleting an agent in the panel revokes its access.
 
+### OpenWrt (Full agent and LuCI)
+
+`lanscape-agent` (the Full agent built for routers: 7–8 MB) and `luci-app-lanscape` come from the
+same releases and feed as the Mini packages. On routers with 16 MB of flash use `lsm-agent`.
+
+```sh
+# OpenWrt 25.12
+apk add --allow-untrusted lanscape-agent luci-app-lanscape
+# OpenWrt 24.10
+opkg install lanscape-agent luci-app-lanscape
+```
+
+Open **Services → Lanscape** in LuCI: server address, registration token, CA fingerprint, excluded
+interfaces (`wan` is excluded by default), test limits and the discovery sources (DHCP leases,
+Wi-Fi clients, port forwards, mDNS, SSDP). The page shows the connection state, a
+**Check from this router** button and the paths of the last run; a test limited by the router CPU
+is marked 🟣. Without LuCI:
+
+```sh
+uci set lanscape.agent.server='lanscape.lan:8443'
+uci set lanscape.agent.token='lsr_...'
+uci set lanscape.agent.ca_fingerprint='...'
+uci set lanscape.agent.enabled='1'
+uci commit lanscape && /etc/init.d/lanscape-agent restart
+lanscape-agent status      # connection state
+lanscape-agent check       # test the paths of this router now
+lanscape-agent last        # its paths in the last run
+```
+
 ### Service discovery
 
 Agents report what runs on their hosts every 5 minutes (`--discover-interval`); the panel merges

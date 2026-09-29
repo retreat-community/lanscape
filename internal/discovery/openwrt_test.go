@@ -68,3 +68,13 @@ func TestOpenWrtSource(t *testing.T) {
 		t.Errorf("wifi: %+v", w)
 	}
 }
+
+func TestOpenWrtParts(t *testing.T) {
+	p := ParseOpenWrtParts([]string{"leases", "wifi"})
+	if p.NoLeases || p.NoWifi || !p.NoForwards || !p.NoSQM {
+		t.Errorf("parts: %+v", p)
+	}
+	if (ParseOpenWrtParts(nil) != OpenWrtParts{}) {
+		t.Error("empty list must select everything")
+	}
+}

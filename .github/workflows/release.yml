@@ -30,7 +30,7 @@ jobs:
           merge-multiple: true
       - uses: actions/download-artifact@v4
         with:
-          pattern: openwrt-*
+          pattern: openwrt-[0-9]*
           path: openwrt
       - uses: actions/download-artifact@v4
         with:
@@ -57,7 +57,7 @@ jobs:
             done
             tar -C "$d" -czf "assets/${id}-feed.tar.gz" .
           done
-          cd assets && sha256sum * > checksums.txt
+          cd assets && sha256sum -- * > checksums.txt
       - name: Sign checksums
         run: cosign sign-blob --yes --bundle assets/checksums.txt.sigstore.json assets/checksums.txt
       - name: Release notes

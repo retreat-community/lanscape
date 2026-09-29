@@ -1,3 +1,5 @@
+//go:build !lanscape_small
+
 package discovery
 
 import (
@@ -11,24 +13,6 @@ import (
 	"strings"
 	"time"
 )
-
-// Host hardware source and kinds (dashboard widgets: UPS, SMART, storage pools).
-const (
-	SourceHost = "host"
-	KindUPS    = "ups"
-	KindDisk   = "disk"
-	KindPool   = "pool"
-)
-
-// HostConfig selects hardware sources.
-type HostConfig struct {
-	NUT   string // upsd address, e.g. 127.0.0.1:3493
-	SMART bool   // smartctl
-	ZFS   bool   // zpool
-}
-
-// Enabled reports whether a hardware source is on.
-func (c HostConfig) Enabled() bool { return c.NUT != "" || c.SMART || c.ZFS }
 
 // Hardware collects UPS state, disk health and storage pools.
 func Hardware(ctx context.Context, cfg HostConfig) ([]Item, error) {

@@ -108,6 +108,7 @@ type Config struct {
 	Kubeconfig   string // empty = in-cluster
 	Proxmox      ProxmoxConfig
 	OpenWrt      bool // DHCP leases, Wi-Fi clients, port forwards, SQM (on the router)
+	OpenWrtParts OpenWrtParts
 	Proxy        ProxyConfig
 	DNS          DNSConfig
 	Host         HostConfig
@@ -202,7 +203,7 @@ func (c *Collector) Collect(ctx context.Context) Report {
 		add(SourceDNS, items, err)
 	}
 	if c.cfg.OpenWrt {
-		items, err := OpenWrt(ctx, "")
+		items, err := OpenWrt(ctx, "", c.cfg.OpenWrtParts)
 		add(SourceOpenWrt, items, err)
 	}
 	if c.cfg.MDNS {

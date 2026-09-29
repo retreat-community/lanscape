@@ -53,6 +53,7 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 			AdGuardUser: o.adguardUser, AdGuardPassword: o.adguardPassword, TechnitiumURL: o.technitiumURL,
 			TechnitiumToken: o.technitiumToken}}
 	cfg.Host = hostConfig(o)
+	cfg.OpenWrtParts = discovery.ParseOpenWrtParts(cli.SplitList(o.openwrtParts))
 	if cfg.Proxy.NginxDir == "auto" {
 		cfg.Proxy.NginxDir = ""
 		if exists("/etc/nginx/nginx.conf") {

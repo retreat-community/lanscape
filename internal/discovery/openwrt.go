@@ -131,9 +131,44 @@ func ParseLeases(r io.Reader) []Item {
 	return out
 }
 
+// OpenWrtParts selects what the OpenWrt source reports (all when empty).
+type OpenWrtParts struct {
+	NoLeases, NoWifi, NoForwards, NoSQM bool
+}
+
+// ParseOpenWrtParts reads "leases,wifi,forwards,sqm" (empty = all).
+func ParseOpenWrtParts(list []string) OpenWrtParts {
+	if len(list) == 0 {
+		return OpenWrtParts{}
+	}
+	has := map[string]bool{}
+	for _, x := range list {
+		has[strings.TrimSpace(x)] = true
+	}
+	return OpenWrtParts{NoLeases: !has["leases"], NoWifi: !has["wifi"], NoForwards: !has["forwards"], NoSQM: !has["sqm"]}
+}
+
 // OpenWrt reads the router state: DHCP leases (dynamic and static), Wi-Fi clients, port
 // forwards and SQM. root is "" on the router (tests pass a directory).
-func OpenWrt(ctx context.Context, root string) ([]Item, error) {
+func OpenWrt(ctx context.Context, root string, parts ...OpenWrtParts) ([]Item, error) {
+	var pt OpenWrtParts
+	if len(parts) > 0 {
+		pt = parts[0]
+	}
+	items, err := openwrtAll(ctx, root)
+	out := items[:0]
+	for _, it := range items {
+		switch {
+		case it.Kind == KindLease && pt.NoLeases, it.Kind == KindWifiClient && pt.NoWifi,
+			it.Kind == KindPortForward && pt.NoForwards, it.Kind == KindSQM && pt.NoSQM:
+			continue
+		}
+		out = append(out, it)
+	}
+	return out, err
+}
+
+func openwrtAll(ctx context.Context, root string) ([]Item, error) {
 	var items []Item
 	leaseFile := "/tmp/dhcp.leases"
 	for _, d := range readUCI(root, "dhcp") {

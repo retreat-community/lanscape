@@ -1,3 +1,5 @@
+//go:build !lanscape_small
+
 package discovery
 
 import (
@@ -13,28 +15,6 @@ import (
 	"strings"
 	"time"
 )
-
-// DNS source and kind.
-const (
-	SourceDNS     = "dns"
-	KindDNSRecord = "dns_record"
-)
-
-// DNSConfig lists local DNS servers whose records name devices and services.
-type DNSConfig struct {
-	PiholeURL       string // http://pi.hole
-	PiholePassword  string // v6 app password, or the v5 API token
-	AdGuardURL      string
-	AdGuardUser     string
-	AdGuardPassword string
-	TechnitiumURL   string
-	TechnitiumToken string
-}
-
-// Enabled reports whether a DNS server is configured.
-func (c DNSConfig) Enabled() bool {
-	return c.PiholeURL != "" || c.AdGuardURL != "" || c.TechnitiumURL != ""
-}
 
 type dnsRec struct{ name, ip, server string }
 

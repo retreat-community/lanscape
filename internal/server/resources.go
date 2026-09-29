@@ -11,6 +11,7 @@ import (
 
 	"github.com/retreat-community/lanscape/internal/discovery"
 	"github.com/retreat-community/lanscape/internal/monitor"
+	"github.com/retreat-community/lanscape/internal/store"
 	"github.com/retreat-community/lanscape/internal/topo"
 )
 
@@ -91,11 +92,49 @@ func (s *Server) resourceResult(ctx context.Context, spec monitor.Spec) monitor.
 	case monitor.TypeVM:
 		if it.State == "running" {
 			res.Status = monitor.Up
+			guestStorage(fs, src, reporter, it, &res)
 		} else {
 			res.Status, res.Message = monitor.Down, "guest "+it.State
 		}
 	}
 	return res
+}
+
+// guestStorage marks a running guest down when a storage holding its disks is full (a full
+// hypervisor root stops guests writing, §20.3) and degraded when it is almost full.
+func guestStorage(fs []store.Finding, src, agentID string, g discovery.Item, res *monitor.Result) {
+	want := map[string]bool{}
+	for _, n := range strings.Split(g.Labels["storages"], ",") {
+		if n != "" {
+			want[n] = true
+		}
+	}
+	if len(want) == 0 {
+		return
+	}
+	for _, f := range fs {
+		if f.Source != src || f.AgentID != agentID || f.Kind != discovery.KindStorage || f.Gone != 0 {
+			continue
+		}
+		var st discovery.Item
+		if json.Unmarshal(f.Data, &st) != nil || !want[st.Name] || (st.Labels["shared"] != "1" && st.Labels["node"] != g.Labels["node"]) {
+			continue
+		}
+		size, _ := strconv.ParseInt(st.Labels["size"], 10, 64)
+		used, _ := strconv.ParseInt(st.Labels["alloc"], 10, 64)
+		if size <= 0 {
+			continue
+		}
+		pct := used * 100 / size
+		msg := fmt.Sprintf("storage %s on %s is %d%% full", st.Name, st.Labels["node"], pct)
+		switch {
+		case pct >= discovery.StorageFullPct:
+			res.Status, res.Message = monitor.Down, msg
+			return
+		case pct >= 90 && res.Status == monitor.Up:
+			res.Status, res.Message = monitor.Degraded, msg
+		}
+	}
 }
 
 // proxmoxSpeed lets virtio guests inherit the speed of the physical ports of the bridge they are

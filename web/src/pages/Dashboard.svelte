@@ -100,8 +100,10 @@
 
   const hwClass = (st: string): string =>
     ["online", "passed"].includes(st) ? "v-green" : ["warning", "on_battery", "degraded"].includes(st) ? "v-yellow" : "v-red";
+  // pools (ZFS) and hypervisor storages carry their size and allocation
+  const sized = (h: { kind: string }): boolean => h.kind === "pool" || h.kind === "storage";
   // pools always, disks only when something is wrong (healthy disks are counted)
-  const disksShown = $derived((d?.storage ?? []).filter((h) => h.kind === "pool" || h.state !== "passed"));
+  const disksShown = $derived((d?.storage ?? []).filter((h) => sized(h) || h.state !== "passed"));
   const healthyDisks = $derived((d?.storage ?? []).filter((h) => h.kind === "disk" && h.state === "passed").length);
 
   const mem = (a: Dashboard["agents"][number]): number =>
@@ -352,7 +354,7 @@
               <b>{h.name}</b>
               <span class="muted">
                 {h.agent} · {h.state}
-                {#if h.kind === "pool" && h.labels.size}· {Math.round((Number(h.labels.alloc) * 100) / Number(h.labels.size))}%{/if}
+                {#if sized(h) && Number(h.labels.size)}· {Math.round((Number(h.labels.alloc) * 100) / Number(h.labels.size))}%{/if}
                 {#if h.kind === "disk"}· {h.labels.model ?? ""} {h.labels.temp_c ? `${h.labels.temp_c}°C` : ""}{/if}
               </span>
             </div>

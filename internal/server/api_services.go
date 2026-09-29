@@ -1302,7 +1302,7 @@ func (s *Server) hardwareWidgets(ctx context.Context, d *Dashboard) {
 		return
 	}
 	for _, f := range fs {
-		if f.Source != discovery.SourceHost || f.Gone != 0 {
+		if (f.Source != discovery.SourceHost && f.Kind != discovery.KindStorage) || f.Gone != 0 {
 			continue
 		}
 		var it discovery.Item
@@ -1313,7 +1313,7 @@ func (s *Server) hardwareWidgets(ctx context.Context, d *Dashboard) {
 		switch it.Kind {
 		case discovery.KindUPS:
 			d.UPS = append(d.UPS, hv)
-		case discovery.KindPool, discovery.KindDisk:
+		case discovery.KindPool, discovery.KindDisk, discovery.KindStorage:
 			d.Storage = append(d.Storage, hv)
 		case discovery.KindPower:
 			d.Power = append(d.Power, hv)

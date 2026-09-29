@@ -473,6 +473,24 @@ func TestResourceMonitorsAndProxmoxSpeed(t *testing.T) {
 	if r := s.resourceResult(ctx, spec); r.Status != monitor.Up {
 		t.Errorf("running vm: %+v", r)
 	}
+	// a full storage holding the guest's disks takes it down (§20.3), an almost full one degrades it
+	vm.Labels["storages"] = "local"
+	storage := func(pct int) discovery.Item {
+		return discovery.Item{Key: "storage/pve1/local", Kind: discovery.KindStorage, Name: "local",
+			Labels: map[string]string{"node": "pve1", "size": "100", "alloc": strconv.Itoa(pct)}}
+	}
+	report(vm, storage(100))
+	if r := s.resourceResult(ctx, spec); r.Status != monitor.Down || !strings.Contains(r.Message, "local on pve1 is 100% full") {
+		t.Errorf("vm on a full storage: %+v", r)
+	}
+	report(vm, storage(93))
+	if r := s.resourceResult(ctx, spec); r.Status != monitor.Degraded {
+		t.Errorf("vm on an almost full storage: %+v", r)
+	}
+	report(vm, storage(40))
+	if r := s.resourceResult(ctx, spec); r.Status != monitor.Up {
+		t.Errorf("vm on a storage with room: %+v", r)
+	}
 	vm.State = "stopped"
 	report(vm)
 	if r := s.resourceResult(ctx, spec); r.Status != monitor.Down || !strings.Contains(r.Message, "stopped") {

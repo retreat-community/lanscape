@@ -66,6 +66,7 @@ export const en = {
   "problem.loss": "Packet loss",
   "problem.cpu_bound": "Limited by CPU",
   "problem.rtt": "High latency",
+  "problem.link_speed": "Port negotiated a lower speed",
   "hint.tcp_intercepted":
     "A transparent proxy (TPROXY/REDIRECT) or a firewall captures TCP in this subnet. Exclude the subnet from interception.",
   "hint.mtu": "A link on this path has a smaller MTU. Align the MTU on all hops or lower it on the endpoints.",
@@ -77,6 +78,7 @@ export const en = {
   "hint.loss": "Check cabling, duplex and interface errors.",
   "hint.cpu_bound": "The agent CPU was saturated; the link may be faster than measured.",
   "hint.rtt": "Check the path for congestion or unexpected routing.",
+  "hint.link_speed": "A 100M link on a gigabit network usually means a damaged cable (a broken pair) or a switch port forced to 100M.",
 
   "anomaly.duplicate_ip": "Duplicate IP / VIP on two nodes",
   "anomaly.duplicate_mac": "Duplicate MAC",
@@ -611,6 +613,7 @@ export const ru: Record<Key, string> = {
   "problem.loss": "Потери пакетов",
   "problem.cpu_bound": "Ограничено CPU",
   "problem.rtt": "Высокая задержка",
+  "problem.link_speed": "Порт согласовал меньшую скорость",
   "hint.tcp_intercepted":
     "Прозрачный прокси (TPROXY/REDIRECT) или файрвол перехватывает TCP в этой подсети. Исключите подсеть из перехвата.",
   "hint.mtu": "На пути есть линк с меньшим MTU. Выровняйте MTU на всех участках или уменьшите его на концах.",
@@ -622,6 +625,7 @@ export const ru: Record<Key, string> = {
   "hint.loss": "Проверьте кабели, дуплекс и ошибки интерфейса.",
   "hint.cpu_bound": "CPU агента был загружен полностью; линк может быть быстрее измеренного.",
   "hint.rtt": "Проверьте путь на перегрузку или неожиданную маршрутизацию.",
+  "hint.link_speed": "Линк 100M в гигабитной сети обычно значит повреждённый кабель (оборванную пару) или порт коммутатора, зафиксированный на 100M.",
 
   "anomaly.duplicate_ip": "Дубль IP / VIP на двух узлах",
   "anomaly.duplicate_mac": "Дубль MAC",

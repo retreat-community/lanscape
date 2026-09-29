@@ -141,6 +141,7 @@ const (
 	PLoss           = "loss"
 	PCPUBound       = "cpu_bound"
 	PRTT            = "rtt"
+	PLinkSpeed      = "link_speed"
 )
 
 // Problem is an explained finding for a path.
@@ -185,6 +186,33 @@ func Problems(segs []Segment, paths []PathResult, port int) []Problem {
 			}
 		}
 		return false
+	}
+	// a port that negotiated far below its segment peers (100M instead of 1G: a cable or switch
+	// port problem) is judged against its own speed, so its paths look fine; name it
+	for i, sg := range segs {
+		top, faster := 0, map[int]int{}
+		for _, m := range sg.Members {
+			if m.Kind == "physical" && m.Speed > 0 {
+				top = max(top, m.Speed)
+				faster[m.Speed]++
+			}
+		}
+		for _, m := range sg.Members {
+			if m.Kind != "physical" || m.Speed <= 0 || m.Speed*4 > top {
+				continue
+			}
+			peers := 0
+			for sp, n := range faster {
+				if sp >= top/2 {
+					peers += n
+				}
+			}
+			if peers >= 2 {
+				out = append(out, Problem{Kind: PLinkSpeed, Seg: i, SegID: sg.ID, Src: m.Node, SrcIf: m.Iface,
+					Detail: fmt.Sprintf("%s of %s negotiated %d Mbit/s while its peers run at %d Mbit/s: check the cable and the switch port",
+						m.Iface, m.Node, m.Speed, top)})
+			}
+		}
 	}
 	for _, p := range paths {
 		add := func(kind, detail string) {

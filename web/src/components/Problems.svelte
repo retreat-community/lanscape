@@ -17,7 +17,7 @@
       <li>
         <b>{t(`problem.${p.kind}`)}</b>
         <span class="tag">{p.seg_id}</span>
-        <span class="muted">{names(p.src)} ({p.src_if}) → {names(p.dst)} ({p.dst_if})</span>
+        <span class="muted">{names(p.src)} ({p.src_if}){#if p.dst} → {names(p.dst)} ({p.dst_if}){/if}</span>
         <div>{p.detail}</div>
         <div class="muted small">{t(`hint.${p.kind}`)}</div>
       </li>

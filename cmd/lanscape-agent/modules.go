@@ -29,7 +29,8 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 		})
 	}
 	cfg := discovery.Config{DockerSocket: o.dockerSocket, Kubeconfig: o.kubeconfig, Probe: !o.noProbe,
-		Interval: o.discoverInterval, Signatures: cli.SplitList(o.signatures)}
+		Interval: o.discoverInterval, Signatures: cli.SplitList(o.signatures),
+		Proxmox: discovery.ProxmoxConfig{URL: o.proxmoxURL, Token: o.proxmoxToken, Insecure: o.proxmoxInsecure}}
 	for _, src := range cli.SplitList(o.discover) {
 		switch src {
 		case "auto":
@@ -55,7 +56,8 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 	if !col.Enabled() {
 		return
 	}
-	log.Info("discovery enabled", "sockets", cfg.Sockets, "docker", cfg.Docker, "k8s", cfg.K8s, "interval", col.Interval())
+	log.Info("discovery enabled", "sockets", cfg.Sockets, "docker", cfg.Docker, "k8s", cfg.K8s, "proxmox", cfg.Proxmox.URL != "",
+		"interval", col.Interval())
 	// the server can ask for a fresh report (the "rescan" button)
 	a.Handle(proto.MsgDiscovery, func(ctx context.Context, _ proto.Envelope) (any, error) {
 		return col.Collect(ctx), nil

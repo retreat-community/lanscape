@@ -21,6 +21,7 @@ const (
 	SourceSockets = "sockets"
 	SourceDocker  = "docker"
 	SourceK8s     = "k8s"
+	SourceProxmox = "proxmox"
 )
 
 // Item kinds.
@@ -82,6 +83,7 @@ type Item struct {
 	Title     string             `json:"title,omitempty"`
 	App       *fingerprint.Match `json:"app,omitempty"`
 	Cert      *CertInfo          `json:"cert,omitempty"`
+	NICs      []NIC              `json:"nics,omitempty"` // VM/CT network interfaces
 }
 
 // SourceReport is the result of one source.
@@ -104,7 +106,8 @@ type Config struct {
 	DockerSocket string // default /var/run/docker.sock
 	K8s          bool
 	Kubeconfig   string // empty = in-cluster
-	Probe        bool   // HTTP fingerprinting of found endpoints
+	Proxmox      ProxmoxConfig
+	Probe        bool // HTTP fingerprinting of found endpoints
 	Interval     time.Duration
 	Signatures   []string // extra signature files
 }
@@ -144,7 +147,9 @@ func New(cfg Config, log *slog.Logger) (*Collector, error) {
 }
 
 // Enabled reports whether any source is on.
-func (c *Collector) Enabled() bool { return c.cfg.Sockets || c.cfg.Docker || c.cfg.K8s }
+func (c *Collector) Enabled() bool {
+	return c.cfg.Sockets || c.cfg.Docker || c.cfg.K8s || c.cfg.Proxmox.URL != ""
+}
 
 // Interval is the collection period.
 func (c *Collector) Interval() time.Duration { return c.cfg.Interval }
@@ -172,6 +177,10 @@ func (c *Collector) Collect(ctx context.Context) Report {
 		items, err := Kubernetes(ctx, c.cfg.Kubeconfig)
 		c.identifyImages(items)
 		add(SourceK8s, items, err)
+	}
+	if c.cfg.Proxmox.URL != "" {
+		items, err := Proxmox(ctx, c.cfg.Proxmox)
+		add(SourceProxmox, items, err)
 	}
 	if c.cfg.Sockets {
 		items, err := Sockets()

@@ -31,9 +31,9 @@ type options struct {
 	server, token, name, dataDir, caFingerprint, exclude, dataListen, mode, logLevel, logFormat string
 	maxDuration                                                                                 time.Duration
 	maxStreams, maxUDPMbps                                                                      int
-	discover, dockerSocket, kubeconfig, signatures                                              string
+	discover, dockerSocket, kubeconfig, signatures, proxmoxURL, proxmoxToken                    string
 	discoverInterval                                                                            time.Duration
-	noProbe                                                                                     bool
+	noProbe, proxmoxInsecure                                                                    bool
 }
 
 func parse(args []string) (*flag.FlagSet, *options, error) {
@@ -54,6 +54,9 @@ func parse(args []string) (*flag.FlagSet, *options, error) {
 	fs.StringVar(&o.dockerSocket, "docker-socket", "/var/run/docker.sock", "Docker (or Podman) API socket")
 	fs.StringVar(&o.kubeconfig, "kubeconfig", "", "kubeconfig for Kubernetes discovery (default in-cluster)")
 	fs.DurationVar(&o.discoverInterval, "discover-interval", 5*time.Minute, "discovery period")
+	fs.StringVar(&o.proxmoxURL, "proxmox-url", "", "Proxmox VE API for VM/CT discovery, e.g. https://127.0.0.1:8006")
+	fs.StringVar(&o.proxmoxToken, "proxmox-token", "", "read-only Proxmox API token user@realm!id=secret (PVEAuditor)")
+	fs.BoolVar(&o.proxmoxInsecure, "proxmox-insecure", false, "accept a self-signed Proxmox certificate")
 	fs.BoolVar(&o.noProbe, "no-probe", false, "do not fingerprint discovered HTTP endpoints")
 	fs.StringVar(&o.signatures, "signatures", "", "extra application signature files (YAML, comma-separated)")
 	fs.StringVar(&o.logLevel, "log-level", "info", "debug, info, warn or error")

@@ -77,6 +77,7 @@ export const api = {
   setup: (username: string, password: string) => call<User>("POST", "/setup", { username, password }),
   login: (username: string, password: string, code?: string) =>
     call<User>("POST", "/auth/login", { username, password, code }),
+  oidcInfo: () => call<{ enabled: boolean; name: string }>("GET", "/auth/oidc"),
   logout: () => call<undefined>("POST", "/auth/logout"),
   me: () => call<{ user: User; role: string; version: string }>("GET", "/auth/me"),
   changePassword: (old: string, next: string) => call<undefined>("POST", "/auth/password", { old, new: next }),

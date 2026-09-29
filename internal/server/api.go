@@ -896,6 +896,9 @@ func (s *Server) apiSaveSettings(w http.ResponseWriter, r *http.Request) {
 	st.PingCount = min(max(st.PingCount, 1), 100)
 	st.InternetEveryMin = min(max(st.InternetEveryMin, 0), 1440)
 	st.InternetSpeedEveryH = min(max(st.InternetSpeedEveryH, 0), 168)
+	if st.ImageUpdatesEveryH != 0 {
+		st.ImageUpdatesEveryH = min(max(st.ImageUpdatesEveryH, 6), 720)
+	}
 	if st.InternetEveryMin > 0 && st.InternetEveryMin < 5 {
 		st.InternetEveryMin = 5
 	}

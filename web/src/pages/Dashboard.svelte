@@ -276,6 +276,19 @@
         {/each}
       </section>
 
+      {#if d.images?.length}
+        <section class="card">
+          <h3>{t("dash.images")}</h3>
+          {#each d.images as u (u.image)}
+            <div class="line small" title={u.users.join(", ")}>
+              <span class="dot v-yellow"></span>
+              <b>{u.image}</b> → {u.latest}
+              <span class="muted">{u.users.length > 1 ? `${u.users[0]} +${u.users.length - 1}` : u.users[0]}</span>
+            </div>
+          {/each}
+        </section>
+      {/if}
+
       <section class="card">
         <h3>{t("dash.certs")}</h3>
         {#each d.certificates as c (c.name + c.not_after)}

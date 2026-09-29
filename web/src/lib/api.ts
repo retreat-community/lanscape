@@ -2,6 +2,7 @@ import type {
   ActionResponse,
   Board,
   IfaceTraffic,
+  ImageCheck,
   InternetExit,
   Agent,
   Change,
@@ -201,6 +202,8 @@ export const api = {
   deleteSwitch: (id: string) => call<undefined>("DELETE", `/map/switches/${enc(id)}`),
   internet: (days = 30) => call<InternetExit[]>("GET", `/internet?days=${days}`),
   traffic: (routers = false) => call<IfaceTraffic[]>("GET", `/traffic${routers ? "?routers=1" : ""}`),
+  imageUpdates: () => call<ImageCheck>("GET", "/updates/images"),
+  checkImages: () => call<{ status: string }>("POST", "/updates/images/check"),
   runInternet: (speed: boolean) => call<{ status: string }>("POST", "/internet/run", { speed }),
   wake: (mac: string, ip?: string) => call<ActionResponse>("POST", "/actions/wol", { mac, ip }),
   restart: (agent: string, source: string, key: string) =>

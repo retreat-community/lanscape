@@ -116,6 +116,10 @@
         <button onclick={() => act(async () => { await api.runInternet(false); toast(t("set.internet_started")); })}>{t("set.internet_run")}</button>
         <button onclick={() => act(async () => { await api.runInternet(true); toast(t("set.internet_started")); })}>{t("set.internet_run_speed")}</button>
       </div>
+      <label class="field">{t("set.images_every")}<input type="number" min="0" max="720" bind:value={settings.image_updates_every_h} /></label>
+      <div class="row">
+        <button onclick={() => act(async () => { await api.checkImages(); toast(t("set.images_started")); })}>{t("set.images_run")}</button>
+      </div>
       <button
         class="primary"
         onclick={() =>

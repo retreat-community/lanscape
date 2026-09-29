@@ -69,6 +69,8 @@ type Settings struct {
 	InternetSpeedEveryH int      `json:"internet_speed_every_h"`
 	InternetIPURL       string   `json:"internet_ip_url,omitempty"`
 	InternetDownloadURL string   `json:"internet_download_url,omitempty"`
+	// newer container image tags are looked up every ImageUpdatesEveryH hours (0 = off)
+	ImageUpdatesEveryH int `json:"image_updates_every_h"`
 }
 
 // DefaultSettings are used until an administrator changes them.
@@ -100,6 +102,7 @@ type Server struct {
 	inet       internetState
 	restarts   restartCounts
 	traffic    trafficState
+	images     imageState
 }
 
 // New opens the store and the CA.
@@ -349,6 +352,7 @@ func (s *Server) Run(ctx context.Context) error {
 	go s.uptime.run(ctx)
 	go s.housekeeping(ctx)
 	go s.internetScheduler(ctx)
+	go s.imageScheduler(ctx)
 	s.log.Info("lanscape server started", "version", s.cfg.Version, "ui", s.cfg.Listen, "gateway", s.cfg.GatewayListen,
 		"mini", s.cfg.MiniListen, "ca_fingerprint", pki.Fingerprint(s.ca.Cert))
 	var err error

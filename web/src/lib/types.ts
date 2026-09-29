@@ -321,6 +321,7 @@ export interface Settings {
   internet_speed_every_h?: number;
   internet_ip_url?: string;
   internet_download_url?: string;
+  image_updates_every_h?: number;
 }
 
 export interface InternetCheck {
@@ -642,6 +643,21 @@ export interface Dashboard {
   internet?: InternetExit[];
   board?: Board;
   traffic?: IfaceTraffic[];
+  images?: ImageUpdate[];
+}
+
+export interface ImageUpdate {
+  image: string;
+  latest: string;
+  users: string[];
+  checked: number;
+}
+
+export interface ImageCheck {
+  checked: number;
+  images: number;
+  errors: string[];
+  updates: ImageUpdate[];
 }
 
 export interface IfaceTraffic {

@@ -76,6 +76,8 @@ func (s *Server) servicesRoutes(mux *http.ServeMux, v func(string, http.HandlerF
 	mux.HandleFunc("POST /api/v1/import/dashboard", v(RoleAdmin, s.apiImportTiles))
 	mux.HandleFunc("GET /api/v1/internet", v(RoleViewer, s.apiInternet))
 	mux.HandleFunc("GET /api/v1/traffic", v(RoleViewer, s.apiTraffic))
+	mux.HandleFunc("GET /api/v1/updates/images", v(RoleViewer, s.apiImageUpdates))
+	mux.HandleFunc("POST /api/v1/updates/images/check", v(RoleOperator, s.apiCheckImages))
 	mux.HandleFunc("POST /api/v1/internet/run", v(RoleOperator, s.apiRunInternet))
 	mux.HandleFunc("GET /api/v1/config", v(RoleAdmin, s.apiExportConfig))
 	mux.HandleFunc("POST /api/v1/config", v(RoleAdmin, s.apiApplyConfig))
@@ -999,6 +1001,7 @@ type Dashboard struct {
 	Internet     []InternetExit      `json:"internet"` // last 30 days
 	Board        Board               `json:"board"`    // the dashboard shown (tile groups, notes)
 	Traffic      []IfaceTrafficView  `json:"traffic"`  // WAN/LAN throughput of routers
+	Images       []ImageUpdate       `json:"images"`   // containers with a newer image tag
 }
 
 // HardwareView is a UPS, disk or storage pool reported by an agent.
@@ -1039,7 +1042,8 @@ type NetworkSummary struct {
 func guestDashboard(d Dashboard) Dashboard {
 	g := Dashboard{Summary: d.Summary, Groups: []TileGroup{}, Incidents: []IncidentView{}, Agents: []AgentResources{},
 		Certificates: []CertExpiry{}, Changes: []store.Change{}, Maintenance: d.Maintenance, UPS: []HardwareView{},
-		Storage: []HardwareView{}, Backups: []BackupView{}, Internet: []InternetExit{}, Traffic: []IfaceTrafficView{}, Board: d.Board}
+		Storage: []HardwareView{}, Backups: []BackupView{}, Internet: []InternetExit{}, Traffic: []IfaceTrafficView{}, Images: []ImageUpdate{},
+		Board: d.Board}
 	for _, grp := range d.Groups {
 		tg := TileGroup{Name: grp.Name}
 		for _, t := range grp.Tiles {
@@ -1083,7 +1087,7 @@ func (s *Server) apiDashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	d := Dashboard{Summary: map[string]int{}, Groups: []TileGroup{}, Agents: []AgentResources{}, Certificates: []CertExpiry{},
 		UPS: []HardwareView{}, Storage: []HardwareView{}, Backups: []BackupView{}, Internet: []InternetExit{},
-		Traffic: s.trafficViews(true)}
+		Traffic: s.trafficViews(true), Images: s.imageCheck(ctx).Updates}
 	s.hardwareWidgets(ctx, &d)
 	if checks, err := s.store.InternetChecks(ctx, time.Now().AddDate(0, 0, -30).UnixMilli()); err == nil {
 		d.Internet = s.internetExits(checks)

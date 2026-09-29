@@ -337,6 +337,15 @@ the download URL contacted, and both can point to your own servers. The dashboar
 current address, the last speed and the outages of the last 30 days; an exit that goes down or
 comes back is written to the change feed.
 
+### Container image updates
+
+**Settings → General → Look for newer container image tags** (off by default) asks the
+registries of the running containers and Kubernetes workloads (Docker Hub, GHCR, Quay, private
+registries; anonymous access) for their tags every few hours. An image with a version tag
+(`1.25.3`, `v2.1-alpine`) gets the newest tag of the same shape — pre-releases are ignored and
+`latest` is not compared. The dashboard lists them, a new tag goes to the change feed, and
+`GET /api/v1/updates/images` returns the last result.
+
 ### Router traffic
 
 Agents report the throughput of their physical, bridge, VLAN, bond, WireGuard and PPP

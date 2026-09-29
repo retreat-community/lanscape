@@ -1111,6 +1111,25 @@ paths:
                     outages: {type: array, items: {type: object, properties: {from: {type: integer}, to: {type: integer}, error: {type: string}}}}
                     checks: {type: integer}
                     failures: {type: integer}
+  /api/v1/updates/images:
+    get:
+      tags: [services]
+      operationId: imageUpdates
+      summary: Result of the last container image tag check
+      responses:
+        "200":
+          description: newer tags per running image
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ImageCheck"}
+  /api/v1/updates/images/check:
+    post:
+      tags: [services]
+      operationId: checkImages
+      summary: Look up newer tags of the running images now (operator)
+      responses:
+        "202": {description: started}
+        "403": {$ref: "#/components/responses/Error"}
   /api/v1/traffic:
     get:
       tags: [network]
@@ -2044,6 +2063,7 @@ components:
         internet_points: {type: array, items: {type: string}, description: '"server" or agent ids'}
         internet_every_min: {type: integer, description: "address check period in minutes, 0 = off"}
         internet_speed_every_h: {type: integer, description: "speed test period in hours, 0 = off"}
+        image_updates_every_h: {type: integer, description: "container image tag check period in hours (6-720), 0 = off"}
         internet_ip_url: {type: string}
         internet_download_url: {type: string}
         public_url: {type: string}
@@ -2372,6 +2392,22 @@ components:
               status: {type: string}
               last_push: {type: integer}
         traffic: {type: array, items: {$ref: "#/components/schemas/IfaceTraffic"}}
+        images: {type: array, items: {$ref: "#/components/schemas/ImageUpdate"}}
+    ImageUpdate:
+      type: object
+      description: a running image whose registry has a newer tag of the same shape
+      properties:
+        image: {type: string}
+        latest: {type: string}
+        users: {type: array, items: {type: string}, description: agent/container that run the image}
+        checked: {type: integer}
+    ImageCheck:
+      type: object
+      properties:
+        checked: {type: integer}
+        images: {type: integer}
+        errors: {type: array, items: {type: string}}
+        updates: {type: array, items: {$ref: "#/components/schemas/ImageUpdate"}}
     IfaceTraffic:
       type: object
       description: current throughput of an agent interface

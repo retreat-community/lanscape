@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/retreat-community/lanscape/internal/catalog"
+	"github.com/retreat-community/lanscape/internal/discovery"
 	"github.com/retreat-community/lanscape/internal/monitor"
 	"github.com/retreat-community/lanscape/internal/notify"
 	"github.com/retreat-community/lanscape/internal/store"
@@ -954,6 +955,26 @@ type Dashboard struct {
 	Changes      []store.Change      `json:"changes"`
 	FoundNew     int                 `json:"found_new"`
 	Maintenance  []store.Maintenance `json:"maintenance"`
+	UPS          []HardwareView      `json:"ups"`
+	Storage      []HardwareView      `json:"storage"` // pools and disks
+	Backups      []BackupView        `json:"backups"`
+}
+
+// HardwareView is a UPS, disk or storage pool reported by an agent.
+type HardwareView struct {
+	Agent  string            `json:"agent"`
+	Kind   string            `json:"kind"`
+	Name   string            `json:"name"`
+	State  string            `json:"state"`
+	Labels map[string]string `json:"labels"`
+}
+
+// BackupView is a heartbeat monitor: the last successful run of a job.
+type BackupView struct {
+	MonitorID int64  `json:"monitor_id"`
+	Name      string `json:"name"`
+	Status    string `json:"status"`
+	LastPush  int64  `json:"last_push"`
 }
 
 // TileGroup is a named group of tiles.
@@ -997,7 +1018,9 @@ type CertExpiry struct {
 
 func (s *Server) apiDashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	d := Dashboard{Summary: map[string]int{}, Groups: []TileGroup{}, Agents: []AgentResources{}, Certificates: []CertExpiry{}}
+	d := Dashboard{Summary: map[string]int{}, Groups: []TileGroup{}, Agents: []AgentResources{}, Certificates: []CertExpiry{},
+		UPS: []HardwareView{}, Storage: []HardwareView{}, Backups: []BackupView{}}
+	s.hardwareWidgets(ctx, &d)
 	views, err := s.serviceViews(ctx, r)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -1067,6 +1090,12 @@ func (s *Server) apiDashboard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	sort.Slice(d.Certificates, func(a, b int) bool { return d.Certificates[a].NotAfter < d.Certificates[b].NotAfter })
+	for _, m := range mons {
+		var sp monitor.Spec
+		if json.Unmarshal(m.Spec, &sp) == nil && sp.Type == monitor.TypeHeartbeat {
+			d.Backups = append(d.Backups, BackupView{MonitorID: m.ID, Name: m.Name, Status: m.Status, LastPush: m.LastPush})
+		}
+	}
 	d.Changes, _ = s.store.Changes(ctx, 0, 10)
 	now := time.Now().UnixMilli()
 	ms, _ := s.store.Maintenances(ctx, now)
@@ -1173,4 +1202,27 @@ func firstN(s []string, n int) []string {
 		return s[:n]
 	}
 	return s
+}
+
+func (s *Server) hardwareWidgets(ctx context.Context, d *Dashboard) {
+	fs, err := s.store.Findings(ctx, "", "")
+	if err != nil {
+		return
+	}
+	for _, f := range fs {
+		if f.Source != discovery.SourceHost || f.Gone != 0 {
+			continue
+		}
+		var it discovery.Item
+		if json.Unmarshal(f.Data, &it) != nil {
+			continue
+		}
+		hv := HardwareView{Agent: s.agentName(f.AgentID), Kind: it.Kind, Name: it.Name, State: it.State, Labels: it.Labels}
+		switch it.Kind {
+		case discovery.KindUPS:
+			d.UPS = append(d.UPS, hv)
+		case discovery.KindPool, discovery.KindDisk:
+			d.Storage = append(d.Storage, hv)
+		}
+	}
 }

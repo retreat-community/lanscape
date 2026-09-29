@@ -598,6 +598,17 @@ export interface Dashboard {
   changes: Change[];
   found_new: number;
   maintenance: Maintenance[];
+  ups: HardwareView[];
+  storage: HardwareView[];
+  backups: { monitor_id: number; name: string; status: string; last_push: number }[];
+}
+
+export interface HardwareView {
+  agent: string;
+  kind: "ups" | "disk" | "pool";
+  name: string;
+  state: string;
+  labels: Record<string, string>;
 }
 
 export interface SearchResult {

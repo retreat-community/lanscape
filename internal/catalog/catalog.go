@@ -117,7 +117,7 @@ func include(f *Finding) bool {
 	it := &f.Item
 	switch it.Kind {
 	case discovery.KindPVC, discovery.KindLease, discovery.KindWifiClient, discovery.KindPortForward, discovery.KindSQM,
-		discovery.KindDNSRecord:
+		discovery.KindDNSRecord, discovery.KindUPS, discovery.KindDisk, discovery.KindPool:
 		return false
 	case discovery.KindDevice:
 		return it.URL != "" // only LAN devices with a web interface become service cards

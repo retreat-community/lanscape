@@ -1736,7 +1736,7 @@ components:
             type: object
             properties:
               agent: {type: string}
-              source: {type: string, enum: [sockets, docker, k8s, proxmox, mdns, ssdp, openwrt, scan, proxy, dns]}
+              source: {type: string, enum: [sockets, docker, k8s, proxmox, mdns, ssdp, openwrt, scan, proxy, dns, host, prometheus, homeassistant]}
               key: {type: string}
               kind: {type: string}
               gone: {type: boolean}
@@ -1943,7 +1943,7 @@ components:
         kind:
           type: string
           enum: [service_new, port_opened, port_closed, container_gone, container_stopped, container_started, ip_changed,
-            object_new, object_gone, device_new, mac_new]
+            object_new, object_gone, device_new, mac_new, hardware]
         subject: {type: string}
         detail: {type: string}
         agent_id: {type: string}
@@ -1997,6 +1997,17 @@ components:
         changes: {type: array, items: {$ref: "#/components/schemas/Change"}}
         found_new: {type: integer}
         maintenance: {type: array, items: {$ref: "#/components/schemas/Maintenance"}}
+        ups: {type: array, items: {$ref: "#/components/schemas/Hardware"}}
+        storage: {type: array, items: {$ref: "#/components/schemas/Hardware"}}
+        backups:
+          type: array
+          items:
+            type: object
+            properties:
+              monitor_id: {type: integer}
+              name: {type: string}
+              status: {type: string}
+              last_push: {type: integer}
     SearchResult:
       type: object
       properties:
@@ -2033,3 +2044,11 @@ components:
             theme: {type: string, enum: ["", auto, light, dark]}
             footer: {type: string}
         created_at: {type: integer, readOnly: true}
+    Hardware:
+      type: object
+      properties:
+        agent: {type: string}
+        kind: {type: string, enum: [ups, disk, pool]}
+        name: {type: string}
+        state: {type: string, description: "UPS: online, on_battery, low_battery, replace_battery; disk: passed, warning, failing; pool: ZFS health"}
+        labels: {type: object, additionalProperties: {type: string}}

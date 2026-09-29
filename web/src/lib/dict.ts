@@ -439,6 +439,17 @@ export const en = {
   "imp.run": "Import",
   "imp.items": "Imported: {n}",
   "imp.found_hint": "Prometheus targets and Home Assistant appear in Services → Found; devices with an address in Devices → Discovered.",
+  "dash.backups": "Backups and jobs",
+  "dash.never": "never",
+  "dash.ups": "UPS",
+  "dash.load": "load",
+  "dash.ups_online": "on mains",
+  "dash.ups_on_battery": "on battery",
+  "dash.ups_low_battery": "battery low",
+  "dash.ups_replace_battery": "replace battery",
+  "dash.storage": "Storage",
+  "dash.disks_ok": "{n} disks healthy",
+  "chg.hardware": "Hardware",
 } as const;
 
 export type Key = keyof typeof en;
@@ -882,6 +893,17 @@ export const ru: Record<Key, string> = {
   "imp.run": "Импортировать",
   "imp.items": "Импортировано: {n}",
   "imp.found_hint": "Цели Prometheus и Home Assistant появятся в «Сервисы → Найдено», устройства с адресом — в «Устройства → Обнаруженные».",
+  "dash.backups": "Бэкапы и задачи",
+  "dash.never": "ни разу",
+  "dash.ups": "ИБП",
+  "dash.load": "нагрузка",
+  "dash.ups_online": "от сети",
+  "dash.ups_on_battery": "от батареи",
+  "dash.ups_low_battery": "батарея разряжена",
+  "dash.ups_replace_battery": "замените батарею",
+  "dash.storage": "Хранилище",
+  "dash.disks_ok": "исправных дисков: {n}",
+  "chg.hardware": "Оборудование",
 };
 
 export type Lang = "en" | "ru";

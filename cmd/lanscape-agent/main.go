@@ -33,7 +33,7 @@ type options struct {
 	maxStreams, maxUDPMbps                                                                      int
 	discover, dockerSocket, kubeconfig, signatures, proxmoxURL, proxmoxToken                    string
 	traefikURL, caddyAdmin, nginxDir, piholeURL, piholePassword, adguardURL, adguardUser        string
-	adguardPassword, technitiumURL, technitiumToken                                             string
+	adguardPassword, technitiumURL, technitiumToken, nut, smart, zfs                            string
 	discoverInterval                                                                            time.Duration
 	noProbe, proxmoxInsecure                                                                    bool
 }
@@ -69,6 +69,9 @@ func parse(args []string) (*flag.FlagSet, *options, error) {
 	fs.StringVar(&o.adguardPassword, "adguard-password", "", "AdGuard Home password")
 	fs.StringVar(&o.technitiumURL, "technitium-url", "", "Technitium DNS server for zone records")
 	fs.StringVar(&o.technitiumToken, "technitium-token", "", "Technitium API token")
+	fs.StringVar(&o.nut, "nut", "auto", `Network UPS Tools server host:port ("auto" = 127.0.0.1:3493 when it answers, "" = off)`)
+	fs.StringVar(&o.smart, "smart", "auto", `disk health with smartctl ("auto" = when installed and running as root, "off")`)
+	fs.StringVar(&o.zfs, "zfs", "auto", `ZFS pools ("auto" = when zpool is installed, "off")`)
 	fs.BoolVar(&o.noProbe, "no-probe", false, "do not fingerprint discovered HTTP endpoints")
 	fs.StringVar(&o.signatures, "signatures", "", "extra application signature files (YAML, comma-separated)")
 	fs.StringVar(&o.logLevel, "log-level", "info", "debug, info, warn or error")

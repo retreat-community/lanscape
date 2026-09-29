@@ -20,6 +20,7 @@ const (
 	ChangeObjectGone       = "object_gone"
 	ChangeDeviceNew        = "device_new"
 	ChangeMACNew           = "mac_new"
+	ChangeHardware         = "hardware" // UPS on battery, disk health, pool state
 )
 
 // Change is a detected difference between two reports of the same source.
@@ -60,6 +61,10 @@ func Diff(prev, cur []discovery.Item, host string) []Change {
 				out = append(out, Change{ChangeIPChanged, host + " " + it.Name, strings.Join(o.IPs, ", ") + " → " + strings.Join(it.IPs, ", ")})
 			}
 		case discovery.KindPVC, discovery.KindLease, discovery.KindWifiClient, discovery.KindSQM:
+		case discovery.KindUPS, discovery.KindDisk, discovery.KindPool:
+			if existed && o.State != it.State {
+				out = append(out, Change{ChangeHardware, host + " " + it.Name, o.State + " → " + it.State})
+			}
 		case discovery.KindDevice:
 			if !existed {
 				out = append(out, Change{ChangeDeviceNew, it.Name, strings.Join(it.IPs, ", ") + " " + it.Labels["type"]})
@@ -84,7 +89,8 @@ func Diff(prev, cur []discovery.Item, host string) []Change {
 			}
 		case discovery.KindContainer:
 			out = append(out, Change{ChangeContainerGone, host + " " + it.Name, it.Image})
-		case discovery.KindPVC, discovery.KindDevice, discovery.KindLease, discovery.KindWifiClient, discovery.KindSQM:
+		case discovery.KindPVC, discovery.KindDevice, discovery.KindLease, discovery.KindWifiClient, discovery.KindSQM,
+			discovery.KindUPS, discovery.KindDisk, discovery.KindPool:
 		default:
 			out = append(out, Change{ChangeObjectGone, objName(it), ""})
 		}

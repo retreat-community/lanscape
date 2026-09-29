@@ -58,6 +58,12 @@
     }
   }
 
+  const hwClass = (st: string): string =>
+    ["online", "passed"].includes(st) ? "v-green" : ["warning", "on_battery", "degraded"].includes(st) ? "v-yellow" : "v-red";
+  // pools always, disks only when something is wrong (healthy disks are counted)
+  const disksShown = $derived((d?.storage ?? []).filter((h) => h.kind === "pool" || h.state !== "passed"));
+  const healthyDisks = $derived((d?.storage ?? []).filter((h) => h.kind === "disk" && h.state === "passed").length);
+
   const mem = (a: Dashboard["agents"][number]): number =>
     a.mem_total ? Math.round(((a.mem_total - a.mem_available) * 100) / a.mem_total) : 0;
 </script>
@@ -191,6 +197,53 @@
           <div class="muted">{t("dash.no_certs")}</div>
         {/each}
       </section>
+
+      {#if d.backups.length}
+        <section class="card">
+          <h3>{t("dash.backups")}</h3>
+          {#each d.backups as b (b.monitor_id)}
+            <div class="line small">
+              <span class="dot {statusClass(b.status)}"></span>
+              <a href="#/monitors/{b.monitor_id}">{b.name}</a>
+              <span class="muted">{b.last_push ? when(b.last_push, ui.lang) : t("dash.never")}</span>
+            </div>
+          {/each}
+        </section>
+      {/if}
+
+      {#if d.ups.length}
+        <section class="card">
+          <h3>{t("dash.ups")}</h3>
+          {#each d.ups as u (u.agent + u.name)}
+            <div class="line small">
+              <span class="dot {hwClass(u.state)}"></span>
+              <b>{u.name}</b>
+              <span class="muted">
+                {t(`dash.ups_${u.state}`)} · {u.labels.charge ?? "?"}% · {t("dash.load")} {u.labels.load ?? "?"}%
+                {#if u.labels.runtime_s}· {Math.round(Number(u.labels.runtime_s) / 60)} min{/if}
+              </span>
+            </div>
+          {/each}
+        </section>
+      {/if}
+
+      {#if d.storage.length}
+        <section class="card">
+          <h3>{t("dash.storage")}</h3>
+          {#each disksShown as h (h.agent + h.kind + h.name)}
+            <div class="line small">
+              <span class="dot {hwClass(h.state)}"></span>
+              <b>{h.name}</b>
+              <span class="muted">
+                {h.agent} · {h.state}
+                {#if h.kind === "pool" && h.labels.size}· {Math.round((Number(h.labels.alloc) * 100) / Number(h.labels.size))}%{/if}
+                {#if h.kind === "disk"}· {h.labels.model ?? ""} {h.labels.temp_c ? `${h.labels.temp_c}°C` : ""}{/if}
+              </span>
+            </div>
+          {/each}
+          {#if healthyDisks}<div class="muted small">{t("dash.disks_ok", { n: healthyDisks })}</div>{/if}
+        </section>
+      {/if}
 
       <section class="card">
         <h3><a href="#/changes">{t("dash.changes")}</a></h3>

@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"net"
 	"os"
+	"os/exec"
 	"runtime"
+	"time"
 
 	"github.com/retreat-community/lanscape/internal/agent"
 	"github.com/retreat-community/lanscape/internal/cli"
@@ -49,6 +52,7 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 		DNS: discovery.DNSConfig{PiholeURL: o.piholeURL, PiholePassword: o.piholePassword, AdGuardURL: o.adguardURL,
 			AdGuardUser: o.adguardUser, AdGuardPassword: o.adguardPassword, TechnitiumURL: o.technitiumURL,
 			TechnitiumToken: o.technitiumToken}}
+	cfg.Host = hostConfig(o)
 	if cfg.Proxy.NginxDir == "auto" {
 		cfg.Proxy.NginxDir = ""
 		if exists("/etc/nginx/nginx.conf") {
@@ -109,4 +113,23 @@ func orDefault(s, def string) string {
 		return def
 	}
 	return s
+}
+
+func hostConfig(o *options) discovery.HostConfig {
+	var c discovery.HostConfig
+	switch o.nut {
+	case "auto":
+		if conn, err := net.DialTimeout("tcp", "127.0.0.1:3493", 300*time.Millisecond); err == nil {
+			conn.Close()
+			c.NUT = "127.0.0.1:3493"
+		}
+	case "", "off":
+	default:
+		c.NUT = o.nut
+	}
+	_, errSmart := exec.LookPath("smartctl")
+	c.SMART = o.smart == "on" || (o.smart == "auto" && errSmart == nil && os.Geteuid() == 0)
+	_, errZfs := exec.LookPath("zpool")
+	c.ZFS = o.zfs == "on" || (o.zfs == "auto" && errZfs == nil)
+	return c
 }

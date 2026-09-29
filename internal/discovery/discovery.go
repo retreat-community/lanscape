@@ -110,6 +110,7 @@ type Config struct {
 	OpenWrt      bool // DHCP leases, Wi-Fi clients, port forwards, SQM (on the router)
 	Proxy        ProxyConfig
 	DNS          DNSConfig
+	Host         HostConfig
 	MDNS         bool // DNS-SD browse on the local links
 	SSDP         bool // UPnP search
 	Probe        bool // HTTP fingerprinting of found endpoints
@@ -154,7 +155,7 @@ func New(cfg Config, log *slog.Logger) (*Collector, error) {
 // Enabled reports whether any source is on.
 func (c *Collector) Enabled() bool {
 	return c.cfg.Sockets || c.cfg.Docker || c.cfg.K8s || c.cfg.Proxmox.URL != "" || c.cfg.MDNS || c.cfg.SSDP || c.cfg.OpenWrt ||
-		c.cfg.Proxy.Enabled() || c.cfg.DNS.Enabled()
+		c.cfg.Proxy.Enabled() || c.cfg.DNS.Enabled() || c.cfg.Host.Enabled()
 }
 
 // Interval is the collection period.
@@ -187,6 +188,10 @@ func (c *Collector) Collect(ctx context.Context) Report {
 	if c.cfg.Proxmox.URL != "" {
 		items, err := Proxmox(ctx, c.cfg.Proxmox)
 		add(SourceProxmox, items, err)
+	}
+	if c.cfg.Host.Enabled() {
+		items, err := Hardware(ctx, c.cfg.Host)
+		add(SourceHost, items, err)
 	}
 	if c.cfg.Proxy.Enabled() {
 		items, err := Proxies(ctx, c.cfg.Proxy)

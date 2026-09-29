@@ -429,6 +429,6 @@ jobs:
       - name: Validate compose files
         run: |
           for f in deploy/compose/*.yaml; do
-            docker run --rm -v "$PWD:$PWD" -w "$PWD" -e LSM_TOKEN=x -e LANSCAPE_TOKEN=x docker:27-cli \
+            docker run --rm -v "$PWD:$PWD" -w "$PWD" -e LSM_TOKEN=x -e LANSCAPE_TOKEN=x -e LANSCAPE_SERVER=x docker:27-cli \
               docker compose -f "$f" config -q
           done

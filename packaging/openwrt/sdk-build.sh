@@ -70,7 +70,7 @@ if ls ./*.apk > /dev/null 2>&1; then
     "$sdk/staging_dir/host/bin/apk" mkndx --allow-untrusted --output packages.adb ./*.apk
 fi
 if ls ./*.ipk > /dev/null 2>&1; then
-    "$sdk/scripts/ipkg-make-index.sh" . > Packages
+    MKHASH="$sdk/staging_dir/host/bin/mkhash" "$sdk/scripts/ipkg-make-index.sh" . > Packages
     gzip -9nc Packages > Packages.gz
 fi
 echo "$arch" > ARCH

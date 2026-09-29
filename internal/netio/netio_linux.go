@@ -139,8 +139,8 @@ func LinkSpeed(name string) int {
 	cmd := ethtoolCmd{Cmd: ethtoolGSet}
 	var req ifreqData
 	copy(req.Name[:], name)
-	req.Data = uintptr(unsafe.Pointer(&cmd))
-	_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(fd), unix.SIOCETHTOOL, uintptr(unsafe.Pointer(&req)))
+	req.Data = uintptr(unsafe.Pointer(&cmd))                                                                  //nolint:gosec // SIOCETHTOOL takes a pointer to struct ethtool_cmd
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(fd), unix.SIOCETHTOOL, uintptr(unsafe.Pointer(&req))) //nolint:gosec // ioctl ABI
 	if errno != 0 {
 		return 0
 	}

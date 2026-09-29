@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"path"
 	"strconv"
@@ -135,31 +134,4 @@ func ParseVLANConfig(r io.Reader) map[string][2]string {
 		out[f[0]] = [2]string{f[1], f[2]}
 	}
 	return out
-}
-
-// portable fallback for interface listing
-func stdInterfaces() ([]Iface, error) {
-	nifs, err := net.Interfaces()
-	if err != nil {
-		return nil, err
-	}
-	out := make([]Iface, 0, len(nifs))
-	for _, n := range nifs {
-		i := Iface{
-			Name: n.Name, Index: n.Index, MAC: n.HardwareAddr.String(), MTU: n.MTU,
-			Up: n.Flags&net.FlagUp != 0, Carrier: n.Flags&net.FlagRunning != 0, Kind: "physical",
-		}
-		if n.Flags&net.FlagLoopback != 0 {
-			i.Kind = "loopback"
-		}
-		addrs, _ := n.Addrs()
-		for _, a := range addrs {
-			if ipn, ok := a.(*net.IPNet); ok {
-				ones, _ := ipn.Mask.Size()
-				i.Addrs = append(i.Addrs, Addr{IP: ipn.IP.String(), Prefix: ones})
-			}
-		}
-		out = append(out, i)
-	}
-	return out, nil
 }

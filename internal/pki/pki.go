@@ -98,7 +98,7 @@ func LoadOrCreate(dir string) (*CA, error) {
 	if err := os.WriteFile(keyPath, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: kder}), 0o600); err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(certPath, cpem, 0o644); err != nil {
+	if err := os.WriteFile(certPath, cpem, 0o644); err != nil { //nolint:gosec // certificates are public
 		return nil, err
 	}
 	return &CA{Cert: cert, CertPEM: cpem, key: key, dir: dir}, nil
@@ -189,7 +189,7 @@ func (ca *CA) ServerCert(hosts []string) (*tls.Certificate, error) {
 	if err := os.WriteFile(keyPath, kpem, 0o600); err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(certPath, cpem, 0o644); err != nil {
+	if err := os.WriteFile(certPath, cpem, 0o644); err != nil { //nolint:gosec // certificates are public
 		return nil, err
 	}
 	c, err := tls.X509KeyPair(append(cpem, ca.CertPEM...), kpem)

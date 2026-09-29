@@ -138,7 +138,7 @@ func Restore(src, dst string) error {
 	err = check.QueryRow(`PRAGMA integrity_check`).Scan(&res)
 	check.Close()
 	if err != nil || res != "ok" {
-		return fmt.Errorf("store: %s is not a valid database: %v %s", src, err, res)
+		return fmt.Errorf("store: %s is not a valid database (%s): %w", src, res, err)
 	}
 	for _, suffix := range []string{"-wal", "-shm"} {
 		_ = os.Remove(dst + suffix)

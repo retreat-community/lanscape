@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 
 	"github.com/retreat-community/lanscape/internal/topo"
 )
@@ -25,7 +26,7 @@ var verdictValue = map[string]float64{topo.Green: 0, topo.None: 1, topo.Yellow: 
 // NewMetrics registers all collectors.
 func NewMetrics() *Metrics {
 	r := prometheus.NewRegistry()
-	r.MustRegister(prometheus.NewGoCollector(), prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	r.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	m := &Metrics{Registry: r,
 		agentUp: prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "lanscape_agent_up",
 			Help: "Agent control channel connected (1) or not (0)."}, []string{"agent", "name", "kind"}),

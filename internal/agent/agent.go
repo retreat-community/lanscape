@@ -125,7 +125,7 @@ func (a *Agent) Run(ctx context.Context) error {
 	for ctx.Err() == nil {
 		err := a.session(ctx)
 		if ctx.Err() != nil {
-			return nil
+			return nil //nolint:nilerr // shutdown, not a failure
 		}
 		a.log.Warn("control channel down", "err", err, "retry_in", backoff.String())
 		select {
@@ -279,8 +279,11 @@ func (a *Agent) session(ctx context.Context) error {
 	}
 	client = &http.Client{Transport: &http.Transport{TLSClientConfig: tc}}
 	dctx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	c, _, err := websocket.Dial(dctx, "wss://"+a.cfg.Server+"/v1/agent", &websocket.DialOptions{HTTPClient: client})
+	c, resp, err := websocket.Dial(dctx, "wss://"+a.cfg.Server+"/v1/agent", &websocket.DialOptions{HTTPClient: client})
 	cancel()
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
 	if err != nil {
 		return err
 	}

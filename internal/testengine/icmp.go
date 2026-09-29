@@ -2,8 +2,8 @@ package testengine
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
-	"math/rand/v2"
 	"net"
 	"sort"
 	"syscall"
@@ -82,7 +82,9 @@ func Ping(ctx context.Context, p PingParams) PingResult {
 		return res
 	}
 	defer c.pc.Close()
-	id := rand.IntN(0xffff)
+	var idb [2]byte
+	_, _ = rand.Read(idb[:])
+	id := int(idb[0])<<8 | int(idb[1])
 	payload := make([]byte, p.Size-28)
 	for i := range payload {
 		payload[i] = byte(i)

@@ -47,10 +47,10 @@ func installUnixService(args []string) error {
 	for _, a := range args[1:] {
 		fmt.Fprintf(&b, "    <string>%s</string>\n", strings.NewReplacer("&", "&amp;", "<", "&lt;").Replace(a))
 	}
-	if err := os.MkdirAll("/usr/local/var/log", 0o755); err != nil {
+	if err := os.MkdirAll("/usr/local/var/log", 0o755); err != nil { //nolint:gosec // standard log directory
 		return err
 	}
-	if err := os.WriteFile(plist, []byte(fmt.Sprintf(launchdPlist, exe, b.String())), 0o644); err != nil {
+	if err := os.WriteFile(plist, []byte(fmt.Sprintf(launchdPlist, exe, b.String())), 0o644); err != nil { //nolint:gosec // launchd requires a world-readable plist
 		return err
 	}
 	return exec.Command("launchctl", "load", "-w", plist).Run()

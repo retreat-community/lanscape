@@ -223,7 +223,7 @@ func (s *Server) serveMini(ctx context.Context, addr string) error {
 		c, err := ln.Accept()
 		if err != nil {
 			if ctx.Err() != nil {
-				return nil
+				return nil //nolint:nilerr // listener closed on shutdown
 			}
 			continue
 		}

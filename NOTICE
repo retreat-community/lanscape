@@ -8,3 +8,47 @@ version. See LICENSE for the full text.
 
 Third-party components are listed below together with their licenses.
 Lanscape Mini (mini/) contains no third-party code.
+
+Lanscape (Full) server and agent binaries (Go modules)
+------------------------------------------------------
+github.com/beorn7/perks                  MIT
+github.com/boombuler/barcode             MIT
+github.com/cespare/xxhash/v2             MIT
+github.com/coder/websocket               ISC
+github.com/dustin/go-humanize            MIT
+github.com/google/uuid                   BSD-3-Clause
+github.com/jackc/pgpassfile              MIT
+github.com/jackc/pgservicefile           MIT
+github.com/jackc/pgx/v5                  MIT
+github.com/jackc/puddle/v2               MIT
+github.com/klauspost/compress            BSD-3-Clause, Apache-2.0 (parts)
+github.com/munnerz/goautoneg             BSD-3-Clause
+github.com/pquerna/otp                   Apache-2.0
+github.com/prometheus/client_golang      Apache-2.0
+github.com/prometheus/client_model       Apache-2.0
+github.com/prometheus/common             Apache-2.0
+github.com/prometheus/procfs             Apache-2.0
+github.com/remyoudompheng/bigfft         BSD-3-Clause
+github.com/vishvananda/netlink           Apache-2.0
+github.com/vishvananda/netns             Apache-2.0
+golang.org/x/crypto, net, sync, sys, text  BSD-3-Clause
+google.golang.org/protobuf               BSD-3-Clause
+gopkg.in/yaml.v3                         MIT, Apache-2.0
+modernc.org/libc, mathutil, memory, sqlite  BSD-3-Clause (SQLite itself is in the public domain)
+The Go standard library                  BSD-3-Clause
+
+The license texts are included in the source of each module (see go.sum for exact versions).
+
+Web interface (bundled into the server binary)
+----------------------------------------------
+svelte                                   MIT
+cytoscape                                MIT
+cytoscape-elk                            MIT
+elkjs                                    EPL-2.0 OR GPL-3.0-or-later (used under GPL-3.0-or-later)
+uplot                                    MIT
+simple-icons (application icons)         CC0-1.0; the icons are trademarks of their owners
+
+Data
+----
+IEEE MA-L (OUI) registry (internal/oui/oui.txt.gz), used to name network card vendors;
+published by the IEEE Registration Authority, https://standards-oui.ieee.org/.

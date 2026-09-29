@@ -888,6 +888,26 @@ func (s *Server) apiSaveSettings(w http.ResponseWriter, r *http.Request) {
 	st.DurationMS = min(max(st.DurationMS, 1000), 30000)
 	st.Streams = min(max(st.Streams, 1), 16)
 	st.PingCount = min(max(st.PingCount, 1), 100)
+	st.InternetEveryMin = min(max(st.InternetEveryMin, 0), 1440)
+	st.InternetSpeedEveryH = min(max(st.InternetSpeedEveryH, 0), 168)
+	if st.InternetEveryMin > 0 && st.InternetEveryMin < 5 {
+		st.InternetEveryMin = 5
+	}
+	if st.AggregateDays != 0 && st.AggregateDays < st.RetentionDays {
+		st.AggregateDays = st.RetentionDays
+	}
+	for _, u := range []string{st.InternetIPURL, st.InternetDownloadURL} {
+		if u != "" && !validURL(u) {
+			writeError(w, http.StatusBadRequest, "Internet test URLs must start with http:// or https://")
+			return
+		}
+	}
+	for _, p := range st.InternetPoints {
+		if _, ok := s.hub.Get(p); !ok && p != pointServer {
+			writeError(w, http.StatusBadRequest, "unknown Internet test point "+p)
+			return
+		}
+	}
 	if err := s.store.SetSetting(r.Context(), "settings", st); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

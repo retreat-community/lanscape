@@ -56,10 +56,19 @@ type Settings struct {
 	Webhooks      []string `json:"webhooks"`
 	RetentionDays int      `json:"retention_days"`
 	PublicURL     string   `json:"public_url,omitempty"`
+	// aggregates (daily uptime, Internet tests) are kept longer than raw checks
+	AggregateDays int `json:"aggregate_days"`
+	// Internet test (§6.1): observation points ("server" or agent ids), period of the address
+	// check and of the speed test (0 = off), and the endpoints used
+	InternetPoints      []string `json:"internet_points"`
+	InternetEveryMin    int      `json:"internet_every_min"`
+	InternetSpeedEveryH int      `json:"internet_speed_every_h"`
+	InternetIPURL       string   `json:"internet_ip_url,omitempty"`
+	InternetDownloadURL string   `json:"internet_download_url,omitempty"`
 }
 
 // DefaultSettings are used until an administrator changes them.
-var DefaultSettings = Settings{DurationMS: 5000, Streams: 4, PingCount: 20, RTTWarnMS: 20, RetentionDays: 30}
+var DefaultSettings = Settings{DurationMS: 5000, Streams: 4, PingCount: 20, RTTWarnMS: 20, RetentionDays: 30, AggregateDays: 730}
 
 // Server is the Lanscape control plane.
 type Server struct {
@@ -84,6 +93,7 @@ type Server struct {
 
 	pushClient *http.Client // Web Push delivery (tests swap it)
 	oidc       oidcState
+	inet       internetState
 }
 
 // New opens the store and the CA.
@@ -321,6 +331,7 @@ func (s *Server) Run(ctx context.Context) error {
 	go s.scheduler(ctx)
 	go s.uptime.run(ctx)
 	go s.housekeeping(ctx)
+	go s.internetScheduler(ctx)
 	s.log.Info("lanscape server started", "version", s.cfg.Version, "ui", s.cfg.Listen, "gateway", s.cfg.GatewayListen,
 		"mini", s.cfg.MiniListen, "ca_fingerprint", pki.Fingerprint(s.ca.Cert))
 	var err error
@@ -355,6 +366,13 @@ func (s *Server) housekeeping(ctx context.Context) {
 				if err := s.store.PruneChecks(ctx, cut); err != nil {
 					s.log.Warn("cannot prune checks", "err", err)
 				}
+			}
+			if st.AggregateDays > 0 {
+				before := time.Now().AddDate(0, 0, -st.AggregateDays)
+				if err := s.store.PruneDaily(ctx, dayKey(before)); err != nil {
+					s.log.Warn("cannot prune daily aggregates", "err", err)
+				}
+				_ = s.store.PruneInternetChecks(ctx, before.UnixMilli())
 			}
 		}
 	}

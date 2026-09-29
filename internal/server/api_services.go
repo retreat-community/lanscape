@@ -71,6 +71,8 @@ func (s *Server) servicesRoutes(mux *http.ServeMux, v func(string, http.HandlerF
 	mux.HandleFunc("POST /api/v1/push/subscribe", v(RoleViewer, s.apiPushSubscribe))
 	mux.HandleFunc("POST /api/v1/push/unsubscribe", v(RoleViewer, s.apiPushUnsubscribe))
 	mux.HandleFunc("POST /api/v1/push/test", v(RoleViewer, s.apiPushTest))
+	mux.HandleFunc("GET /api/v1/internet", v(RoleViewer, s.apiInternet))
+	mux.HandleFunc("POST /api/v1/internet/run", v(RoleOperator, s.apiRunInternet))
 	mux.HandleFunc("GET /api/v1/config", v(RoleAdmin, s.apiExportConfig))
 	mux.HandleFunc("POST /api/v1/config", v(RoleAdmin, s.apiApplyConfig))
 	mux.HandleFunc("POST /api/v1/actions/wol", v(RoleOperator, s.apiWake))
@@ -988,6 +990,7 @@ type Dashboard struct {
 	UPS          []HardwareView      `json:"ups"`
 	Storage      []HardwareView      `json:"storage"` // pools and disks
 	Backups      []BackupView        `json:"backups"`
+	Internet     []InternetExit      `json:"internet"` // last 30 days
 }
 
 // HardwareView is a UPS, disk or storage pool reported by an agent.
@@ -1049,8 +1052,11 @@ type CertExpiry struct {
 func (s *Server) apiDashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	d := Dashboard{Summary: map[string]int{}, Groups: []TileGroup{}, Agents: []AgentResources{}, Certificates: []CertExpiry{},
-		UPS: []HardwareView{}, Storage: []HardwareView{}, Backups: []BackupView{}}
+		UPS: []HardwareView{}, Storage: []HardwareView{}, Backups: []BackupView{}, Internet: []InternetExit{}}
 	s.hardwareWidgets(ctx, &d)
+	if checks, err := s.store.InternetChecks(ctx, time.Now().AddDate(0, 0, -30).UnixMilli()); err == nil {
+		d.Internet = s.internetExits(checks)
+	}
 	views, err := s.serviceViews(ctx, r)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())

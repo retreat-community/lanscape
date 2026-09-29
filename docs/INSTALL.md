@@ -288,6 +288,16 @@ push notifications (Web Push; the panel must be served over HTTPS). The webhooks
 General** receive every `run.finished`, `incident.opened`/`resolved`/`reminder` and `device.new`
 event as JSON (`{"event": …, "run"|"incident"|"change": …}`).
 
+### Internet test
+
+**Settings → General → Internet test** checks the public address and, optionally, the download
+speed through every default gateway of the chosen points (the server and/or agents such as the
+router; with two uplinks each one is tested separately). It is off until you set a period or press
+**Check now**; only then are the address service (`https://1.1.1.1/cdn-cgi/trace` by default) and
+the download URL contacted, and both can point to your own servers. The dashboard shows the
+current address, the last speed and the outages of the last 30 days; an exit that goes down or
+comes back is written to the change feed.
+
 ### Actions
 
 Operators can wake devices and restart discovered objects from the panel (**Devices →

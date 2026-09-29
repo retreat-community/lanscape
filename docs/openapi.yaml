@@ -1035,6 +1035,46 @@ paths:
       responses:
         "200": {$ref: "#/components/responses/ConfigPlan"}
         "400": {$ref: "#/components/responses/ConfigPlan"}
+  /api/v1/internet:
+    get:
+      tags: [network]
+      operationId: internetHistory
+      summary: Internet exits with public address, speed history and outages
+      parameters:
+        - {name: days, in: query, schema: {type: integer, default: 30, maximum: 366}}
+      responses:
+        "200":
+          description: one entry per observation point and gateway interface
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    point: {type: string}
+                    name: {type: string}
+                    dev: {type: string}
+                    gateway: {type: string}
+                    last: {type: object, additionalProperties: true}
+                    speeds: {type: array, items: {type: object, properties: {ts: {type: integer}, mbps: {type: number}}}}
+                    outages: {type: array, items: {type: object, properties: {from: {type: integer}, to: {type: integer}, error: {type: string}}}}
+                    checks: {type: integer}
+                    failures: {type: integer}
+  /api/v1/internet/run:
+    post:
+      tags: [network]
+      operationId: runInternet
+      summary: Run the Internet test now from the configured points (operator)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                speed: {type: boolean, description: also measure the download speed}
+      responses:
+        "202": {description: started}
   /api/v1/import/uptime-kuma:
     post:
       tags: [discovery]
@@ -1901,6 +1941,12 @@ components:
         mini_token: {type: string, description: masked on read}
         webhooks: {type: array, items: {type: string}, description: "URLs that receive {event, run|incident|change} JSON for run.finished, incident.opened, incident.resolved, incident.reminder and device.new"}
         retention_days: {type: integer}
+        aggregate_days: {type: integer, description: "daily uptime and Internet history, 0 = keep forever (default 730)"}
+        internet_points: {type: array, items: {type: string}, description: '"server" or agent ids'}
+        internet_every_min: {type: integer, description: "address check period in minutes, 0 = off"}
+        internet_speed_every_h: {type: integer, description: "speed test period in hours, 0 = off"}
+        internet_ip_url: {type: string}
+        internet_download_url: {type: string}
         public_url: {type: string}
     AuditEntry:
       type: object

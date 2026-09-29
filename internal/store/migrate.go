@@ -257,6 +257,20 @@ var migrations = []string{
 	// 6: users signed in through OpenID Connect
 	`ALTER TABLE users ADD COLUMN oidc_subject TEXT NOT NULL DEFAULT '';
 	CREATE INDEX users_oidc ON users(oidc_subject)`,
+	// 7: Internet test results (public address, speed and outages per exit)
+	`CREATE TABLE internet_checks (
+		id {{PK}},
+		ts BIGINT NOT NULL,
+		point TEXT NOT NULL,
+		dev TEXT NOT NULL DEFAULT '',
+		gateway TEXT NOT NULL DEFAULT '',
+		ok INTEGER NOT NULL,
+		error TEXT NOT NULL DEFAULT '',
+		public_ip TEXT NOT NULL DEFAULT '',
+		latency_ms REAL NOT NULL DEFAULT 0,
+		down_mbps REAL NOT NULL DEFAULT 0
+	);
+	CREATE INDEX internet_ts ON internet_checks(ts)`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

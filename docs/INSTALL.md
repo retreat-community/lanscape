@@ -265,7 +265,7 @@ the findings into cards in **Services → Found**. Sources are chosen with `--di
 
 The default `--discover auto` enables `sockets` on Linux, `docker` when the socket exists,
 `k8s` inside a cluster, `openwrt` on OpenWrt and `mdns`/`ssdp` everywhere else. HTTP endpoints are fingerprinted (title, headers, favicon, characteristic
-paths) against the built-in library of application signatures; `--no-probe` turns this off and
+paths) against the built-in library of 400+ application signatures; `--no-probe` turns this off and
 `--signatures my-apps.yaml` adds your own signatures in the format of
 [`internal/fingerprint/signatures.yaml`](../internal/fingerprint/signatures.yaml).
 

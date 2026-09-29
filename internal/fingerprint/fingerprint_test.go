@@ -14,8 +14,8 @@ func TestLibrary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(lib.Sigs) < 100 {
-		t.Fatalf("only %d signatures, want at least 100", len(lib.Sigs))
+	if len(lib.Sigs) < 300 {
+		t.Fatalf("only %d signatures, want at least 300", len(lib.Sigs))
 	}
 	seen := map[string]bool{}
 	for _, s := range lib.Sigs {
@@ -46,6 +46,10 @@ func TestIdentify(t *testing.T) {
 		{Observation{Image: "postgres:16"}, "postgresql"},
 		{Observation{Title: "LuCI", Body: "<link href=\"/luci-static/bootstrap/cascade.css\">"}, "openwrt"},
 		{Observation{Headers: http.Header{"Server": {"pve-api-daemon/3.0"}}}, "proxmox"},
+		{Observation{Image: "lscr.io/linuxserver/jackett:latest"}, "jackett"},
+		{Observation{Image: "ghcr.io/open-webui/open-webui:main"}, "openwebui"},
+		{Observation{Title: "FRITZ!Box"}, "fritzbox"},
+		{Observation{PathHits: map[string]string{"/api/blocking/status": `{"enabled":true}`}}, "blocky"},
 	}
 	for _, c := range cases {
 		m, ok := lib.Identify(&c.o)

@@ -472,6 +472,7 @@ func (a *Agent) Inventory() Inventory {
 	ifs = netio.Filter(ifs, a.cfg.Exclude)
 	inv := Inventory{Ifaces: ifs}
 	inv.Routes, inv.Rules, inv.Neighbors, inv.Env, inv.Resources = CollectSystem()
+	inv.Resources.Updates = pendingUpdates()
 	inv.Resources.UptimeS = inv.Resources.UptimeS / 60 * 60 // avoid resending every minute
 	inv.Resources.MemAvail = inv.Resources.MemAvail >> 24 << 24
 	inv.Resources.Load1 = float64(int(inv.Resources.Load1))

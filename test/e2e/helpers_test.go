@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -137,3 +138,39 @@ type httpError struct {
 func (e *httpError) Error() string { return fmt.Sprintf("HTTP %d: %s", e.code, e.body) }
 
 func decode(r io.Reader, v any) error { return json.NewDecoder(r).Decode(v) }
+
+// memKB is the memory of a process: resident (VmRSS, including the clean, shared pages of the
+// binary) and private (anonymous memory: heap, stacks, runtime).
+type memKB struct{ rss, private int }
+
+// residentKB returns the memory of the processes listed in a pid file of the harness, in the
+// order they were started.
+func residentKB(t *testing.T, pidFile string) []memKB {
+	t.Helper()
+	out := os.Getenv("E2E_OUT")
+	if out == "" {
+		out = "out"
+	}
+	b, err := os.ReadFile(out + "/" + pidFile)
+	if err != nil {
+		t.Fatalf("pid file: %v", err)
+	}
+	field := func(file, name string) int {
+		b, err := os.ReadFile(file)
+		if err != nil {
+			return -1
+		}
+		for _, line := range strings.Split(string(b), "\n") {
+			if f := strings.Fields(line); len(f) >= 2 && f[0] == name {
+				v, _ := strconv.Atoi(f[1])
+				return v
+			}
+		}
+		return -1
+	}
+	var kb []memKB
+	for _, pid := range strings.Fields(string(b)) {
+		kb = append(kb, memKB{rss: field("/proc/"+pid+"/status", "VmRSS:"), private: field("/proc/"+pid+"/smaps_rollup", "Anonymous:")})
+	}
+	return kb
+}

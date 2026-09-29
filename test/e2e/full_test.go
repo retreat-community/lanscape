@@ -299,4 +299,19 @@ func TestFull(t *testing.T) {
 		!strings.Contains(string(b), `lanscape_agent_up{`) {
 		t.Error("metrics missing path or agent series")
 	}
+
+	// idle memory (§16): agent under 15 MB, server under 250 MB (for 100 agents and 500 monitors).
+	// The agent's own memory is its private memory; the resident size also counts ~8 MB of
+	// clean pages of the binary, which the kernel shares and can reclaim.
+	time.Sleep(3 * time.Second)
+	mem := residentKB(t, "full.pids")
+	t.Logf("memory, kB (resident/private): server %v, agents %v (the last one is a Mini agent)", mem[0], mem[1:])
+	if mem[0].rss <= 0 || mem[0].rss > 250*1024 {
+		t.Errorf("server uses %d kB", mem[0].rss)
+	}
+	for i, m := range mem[1 : len(mem)-1] {
+		if m.private <= 0 || m.private > 15*1024 || m.rss > 24*1024 {
+			t.Errorf("agent %d uses %d kB private, %d kB resident idle; budget 15 MB", i+1, m.private, m.rss)
+		}
+	}
 }

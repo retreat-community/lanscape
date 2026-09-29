@@ -203,6 +203,19 @@ func TestMini(t *testing.T) {
 		}
 	}
 
+	// idle memory (§0.4): agent ≤ 1 MB, server ≤ 8 MB (for 20 agents; here 5)
+	time.Sleep(2 * time.Second)
+	mem := residentKB(t, "mini.pids")
+	t.Logf("memory, kB (resident/private): server %v, agents %v", mem[0], mem[1:])
+	if mem[0].rss <= 0 || mem[0].rss > 8*1024 {
+		t.Errorf("lsm-server uses %d kB", mem[0].rss)
+	}
+	for i, m := range mem[1:] {
+		if m.rss <= 0 || m.rss > 1024 {
+			t.Errorf("lsm-agent %d uses %d kB idle, budget 1024", i+1, m.rss)
+		}
+	}
+
 	// webhook delivered the finished run
 	waitFor(t, 10*time.Second, "webhook", func() bool { return len(hooks.all()) > 0 })
 	var hooked miniRun

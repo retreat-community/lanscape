@@ -35,7 +35,7 @@ rules:
     verbs: [get, list, watch]
   - apiGroups: [apps]
     resources: [deployments, statefulsets, daemonsets]
-    verbs: [get, list, watch]
+    verbs: [get, list, watch{{ if has "restart" (splitList "," .Values.agent.actions) }}, patch{{ end }}]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -103,6 +103,8 @@ spec:
             - {name: LANSCAPE_DATA_DIR, value: /var/lib/lanscape-agent}
             # Kubernetes objects are reported once per cluster: by the node-network agents
             - {name: LANSCAPE_DISCOVER, value: {{ if eq $mode "host" }}{{ $.Values.agent.discover | quote }}{{ else }}"none"{{ end }}}
+            # Wake-on-LAN needs the node's broadcast domain; restarts patch the workloads it discovered
+            - {name: LANSCAPE_ACTIONS, value: {{ if eq $mode "host" }}{{ $.Values.agent.actions | quote }}{{ else }}"none"{{ end }}}
           securityContext:
             capabilities:
               add: [NET_RAW, NET_ADMIN]

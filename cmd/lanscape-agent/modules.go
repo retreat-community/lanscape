@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net"
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/retreat-community/lanscape/internal/agent"
@@ -15,6 +17,7 @@ import (
 	"github.com/retreat-community/lanscape/internal/discovery"
 	"github.com/retreat-community/lanscape/internal/monitor"
 	"github.com/retreat-community/lanscape/internal/proto"
+	"github.com/retreat-community/lanscape/internal/wol"
 )
 
 // registerModules wires optional agent modules: service discovery and availability checks.
@@ -87,6 +90,9 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 			log.Warn("unknown discovery source", "source", src)
 		}
 	}
+	if o.mode != "respond-only" {
+		registerActions(a, cfg, cli.SplitList(o.actions), log)
+	}
 	col, err := discovery.New(cfg, log)
 	if err != nil {
 		log.Error("discovery disabled", "err", err)
@@ -102,6 +108,53 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 		return col.Collect(ctx), nil
 	})
 	go col.Run(ctx, func(r discovery.Report) error { return a.Send(ctx, proto.MsgDiscovery, r) })
+}
+
+// registerActions enables the actions the administrator allowed on this agent: Wake-on-LAN
+// (default) and restarts of containers, workloads and guests the agent discovers.
+func registerActions(a *agent.Agent, cfg discovery.Config, allowed []string, log *slog.Logger) {
+	allow := map[string]bool{}
+	for _, x := range allowed {
+		switch x {
+		case proto.ActionWake, proto.ActionRestart:
+			allow[x] = true
+			a.AddCaps("action:" + x)
+		case "none", "off":
+		default:
+			log.Warn("unknown action", "action", x)
+		}
+	}
+	if len(allow) == 0 {
+		return
+	}
+	a.Handle(proto.MsgAction, func(ctx context.Context, env proto.Envelope) (any, error) {
+		var m proto.ActionMsg
+		if err := json.Unmarshal(env.Data, &m); err != nil {
+			return nil, err
+		}
+		if !allow[m.Action] {
+			return nil, fmt.Errorf("action %q is not allowed on this agent (see --actions)", m.Action)
+		}
+		log.Info("action", "action", m.Action, "mac", m.MAC, "source", m.Source, "key", m.Key)
+		switch m.Action {
+		case proto.ActionWake:
+			var targets []wol.Target
+			if m.IP != "" {
+				targets, _ = wol.Targets(m.IP)
+			}
+			ifs, err := wol.Send(ctx, m.MAC, targets)
+			if err != nil {
+				return nil, err
+			}
+			return proto.ActionResultMsg{Detail: "magic packet sent on " + strings.Join(ifs, ", ")}, nil
+		default:
+			detail, err := discovery.Restart(ctx, cfg, m.Source, m.Key)
+			if err != nil {
+				return nil, err
+			}
+			return proto.ActionResultMsg{Detail: detail}, nil
+		}
+	})
 }
 
 func exists(p string) bool {

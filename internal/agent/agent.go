@@ -58,6 +58,7 @@ type Agent struct {
 	conn    *websocket.Conn
 	agentID string
 	extra   map[string]func(ctx context.Context, env proto.Envelope) (any, error)
+	caps    []string
 	lastInv []byte
 
 	pmu     sync.Mutex
@@ -167,6 +168,11 @@ func New(cfg Config, log *slog.Logger) *Agent {
 // Handle registers an extra control message handler (discovery, checks, actions).
 func (a *Agent) Handle(typ string, fn func(ctx context.Context, env proto.Envelope) (any, error)) {
 	a.extra[typ] = fn
+}
+
+// AddCaps announces extra capabilities (e.g. the actions an administrator allowed).
+func (a *Agent) AddCaps(caps ...string) {
+	a.caps = append(a.caps, caps...)
 }
 
 // Send pushes an unsolicited message (e.g. discovery results) to the server.
@@ -386,6 +392,7 @@ func (a *Agent) session(ctx context.Context) error {
 	for typ := range a.extra {
 		caps = append(caps, typ)
 	}
+	caps = append(caps, a.caps...)
 	sort.Strings(caps[4:])
 	hello, _ := proto.NewEnvelope(proto.MsgHello, "", proto.HelloMsg{Proto: proto.ControlVersion, AgentID: a.agentID,
 		Name: a.cfg.Name, Version: a.cfg.Version, OS: runtime.GOOS, Arch: runtime.GOARCH, Hostname: host,

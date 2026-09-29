@@ -57,6 +57,9 @@ agent:
   server: ""
   exclude: "wan*,pppoe-*,tailscale*,docker*,veth*,cni*,flannel*,cilium_*,lxc*,virbr*,kube-ipvs*,vxlan*,cali*"
   discover: auto
+  # actions the panel may request (operators only, written to the audit log):
+  # wol, restart (rolling restart of deployments/statefulsets/daemonsets; adds "patch" to the RBAC role)
+  actions: wol
   # node network: measures the links between nodes
   hostNetwork:
     enabled: true

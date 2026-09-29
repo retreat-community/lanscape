@@ -117,3 +117,23 @@ type PathSummary struct {
 	Verdict string  `json:"verdict"`
 	RTTMS   float64 `json:"rtt_ms"`
 }
+
+// Actions an agent may perform when the administrator allows them on the agent (--actions).
+const (
+	ActionWake    = "wol"
+	ActionRestart = "restart"
+)
+
+// ActionMsg asks the agent to perform an action.
+type ActionMsg struct {
+	Action string `json:"action"`
+	MAC    string `json:"mac,omitempty"`    // wol
+	IP     string `json:"ip,omitempty"`     // wol: pick the interfaces on this subnet
+	Source string `json:"source,omitempty"` // restart: docker, k8s, proxmox
+	Key    string `json:"key,omitempty"`    // restart: finding key
+}
+
+// ActionResultMsg describes what the agent did.
+type ActionResultMsg struct {
+	Detail string `json:"detail"`
+}

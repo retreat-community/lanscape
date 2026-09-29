@@ -92,6 +92,30 @@ jobs:
             GOOS=$os go vet ./...
           done
 
+  # the store and server suites once more against PostgreSQL (SQLite is covered above)
+  test-postgres:
+    runs-on: retreat-k8s
+    container: golang:1.23-bookworm
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: lanscape
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      LANSCAPE_TEST_POSTGRES: postgres://postgres:lanscape@postgres:5432/postgres?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            /root/go/pkg/mod
+            /root/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+      - run: go test -count=1 ./internal/store/... ./internal/server/...
+
   # Hosted macOS/Windows runners are optional (docs/decisions/0007-ci-runners.md).
   test-go-hosted:
     if: vars.HOSTED_RUNNERS == 'true'

@@ -54,6 +54,7 @@ jobs:
     container: golang:1.23-bookworm
     steps:
       - uses: actions/checkout@v4
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Prepare embedded web directory
         run: mkdir -p internal/server/webdist && touch internal/server/webdist/.gitkeep
       - uses: actions/cache@v4
@@ -73,6 +74,7 @@ jobs:
     container: golang:1.23-bookworm
     steps:
       - uses: actions/checkout@v4
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: actions/cache@v4
         with:
           path: |
@@ -135,6 +137,49 @@ jobs:
           path: internal/server/webdist/
           include-hidden-files: true
 
+  build-full:
+    needs: [meta, web]
+    runs-on: retreat-k8s
+    container: golang:1.23-bookworm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - uses: actions/download-artifact@v4
+        with:
+          name: webdist
+          path: internal/server/webdist
+      - uses: actions/cache@v4
+        with:
+          path: |
+            /root/go/pkg/mod
+            /root/.cache/go-build
+          key: go-build-${{ hashFiles('go.sum') }}
+      - name: Build all targets with goreleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean --skip=publish ${{ inputs.release && '--parallelism=4' || '--snapshot' }}
+      - name: Collect
+        run: |
+          mkdir -p out/packages out/linux-amd64
+          cp dist/*.tar.gz dist/*.zip dist/*.deb dist/*.rpm dist/*.apk dist/checksums-full.txt out/packages/
+          cp dist/lanscape_linux_amd64_v1/lanscape dist/lanscape-agent_linux_amd64_v1/lanscape-agent out/linux-amd64/
+          scripts/docker-context.sh dist out/docker
+      - uses: actions/upload-artifact@v4
+        with:
+          name: full-packages
+          path: out/packages/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: full-linux-amd64
+          path: out/linux-amd64/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: full-docker-context
+          path: out/docker/
+
   mini:
     needs: meta
     runs-on: retreat-k8s
@@ -149,7 +194,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install tools
-        run: apt-get update -qq && apt-get install -y -qq make gzip git xz-utils curl ca-certificates llvm cppcheck > /dev/null
+        run: |
+          apt-get update -qq && apt-get install -y -qq make gzip git xz-utils curl ca-certificates llvm cppcheck > /dev/null
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: mlugg/setup-zig@v2
         with:
           version: ${{ env.ZIG_VERSION }}
@@ -207,7 +254,7 @@ jobs:
           path: sizes.md
 
   e2e:
-    needs: mini
+    needs: [mini, build-full]
     runs-on: retreat-k8s
     timeout-minutes: 90
     steps:
@@ -216,9 +263,13 @@ jobs:
         with:
           name: mini-linux-amd64
           path: dist/mini
+      - uses: actions/download-artifact@v4
+        with:
+          name: full-linux-amd64
+          path: dist/full
       - name: Network-namespace e2e and UI smoke (privileged container)
         run: |
-          chmod +x dist/mini/linux-amd64/*
+          chmod +x dist/mini/linux-amd64/* dist/full/*
           docker run --rm --privileged -v "$PWD:$PWD" -w "$PWD" \
             -e LSM_BIN="$PWD/dist/mini/linux-amd64" -e LANSCAPE_BIN="$PWD/dist/full" \
             mcr.microsoft.com/playwright:v1.56.1-noble test/e2e/ci.sh all
@@ -274,7 +325,7 @@ jobs:
           path: out/
 
   docker:
-    needs: [meta, mini]
+    needs: [meta, mini, build-full]
     runs-on: retreat-k8s
     permissions:
       contents: read
@@ -287,6 +338,10 @@ jobs:
           pattern: mini-linux-*
           path: ctx
           merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: full-docker-context
+          path: ctx-full
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         if: github.event_name == 'push' || inputs.release
@@ -300,7 +355,7 @@ jobs:
         id: tags
         run: |
           v=${{ needs.meta.outputs.version }}
-          for img in lsm-agent lsm-server; do
+          for img in lsm-agent lsm-server lanscape lanscape-agent; do
             base=ghcr.io/${GITHUB_REPOSITORY_OWNER}/$img
             if [ "${{ inputs.release }}" = true ]; then
               mm=$(echo "${v#v}" | cut -d. -f1-2)
@@ -328,11 +383,32 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6,linux/386,linux/riscv64,linux/ppc64le
           push: ${{ github.event_name == 'push' || inputs.release }}
           tags: ${{ steps.tags.outputs.lsm_server }}
+      - name: Build lanscape
+        id: full
+        uses: docker/build-push-action@v6
+        with:
+          context: ctx-full
+          file: packaging/docker/lanscape.Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: ${{ github.event_name == 'push' || inputs.release }}
+          tags: ${{ steps.tags.outputs.lanscape }}
+      - name: Build lanscape-agent
+        id: fullagent
+        uses: docker/build-push-action@v6
+        with:
+          context: ctx-full
+          file: packaging/docker/lanscape-agent.Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6
+          push: ${{ github.event_name == 'push' || inputs.release }}
+          tags: ${{ steps.tags.outputs.lanscape_agent }}
       - name: Sign images
         if: inputs.release
         run: |
-          cosign sign --yes ghcr.io/${GITHUB_REPOSITORY_OWNER}/lsm-agent@${{ steps.agent.outputs.digest }}
-          cosign sign --yes ghcr.io/${GITHUB_REPOSITORY_OWNER}/lsm-server@${{ steps.server.outputs.digest }}
+          o=ghcr.io/${GITHUB_REPOSITORY_OWNER}
+          cosign sign --yes $o/lsm-agent@${{ steps.agent.outputs.digest }}
+          cosign sign --yes $o/lsm-server@${{ steps.server.outputs.digest }}
+          cosign sign --yes $o/lanscape@${{ steps.full.outputs.digest }}
+          cosign sign --yes $o/lanscape-agent@${{ steps.fullagent.outputs.digest }}
 
   openapi:
     runs-on: retreat-k8s

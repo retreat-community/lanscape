@@ -32,11 +32,23 @@ jobs:
         with:
           pattern: openwrt-*
           path: openwrt
+      - uses: actions/download-artifact@v4
+        with:
+          name: full-packages
+          path: full
       - uses: sigstore/cosign-installer@v3
+      - name: Install nfpm
+        run: |
+          mkdir -p "$HOME/bin"
+          curl -fsSL https://github.com/goreleaser/nfpm/releases/download/v2.43.1/nfpm_2.43.1_Linux_x86_64.tar.gz | tar -xz -C "$HOME/bin" nfpm
+          echo "$HOME/bin" >> "$GITHUB_PATH"
       - name: Assemble assets
         run: |
           mkdir -p assets
           scripts/package-mini.sh mini "$GITHUB_REF_NAME" assets
+          scripts/package-mini-nfpm.sh mini "$GITHUB_REF_NAME" assets
+          cp full/* assets/
+          rm -f assets/checksums-full.txt
           # OpenWrt packages: prefix with branch and arch (apk file names carry no arch)
           for d in openwrt/openwrt-*; do
             id=$(basename "$d")                      # openwrt-<branch>-<arch>

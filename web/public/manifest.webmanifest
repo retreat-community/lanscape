@@ -1,0 +1,13 @@
+{
+  "name": "Lanscape",
+  "short_name": "Lanscape",
+  "description": "Network paths, map and service uptime in one panel",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f141c",
+  "theme_color": "#1f5fd6",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

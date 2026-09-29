@@ -29,7 +29,13 @@
 
   onMount(() => {
     void load();
-    const off = subscribe({ monitor: reload, incident: reload, services: reload, change: reload, maintenance: reload });
+    // guests (not signed in) have no event stream: refresh every minute
+    const off = ui.user
+      ? subscribe({ monitor: reload, incident: reload, services: reload, change: reload, maintenance: reload })
+      : (() => {
+          const iv = setInterval(() => void load(), 60000);
+          return () => clearInterval(iv);
+        })();
     return () => {
       off();
       clearTimeout(pending);

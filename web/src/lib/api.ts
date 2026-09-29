@@ -99,7 +99,7 @@ export async function applyConfig(
 const enc = encodeURIComponent;
 
 export const api = {
-  setupState: () => call<{ needs_setup: boolean; version: string }>("GET", "/setup"),
+  setupState: () => call<{ needs_setup: boolean; version: string; guest?: boolean }>("GET", "/setup"),
   setup: (username: string, password: string) => call<User>("POST", "/setup", { username, password }),
   login: (username: string, password: string, code?: string) =>
     call<User>("POST", "/auth/login", { username, password, code }),

@@ -85,6 +85,7 @@
       <label class="field">{t("set.mini_token")}<input type="password" autocomplete="off" bind:value={settings.mini_token} /></label>
       <label class="field">{t("set.public_url")}<input bind:value={settings.public_url} placeholder="https://lanscape.example.com" /></label>
       <label class="field">{t("set.webhooks")}<textarea rows="3" bind:value={webhooks}></textarea></label>
+      <label><input type="checkbox" bind:checked={settings.guest_dashboard} /> {t("set.guest")}</label>
       <label class="field">{t("set.aggregates")}<input type="number" min="0" bind:value={settings.aggregate_days} /></label>
       <h3>{t("set.internet")}</h3>
       <p class="muted small">{t("set.internet_hint")}</p>

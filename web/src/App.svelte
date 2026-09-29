@@ -14,7 +14,7 @@
   import Services from "./pages/Services.svelte";
   import Settings from "./pages/Settings.svelte";
 
-  let phase = $state<"loading" | "setup" | "login" | "app">("loading");
+  let phase = $state<"loading" | "setup" | "login" | "guest" | "app">("loading");
 
   const nav = [
     { path: "/dashboard", key: "nav.dashboard" },
@@ -45,7 +45,7 @@
       try {
         const st = await api.setupState();
         ui.version = st.version;
-        phase = st.needs_setup ? "setup" : "login";
+        phase = st.needs_setup ? "setup" : st.guest ? "guest" : "login";
       } catch {
         phase = "login";
       }
@@ -74,6 +74,13 @@
   <p class="muted pad">{t("common.loading")}</p>
 {:else if phase === "setup" || phase === "login"}
   <Login setup={phase === "setup"} onauth={init} />
+{:else if phase === "guest"}
+  <header>
+    <a class="brand" href="#/dashboard"><img src="/icon.svg" alt="" width="22" height="22" /> Lanscape</a>
+    <span class="grow"></span>
+    <button class="primary" onclick={() => (phase = "login")}>{t("login.submit")}</button>
+  </header>
+  <main><Dashboard /></main>
 {:else}
   <header>
     <a class="brand" href="#/dashboard"><img src="/icon.svg" alt="" width="22" height="22" /> Lanscape</a>
@@ -183,6 +190,9 @@
   }
   .pad {
     padding: 24px;
+  }
+  .grow {
+    flex: 1;
   }
   .offline {
     background: var(--yellow);

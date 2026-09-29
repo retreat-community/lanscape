@@ -314,6 +314,7 @@ export interface Settings {
   retention_days: number;
   public_url?: string;
   aggregate_days?: number;
+  guest_dashboard?: boolean;
   internet_points?: string[] | null;
   internet_every_min?: number;
   internet_speed_every_h?: number;

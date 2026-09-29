@@ -31,6 +31,30 @@ macvlan parent/child.
 | Size (static, mipsle) | < 128 KiB | < 512 KiB incl. the page |
 | Platforms | Linux amd64, 386, arm64, armv7/6/5, mips/mipsle, mips64/le, riscv64, ppc64le; OpenWrt 24.10/25.12 | same |
 
+![Lanscape Mini: problems, map and speed matrix](docs/screenshots/mini.png)
+
+## Quick start: Lanscape
+
+```sh
+docker run -d --name lanscape -p 8080:8080 -p 8443:8443 -v lanscape:/data \
+  -e LANSCAPE_ADMIN_PASSWORD='change-me-please' -e LANSCAPE_GATEWAY_HOSTS=SERVER_IP \
+  ghcr.io/retreat-community/lanscape:latest
+```
+
+Open `http://SERVER_IP:8080`, then **Settings → Agents → Add node** shows a ready install command
+for Linux, Docker, Kubernetes, macOS, Windows, FreeBSD and OpenWrt. Agents register once with a
+token and then talk to the server over mTLS; Lanscape Mini agents can join the same server.
+
+The **Network** page runs the same per-path tests as Mini, explains every problem it finds and
+keeps the history of runs; the **Map** shows segments, hosts and measured paths with bottleneck
+hypotheses.
+
+| Network | Map |
+|---|---|
+| ![Network page](docs/screenshots/full-network.png) | ![Map](docs/screenshots/full-map.png) |
+
+The interface is available in English and Russian ([screenshot](docs/screenshots/full-network-ru.png)).
+
 ## Documentation
 
 - [Installation](docs/INSTALL.md) — Linux, OpenWrt, Docker, Kubernetes

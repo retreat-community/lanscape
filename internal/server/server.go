@@ -56,6 +56,8 @@ type Settings struct {
 	Webhooks      []string `json:"webhooks"`
 	RetentionDays int      `json:"retention_days"`
 	PublicURL     string   `json:"public_url,omitempty"`
+	// GuestDashboard shows a reduced, read-only dashboard to visitors who are not signed in (§4)
+	GuestDashboard bool `json:"guest_dashboard"`
 	// aggregates (daily uptime, Internet tests) are kept longer than raw checks
 	AggregateDays int `json:"aggregate_days"`
 	// Internet test (§6.1): observation points ("server" or agent ids), period of the address

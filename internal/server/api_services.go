@@ -61,7 +61,7 @@ func (s *Server) servicesRoutes(mux *http.ServeMux, v func(string, http.HandlerF
 	mux.HandleFunc("POST /api/v1/channels/{id}/test", v(RoleAdmin, s.apiTestChannel))
 
 	mux.HandleFunc("GET /api/v1/changes", v(RoleViewer, s.apiChanges))
-	mux.HandleFunc("GET /api/v1/dashboard", v(RoleViewer, s.apiDashboard))
+	mux.HandleFunc("GET /api/v1/dashboard", s.guestOr(RoleViewer, s.apiDashboard))
 	mux.HandleFunc("GET /api/v1/search", v(RoleViewer, s.apiSearch))
 	mux.HandleFunc("GET /api/v1/paths/history", v(RoleViewer, s.apiPathHistory))
 	mux.HandleFunc("GET /api/v1/devices/discovered", v(RoleViewer, s.apiDevices))
@@ -1026,6 +1026,28 @@ type NetworkSummary struct {
 	Problems int            `json:"problems"`
 }
 
+// guestDashboard keeps what an anonymous visitor may see: tiles with their status and public
+// links, the status summary and which monitors have open incidents.
+func guestDashboard(d Dashboard) Dashboard {
+	g := Dashboard{Summary: d.Summary, Groups: []TileGroup{}, Incidents: []IncidentView{}, Agents: []AgentResources{},
+		Certificates: []CertExpiry{}, Changes: []store.Change{}, Maintenance: d.Maintenance, UPS: []HardwareView{},
+		Storage: []HardwareView{}, Backups: []BackupView{}, Internet: []InternetExit{}}
+	for _, grp := range d.Groups {
+		tg := TileGroup{Name: grp.Name}
+		for _, t := range grp.Tiles {
+			tg.Tiles = append(tg.Tiles, ServiceView{Service: store.Service{ID: t.ID, Name: t.Name, AppID: t.AppID, Icon: t.Icon,
+				Category: t.Category, Group: t.Group, ExternalURL: t.ExternalURL, Tile: true, Sort: t.Sort, Addresses: []store.Address{}},
+				Status: t.Status, LatencyMS: t.LatencyMS, URL: t.ExternalURL, UptimeDay: t.UptimeDay, Monitors: []int64{}})
+		}
+		g.Groups = append(g.Groups, tg)
+	}
+	for _, i := range d.Incidents {
+		g.Incidents = append(g.Incidents, IncidentView{Incident: store.Incident{ID: i.ID, Opened: i.Opened, Maintenance: i.Maintenance,
+			Suppressed: i.Suppressed}, Monitor: i.Monitor})
+	}
+	return g
+}
+
 // AgentResources are the host resources shown on the dashboard.
 type AgentResources struct {
 	ID       string  `json:"id"`
@@ -1140,6 +1162,9 @@ func (s *Server) apiDashboard(w http.ResponseWriter, r *http.Request) {
 		if m.Starts <= now+24*3600*1000 {
 			d.Maintenance = append(d.Maintenance, m)
 		}
+	}
+	if isGuest(ctx) {
+		d = guestDashboard(d)
 	}
 	writeJSON(w, http.StatusOK, d)
 }

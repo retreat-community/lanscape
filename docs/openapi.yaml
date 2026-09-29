@@ -1941,6 +1941,7 @@ components:
         mini_token: {type: string, description: masked on read}
         webhooks: {type: array, items: {type: string}, description: "URLs that receive {event, run|incident|change} JSON for run.finished, incident.opened, incident.resolved, incident.reminder and device.new"}
         retention_days: {type: integer}
+        guest_dashboard: {type: boolean, description: "anonymous visitors see a reduced read-only dashboard"}
         aggregate_days: {type: integer, description: "daily uptime and Internet history, 0 = keep forever (default 730)"}
         internet_points: {type: array, items: {type: string}, description: '"server" or agent ids'}
         internet_every_min: {type: integer, description: "address check period in minutes, 0 = off"}

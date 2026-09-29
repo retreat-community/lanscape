@@ -128,6 +128,27 @@ func (s *Server) require(role string, h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// guestOr serves h to signed-in users with the role and, when the guest dashboard is on, to
+// anonymous visitors marked as guests (handlers then reduce what they show).
+func (s *Server) guestOr(role string, h http.HandlerFunc) http.HandlerFunc {
+	signedIn := s.require(role, h)
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := s.authenticate(r); ok || !s.settings(r.Context()).GuestDashboard {
+			signedIn(w, r)
+			return
+		}
+		h(w, r.WithContext(context.WithValue(r.Context(), guestKey, true)))
+	}
+}
+
+const guestKey ctxKey = 2
+
+// isGuest reports an anonymous request served by guestOr.
+func isGuest(ctx context.Context) bool {
+	g, _ := ctx.Value(guestKey).(bool)
+	return g
+}
+
 // loginLimiter slows down password guessing per client address.
 type loginLimiter struct {
 	mu   sync.Mutex

@@ -151,7 +151,8 @@ func (s *Server) apiSetupState(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"needs_setup": n == 0, "version": s.cfg.Version})
+	writeJSON(w, http.StatusOK, map[string]any{"needs_setup": n == 0, "version": s.cfg.Version,
+		"guest": n > 0 && s.settings(r.Context()).GuestDashboard})
 }
 
 type credentials struct {

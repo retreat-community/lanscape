@@ -297,6 +297,13 @@ push notifications (Web Push; the panel must be served over HTTPS). The webhooks
 General** receive every `run.finished`, `incident.opened`/`resolved`/`reminder` and `device.new`
 event as JSON (`{"event": …, "run"|"incident"|"change": …}`).
 
+### Guest access
+
+**Settings → General → Show a read-only dashboard to visitors who are not signed in** opens the
+start page for guests: service tiles with their status and public links, the status summary and
+the monitors with open incidents — no addresses, hosts or settings. Status pages are public or
+shared by link on their own. Everything else still needs a sign-in.
+
 ### Internet test
 
 **Settings → General → Internet test** checks the public address and, optionally, the download

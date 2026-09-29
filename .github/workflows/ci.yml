@@ -47,7 +47,7 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
           echo "pkg_version=$pkg" >> "$GITHUB_OUTPUT"
           echo "version $v, package version $pkg"
-      - run: make check-layout
+      - run: ./scripts/check-layout.sh
 
   lint-go:
     runs-on: retreat-k8s

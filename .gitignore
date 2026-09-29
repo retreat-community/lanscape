@@ -20,3 +20,4 @@ coverage.txt
 # runtime data
 /data/
 node_modules/
+.pnpm-store/

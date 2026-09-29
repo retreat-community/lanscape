@@ -28,13 +28,17 @@ jobs:
         with:
           fetch-depth: 0
       - name: Download OpenWrt feeds from the release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: robinraju/release-downloader@v1
+        with:
+          tag: ${{ inputs.tag }}
+          latest: ${{ inputs.tag == '' }}
+          fileName: 'openwrt-*-feed.tar.gz'
+          out-file-path: feeds
+      - name: Resolve tag
         run: |
           tag="${{ inputs.tag }}"
-          [ -n "$tag" ] || tag=$(gh release view --json tagName -q .tagName)
+          [ -n "$tag" ] || tag=$(git describe --tags --abbrev=0)
           echo "TAG=$tag" >> "$GITHUB_ENV"
-          mkdir -p feeds && gh release download "$tag" -p 'openwrt-*-feed.tar.gz' -D feeds
       - name: Update gh-pages
         run: |
           git config user.name "KirillShakhov"

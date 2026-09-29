@@ -61,10 +61,11 @@ jobs:
           } > notes.md
           cat notes.md
       - name: Publish release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release create "$GITHUB_REF_NAME" assets/* --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body_path: notes.md
+          files: assets/*
 
   pages:
     needs: release

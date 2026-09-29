@@ -49,9 +49,64 @@ jobs:
           echo "version $v, package version $pkg"
       - run: make check-layout
 
+  lint-go:
+    runs-on: retreat-k8s
+    container: golang:1.23-bookworm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare embedded web directory
+        run: mkdir -p internal/server/webdist && touch internal/server/webdist/.gitkeep
+      - uses: actions/cache@v4
+        with:
+          path: |
+            /root/go/pkg/mod
+            /root/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+      - name: go vet
+        run: go vet ./... && go vet -tags e2e ./test/e2e/
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.5.0
+
+  test-go:
+    runs-on: retreat-k8s
+    container: golang:1.23-bookworm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            /root/go/pkg/mod
+            /root/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+      - name: Unit tests (race)
+        run: go test -race -count=1 ./...
+      - name: Compile tests for macOS, Windows and FreeBSD
+        run: |
+          for os in darwin windows freebsd; do
+            for p in $(go list ./...); do GOOS=$os go test -c -o /dev/null "$p"; done
+            GOOS=$os go vet ./...
+          done
+
+  # Hosted macOS/Windows runners are optional (docs/decisions/0007-ci-runners.md).
+  test-go-hosted:
+    if: vars.HOSTED_RUNNERS == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - run: go test -count=1 ./...
+
   mini:
     needs: meta
     runs-on: retreat-k8s
+    container: debian:bookworm
     strategy:
       fail-fast: false
       matrix:
@@ -61,11 +116,11 @@ jobs:
     continue-on-error: ${{ matrix.target == 'freebsd-amd64' }}
     steps:
       - uses: actions/checkout@v4
+      - name: Install tools
+        run: apt-get update -qq && apt-get install -y -qq make gzip git xz-utils curl ca-certificates llvm cppcheck > /dev/null
       - uses: mlugg/setup-zig@v2
         with:
           version: ${{ env.ZIG_VERSION }}
-      - name: Install tools
-        run: sudo apt-get update -q && sudo apt-get install -y -q llvm cppcheck
       - name: Unit and property tests
         if: matrix.target == 'linux-amd64'
         run: make -C mini test
@@ -98,6 +153,7 @@ jobs:
   mini-sizes:
     needs: mini
     runs-on: retreat-k8s
+    container: debian:bookworm-slim
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -121,44 +177,19 @@ jobs:
   e2e:
     needs: mini
     runs-on: retreat-k8s
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
       - uses: actions/download-artifact@v4
         with:
           name: mini-linux-amd64
           path: dist/mini
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: test/ui/pnpm-lock.yaml
-      - name: Prepare
+      - name: Network-namespace e2e and UI smoke (privileged container)
         run: |
           chmod +x dist/mini/linux-amd64/*
-          sudo modprobe 8021q
-          sudo apt-get update -q && sudo apt-get install -y -q iproute2 iptables
-          cd test/ui && pnpm install --frozen-lockfile && pnpm exec playwright install --with-deps chromium
-      - name: Mini e2e
-        run: |
-          sudo -E env "PATH=$PATH" LSM_BIN=$PWD/dist/mini/linux-amd64 E2E_KEEP=1 \
-            go test -tags e2e -count=1 -timeout 30m -v -run TestMini ./test/e2e/
-      - name: Mini UI smoke
-        run: |
-          mkdir -p test/e2e/screenshots
-          cd test/ui && pnpm exec playwright test mini.spec.ts
-      - name: Teardown
-        if: always()
-        run: |
-          sudo test/e2e/mini.sh stop || true
-          sudo test/e2e/topo.sh down || true
-          sudo chmod -R a+rX test/e2e/out test/e2e/screenshots 2>/dev/null || true
+          docker run --rm --privileged -v "$PWD:$PWD" -w "$PWD" \
+            -e LSM_BIN="$PWD/dist/mini/linux-amd64" -e LANSCAPE_BIN="$PWD/dist/full" \
+            mcr.microsoft.com/playwright:v1.56.1-noble test/e2e/ci.sh all
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -273,11 +304,9 @@ jobs:
 
   openapi:
     runs-on: retreat-k8s
+    container: node:22-bookworm
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
       - name: Lint OpenAPI descriptions
         run: npx --yes @redocly/cli@1 lint docs/openapi*.yaml
 
@@ -291,4 +320,7 @@ jobs:
           ./kubeconform -strict -summary deploy/k8s/mini/*.yaml
       - name: Validate compose files
         run: |
-          for f in deploy/compose/*.yaml; do LSM_TOKEN=x docker compose -f "$f" config -q; done
+          for f in deploy/compose/*.yaml; do
+            docker run --rm -v "$PWD:$PWD" -w "$PWD" -e LSM_TOKEN=x -e LANSCAPE_TOKEN=x docker:27-cli \
+              docker compose -f "$f" config -q
+          done

@@ -401,6 +401,15 @@ registries; anonymous access) for their tags every few hours. An image with a ve
 `latest` is not compared. The dashboard lists them, a new tag goes to the change feed, and
 `GET /api/v1/updates/images` returns the last result.
 
+### Devices with iperf3
+
+Devices without an agent that run `iperf3 -s` (a NAS, a switch with a test server, a PC) can be
+measured from any agent: **Network → Options → iperf3 server**, host and optional port
+(5201), and "server sends" for the reverse direction. The agent speaks the iperf3 protocol itself
+(no iperf3 binary needed), uses the duration and streams of the options within its
+`--max-duration`/`--max-streams`, and the test is written to the audit log
+(`POST /api/v1/iperf3`).
+
 ### Router traffic
 
 Agents report the throughput of their physical, bridge, VLAN, bond, WireGuard and PPP

@@ -2,13 +2,16 @@
   import { onDestroy, onMount } from "svelte";
   import ReportView from "../components/ReportView.svelte";
   import { api, ApiError, subscribe } from "../lib/api";
-  import { duration } from "../lib/format";
+  import { duration, rate } from "../lib/format";
   import { can, t, toast, ui } from "../lib/state.svelte";
-  import type { Progress, Report, RunOptions } from "../lib/types";
+  import type { Agent, Iperf3Result, Progress, Report, RunOptions } from "../lib/types";
 
   let report = $state<Report | null>(null);
   let loading = $state(true);
   let agents = $state(0);
+  let iperfAgents = $state<Agent[]>([]);
+  let iperf = $state({ agent: "", host: "", reverse: false, busy: false });
+  let iperfResult = $state<Iperf3Result | null>(null);
   let showOptions = $state(false);
   let opts = $state({ udp: false, bidir: false, duration: 5, streams: 4 });
   let estimate = $state<{ paths: number; seconds: number } | null>(null);
@@ -19,6 +22,8 @@
       report = last && Array.isArray(last.paths) ? last : null;
       ui.progress = active;
       agents = list.filter((a) => a.online).length;
+      iperfAgents = list.filter((a) => a.online && a.caps?.includes("iperf3"));
+      if (!iperf.agent && iperfAgents.length) iperf.agent = iperfAgents[0].id;
       estimate = await api.estimate("full", opts.udp, opts.bidir);
     } catch (e) {
       if (e instanceof ApiError) toast(e.message);
@@ -34,6 +39,26 @@
       ui.progress = { id: r.id, kind, done: 0, total: 1, eta_s: estimate?.seconds ?? 0 };
     } catch (e) {
       toast(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function runIperf(): Promise<void> {
+    const [host, port] = iperf.host.trim().split(":");
+    iperf.busy = true;
+    iperfResult = null;
+    try {
+      iperfResult = await api.iperf3({
+        agent: iperf.agent,
+        host,
+        port: port ? Number(port) : undefined,
+        seconds: opts.duration,
+        streams: opts.streams,
+        reverse: iperf.reverse,
+      });
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e));
+    } finally {
+      iperf.busy = false;
     }
   }
 
@@ -79,6 +104,22 @@
         <label>{t("net.duration")} <input type="number" min="1" max="30" bind:value={opts.duration} style="width:5em" /></label>
         <label>{t("net.streams")} <input type="number" min="1" max="16" bind:value={opts.streams} style="width:5em" /></label>
       </div>
+      {#if iperfAgents.length && can("operator")}
+        <div class="row options">
+          <b>{t("net.iperf3")}</b>
+          <select bind:value={iperf.agent}>
+            {#each iperfAgents as a (a.id)}<option value={a.id}>{a.name}</option>{/each}
+          </select>
+          → <input placeholder="192.168.1.30[:5201]" bind:value={iperf.host} style="width:14em" />
+          <label><input type="checkbox" bind:checked={iperf.reverse} /> {t("net.iperf3_reverse")}</label>
+          <button disabled={!iperf.host.trim() || iperf.busy} onclick={runIperf}>{iperf.busy ? t("common.loading") : t("net.iperf3_run")}</button>
+          {#if iperfResult}
+            <span data-testid="iperf3-result"
+              >{rate(iperfResult.bps)} · {iperfResult.streams}×{iperfResult.retransmits >= 0 ? ` · ${t("net.retransmits", { n: iperfResult.retransmits })}` : ""}</span
+            >
+          {/if}
+        </div>
+      {/if}
     {/if}
     {#if ui.progress}
       <div class="progress" data-testid="progress"><i style="width:{pct}%"></i></div>

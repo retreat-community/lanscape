@@ -3,6 +3,7 @@ import type {
   Board,
   IfaceTraffic,
   ImageCheck,
+  Iperf3Result,
   SignatureInfo,
   InternetExit,
   Agent,
@@ -212,6 +213,8 @@ export const api = {
   updateSignatures: () => call<SignatureInfo>("POST", "/signatures/update"),
   imageUpdates: () => call<ImageCheck>("GET", "/updates/images"),
   checkImages: () => call<{ status: string }>("POST", "/updates/images/check"),
+  iperf3: (req: { agent: string; host: string; port?: number; seconds: number; streams: number; reverse: boolean }) =>
+    call<Iperf3Result>("POST", "/iperf3", req),
   runInternet: (speed: boolean) => call<{ status: string }>("POST", "/internet/run", { speed }),
   wake: (mac: string, ip?: string) => call<ActionResponse>("POST", "/actions/wol", { mac, ip }),
   restart: (agent: string, source: string, key: string) =>

@@ -80,6 +80,16 @@ export interface Agent {
   last_seen: number;
   inventory: Inventory;
   labels?: Record<string, string> | null;
+  caps?: string[];
+}
+
+export interface Iperf3Result {
+  bps: number;
+  bytes: number;
+  seconds: number;
+  streams: number;
+  reverse: boolean;
+  retransmits: number;
 }
 
 export interface Member {

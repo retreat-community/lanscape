@@ -1248,6 +1248,41 @@ paths:
           content:
             application/yaml:
               schema: {type: string}
+  /api/v1/iperf3:
+    post:
+      tags: [network]
+      operationId: iperf3Test
+      summary: Measure TCP throughput from an agent to a device running "iperf3 -s" (operator)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent, host]
+              properties:
+                agent: {type: string}
+                host: {type: string}
+                port: {type: integer, default: 5201}
+                seconds: {type: integer, default: 5, maximum: 60, description: "capped by the agent's --max-duration"}
+                streams: {type: integer, default: 1, maximum: 16}
+                reverse: {type: boolean, description: the server sends}
+      responses:
+        "200":
+          description: result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bps: {type: integer}
+                  bytes: {type: integer}
+                  seconds: {type: number}
+                  streams: {type: integer}
+                  reverse: {type: boolean}
+                  retransmits: {type: integer, description: "-1 when the sender does not report them"}
+        "400": {$ref: "#/components/responses/Error"}
+        "502": {$ref: "#/components/responses/Error"}
   /api/v1/traffic:
     get:
       tags: [network]

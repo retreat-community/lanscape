@@ -16,6 +16,7 @@ type Inventory struct {
 	Routes    []Route       `json:"routes,omitempty"`
 	Rules     []string      `json:"rules,omitempty"`
 	Neighbors []Neighbor    `json:"neighbors,omitempty"`
+	LLDP      []LLDPPeer    `json:"lldp,omitempty"`
 	Env       Env           `json:"env"`
 	Resources Resources     `json:"resources"`
 }

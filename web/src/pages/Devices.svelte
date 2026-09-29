@@ -90,6 +90,11 @@
                           <td>{i.mtu}</td>
                           <td>{i.speed ? `${i.speed} Mbit/s` : t("net.unknown")}</td>
                         </tr>
+                        {#each (a.inventory.lldp ?? []).filter((l) => l.iface === i.name) as l (l.name + l.port)}
+                          <tr class="muted">
+                            <td colspan="7">↳ {l.proto}: <b>{l.name}</b> {t("dev.port")} {l.port}{l.port_descr ? ` (${l.port_descr})` : ""}{l.mgmt_ip ? ` · ${l.mgmt_ip}` : ""}</td>
+                          </tr>
+                        {/each}
                       {/each}
                     </tbody>
                   </table>

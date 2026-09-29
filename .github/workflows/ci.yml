@@ -303,6 +303,7 @@ jobs:
       - name: Network-namespace e2e and UI smoke (privileged container)
         run: |
           chmod +x dist/mini/linux-amd64/* dist/full/*
+          scripts/docker-pull.sh mcr.microsoft.com/playwright:v1.56.1-noble
           docker run --rm --privileged -v "$PWD:$PWD" -w "$PWD" \
             -e LSM_BIN="$PWD/dist/mini/linux-amd64" -e LANSCAPE_BIN="$PWD/dist/full" \
             mcr.microsoft.com/playwright:v1.56.1-noble test/e2e/ci.sh all
@@ -337,6 +338,7 @@ jobs:
         run: |
           case "${{ matrix.branch }}" in 24.10) v=$OPENWRT_24 ;; *) v=$OPENWRT_25 ;; esac
           mkdir -p out && chmod -R a+rwX out bins && chmod a+x bins/*/*
+          scripts/docker-pull.sh "openwrt/sdk:${{ matrix.target }}-$v"
           docker run --rm -v "$PWD:/src:ro" -v "$PWD/bins:/bins:ro" -v "$PWD/out:/out" \
             "openwrt/sdk:${{ matrix.target }}-$v" \
             /src/packaging/openwrt/sdk-build.sh /src /bins /out "${{ needs.meta.outputs.pkg_version }}" \
@@ -354,6 +356,7 @@ jobs:
           case "${{ matrix.branch }}" in
             24.10) v=$OPENWRT_24; inst="opkg install /pkgs/lsm-agent_*.ipk /pkgs/lsm-server_*.ipk /pkgs/lanscape-agent_*.ipk" ;;
             *) v=$OPENWRT_25; inst="apk add --allow-untrusted /pkgs/lsm-agent-*.apk /pkgs/lsm-server-*.apk /pkgs/lanscape-agent-*.apk" ;; esac
+          scripts/docker-pull.sh "openwrt/rootfs:x86-64-$v"
           docker run --rm -v "$PWD/out:/pkgs:ro" "openwrt/rootfs:x86-64-$v" /bin/sh -c "
             mkdir -p /var/lock /var/run && $inst && lsm-agent -V && lsm-server -V && lanscape-agent version &&
             uci -q get lsm.agent.exclude && uci -q get lsm.server.listen && uci -q get lanscape.agent.exclude"

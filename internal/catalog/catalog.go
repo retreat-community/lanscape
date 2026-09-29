@@ -115,7 +115,7 @@ func isLoopback(a string) bool {
 func include(f *Finding) bool {
 	it := &f.Item
 	switch it.Kind {
-	case discovery.KindPVC:
+	case discovery.KindPVC, discovery.KindLease, discovery.KindWifiClient, discovery.KindPortForward, discovery.KindSQM:
 		return false
 	case discovery.KindDevice:
 		return it.URL != "" // only LAN devices with a web interface become service cards

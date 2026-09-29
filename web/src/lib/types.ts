@@ -639,4 +639,5 @@ export interface DiscoveredDevice {
   services?: string[];
   sources: string[];
   seen_by: string[];
+  wifi?: string;
 }

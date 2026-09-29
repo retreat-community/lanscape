@@ -59,7 +59,7 @@ func Diff(prev, cur []discovery.Item, host string) []Change {
 				strings.Join(o.IPs, ",") != strings.Join(it.IPs, ",") {
 				out = append(out, Change{ChangeIPChanged, host + " " + it.Name, strings.Join(o.IPs, ", ") + " → " + strings.Join(it.IPs, ", ")})
 			}
-		case discovery.KindPVC:
+		case discovery.KindPVC, discovery.KindLease, discovery.KindWifiClient, discovery.KindSQM:
 		case discovery.KindDevice:
 			if !existed {
 				out = append(out, Change{ChangeDeviceNew, it.Name, strings.Join(it.IPs, ", ") + " " + it.Labels["type"]})
@@ -84,7 +84,7 @@ func Diff(prev, cur []discovery.Item, host string) []Change {
 			}
 		case discovery.KindContainer:
 			out = append(out, Change{ChangeContainerGone, host + " " + it.Name, it.Image})
-		case discovery.KindPVC, discovery.KindDevice:
+		case discovery.KindPVC, discovery.KindDevice, discovery.KindLease, discovery.KindWifiClient, discovery.KindSQM:
 		default:
 			out = append(out, Change{ChangeObjectGone, objName(it), ""})
 		}
@@ -100,5 +100,8 @@ func sockDetail(it *discovery.Item) string {
 }
 
 func objName(it *discovery.Item) string {
+	if it.Namespace == "" {
+		return strings.ReplaceAll(it.Kind, "_", " ") + " " + it.Name
+	}
 	return strings.TrimPrefix(it.Kind, "k8s_") + " " + it.Namespace + "/" + it.Name
 }

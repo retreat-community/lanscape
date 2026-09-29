@@ -40,6 +40,7 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 			// multicast discovery belongs to hosts on the LAN, not to pods
 			cfg.MDNS = os.Getenv("KUBERNETES_SERVICE_HOST") == ""
 			cfg.SSDP = cfg.MDNS
+			cfg.OpenWrt = exists("/etc/openwrt_release")
 		case discovery.SourceSockets:
 			cfg.Sockets = true
 		case discovery.SourceDocker:
@@ -48,6 +49,8 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 			cfg.K8s = true
 		case discovery.SourceMDNS:
 			cfg.MDNS = true
+		case discovery.SourceOpenWrt:
+			cfg.OpenWrt = true
 		case discovery.SourceSSDP:
 			cfg.SSDP = true
 		case "none", "off":
@@ -63,7 +66,7 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 	if !col.Enabled() {
 		return
 	}
-	log.Info("discovery enabled", "sockets", cfg.Sockets, "docker", cfg.Docker, "k8s", cfg.K8s, "mdns", cfg.MDNS, "ssdp", cfg.SSDP, "proxmox", cfg.Proxmox.URL != "",
+	log.Info("discovery enabled", "sockets", cfg.Sockets, "docker", cfg.Docker, "k8s", cfg.K8s, "mdns", cfg.MDNS, "ssdp", cfg.SSDP, "openwrt", cfg.OpenWrt, "proxmox", cfg.Proxmox.URL != "",
 		"interval", col.Interval())
 	// the server can ask for a fresh report (the "rescan" button)
 	a.Handle(proto.MsgDiscovery, func(ctx context.Context, _ proto.Envelope) (any, error) {

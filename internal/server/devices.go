@@ -25,7 +25,8 @@ type Device struct {
 	URL      string   `json:"url,omitempty"`
 	Services []string `json:"services,omitempty"`
 	Sources  []string `json:"sources"`
-	SeenBy   []string `json:"seen_by"` // agents that have it in their neighbour table
+	SeenBy   []string `json:"seen_by"`        // agents that have it in their neighbour table
+	Wifi     string   `json:"wifi,omitempty"` // band and signal when associated to an OpenWrt access point
 }
 
 // devices merges discovered hosts by IP address.
@@ -40,6 +41,7 @@ func (s *Server) devices(ctx context.Context) []Device {
 		}
 	}
 	by := map[string]*Device{}
+	byMAC := map[string]*Device{}
 	get := func(ip string) *Device {
 		d := by[ip]
 		if d == nil {
@@ -65,17 +67,22 @@ func (s *Server) devices(ctx context.Context) []Device {
 			}
 			d := get(n.IP)
 			d.MAC = strings.ToLower(n.MAC)
+			byMAC[d.MAC] = d
 			d.Sources = addUniq(d.Sources, "arp")
 			d.SeenBy = addUniq(d.SeenBy, a.Name)
 		}
 	}
 	if fs, err := s.store.Findings(ctx, "", ""); err == nil {
 		for _, f := range fs {
-			if f.Gone != 0 || (f.Source != discovery.SourceMDNS && f.Source != discovery.SourceSSDP) {
+			if f.Gone != 0 || (f.Source != discovery.SourceMDNS && f.Source != discovery.SourceSSDP && f.Source != discovery.SourceOpenWrt) {
 				continue
 			}
 			var it discovery.Item
 			if json.Unmarshal(f.Data, &it) != nil {
+				continue
+			}
+			if f.Source == discovery.SourceOpenWrt {
+				s.mergeRouterItem(&it, get, byMAC, addUniq)
 				continue
 			}
 			for _, ip := range it.IPs {
@@ -154,4 +161,30 @@ func (s *Server) deviceExtras(ctx context.Context) []topo.Extra {
 		out = append(out, topo.Extra{IP: d.IP, MAC: d.MAC, Name: name, Source: strings.Join(d.Sources, "+")})
 	}
 	return out
+}
+
+// mergeRouterItem adds DHCP leases (names!) and Wi-Fi association data from OpenWrt routers.
+func (s *Server) mergeRouterItem(it *discovery.Item, get func(string) *Device, byMAC map[string]*Device,
+	addUniq func([]string, string) []string) {
+	mac := it.Labels["mac"]
+	switch it.Kind {
+	case discovery.KindLease:
+		if len(it.IPs) == 0 {
+			return
+		}
+		d := get(it.IPs[0])
+		if mac != "" {
+			d.MAC = mac
+			byMAC[mac] = d
+		}
+		if it.Name != "" && d.Name == "" {
+			d.Name = it.Name
+		}
+		d.Sources = addUniq(d.Sources, "dhcp")
+	case discovery.KindWifiClient:
+		if d := byMAC[mac]; d != nil {
+			d.Sources = addUniq(d.Sources, "wifi")
+			d.Wifi = it.Labels["band"] + " GHz, " + it.Labels["signal"] + " dBm"
+		}
+	}
 }

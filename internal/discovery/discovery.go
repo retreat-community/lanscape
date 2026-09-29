@@ -107,6 +107,7 @@ type Config struct {
 	K8s          bool
 	Kubeconfig   string // empty = in-cluster
 	Proxmox      ProxmoxConfig
+	OpenWrt      bool // DHCP leases, Wi-Fi clients, port forwards, SQM (on the router)
 	MDNS         bool // DNS-SD browse on the local links
 	SSDP         bool // UPnP search
 	Probe        bool // HTTP fingerprinting of found endpoints
@@ -150,7 +151,7 @@ func New(cfg Config, log *slog.Logger) (*Collector, error) {
 
 // Enabled reports whether any source is on.
 func (c *Collector) Enabled() bool {
-	return c.cfg.Sockets || c.cfg.Docker || c.cfg.K8s || c.cfg.Proxmox.URL != "" || c.cfg.MDNS || c.cfg.SSDP
+	return c.cfg.Sockets || c.cfg.Docker || c.cfg.K8s || c.cfg.Proxmox.URL != "" || c.cfg.MDNS || c.cfg.SSDP || c.cfg.OpenWrt
 }
 
 // Interval is the collection period.
@@ -183,6 +184,10 @@ func (c *Collector) Collect(ctx context.Context) Report {
 	if c.cfg.Proxmox.URL != "" {
 		items, err := Proxmox(ctx, c.cfg.Proxmox)
 		add(SourceProxmox, items, err)
+	}
+	if c.cfg.OpenWrt {
+		items, err := OpenWrt(ctx, "")
+		add(SourceOpenWrt, items, err)
 	}
 	if c.cfg.MDNS {
 		items, err := MDNS(ctx, 3*time.Second)

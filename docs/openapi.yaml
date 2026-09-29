@@ -447,7 +447,7 @@ paths:
       tags: [network]
       operationId: discoveredDevices
       summary: Discovered devices
-      description: Hosts without an agent from ARP/NDP neighbour tables, mDNS/DNS-SD and SSDP, merged by address, with the MAC vendor.
+      description: Hosts without an agent from ARP/NDP neighbour tables, OpenWrt DHCP leases and Wi-Fi clients, mDNS/DNS-SD and SSDP, merged by address, with the MAC vendor.
       responses:
         "200":
           description: devices
@@ -468,6 +468,7 @@ paths:
                     services: {type: array, items: {type: string}}
                     sources: {type: array, items: {type: string}}
                     seen_by: {type: array, items: {type: string}}
+                    wifi: {type: string, description: band and signal on an OpenWrt access point}
   /api/v1/paths/history:
     get:
       tags: [network]
@@ -1662,7 +1663,7 @@ components:
             type: object
             properties:
               agent: {type: string}
-              source: {type: string, enum: [sockets, docker, k8s, proxmox, mdns, ssdp]}
+              source: {type: string, enum: [sockets, docker, k8s, proxmox, mdns, ssdp, openwrt]}
               key: {type: string}
               kind: {type: string}
               gone: {type: boolean}

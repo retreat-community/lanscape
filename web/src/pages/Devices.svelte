@@ -126,7 +126,7 @@
                 <td>{d.type}</td>
                 <td class="small">{d.mac ?? ""}</td>
                 <td class="small">{d.vendor ?? ""}</td>
-                <td class="small">{d.sources.join(", ")}{d.seen_by.length ? ` · ${d.seen_by.join(", ")}` : ""}</td>
+                <td class="small">{d.sources.join(", ")}{d.seen_by.length ? ` · ${d.seen_by.join(", ")}` : ""}{d.wifi ? ` · ${d.wifi}` : ""}</td>
               </tr>
             {/each}
           </tbody>

@@ -77,6 +77,8 @@ func (s *Server) servicesRoutes(mux *http.ServeMux, v func(string, http.HandlerF
 	mux.HandleFunc("GET /api/v1/internet", v(RoleViewer, s.apiInternet))
 	mux.HandleFunc("GET /api/v1/traffic", v(RoleViewer, s.apiTraffic))
 	mux.HandleFunc("GET /api/v1/updates/images", v(RoleViewer, s.apiImageUpdates))
+	mux.HandleFunc("GET /api/v1/integrations/homeassistant", v(RoleViewer, s.apiHAState))
+	mux.HandleFunc("GET /api/v1/integrations/homeassistant/config", v(RoleViewer, s.apiHAConfig))
 	mux.HandleFunc("GET /api/v1/updates/agents", v(RoleAdmin, s.apiAgentUpdates))
 	mux.HandleFunc("POST /api/v1/updates/agents/run", v(RoleAdmin, s.apiUpdateAllAgents))
 	mux.HandleFunc("POST /api/v1/agents/{id}/update", v(RoleAdmin, s.apiUpgradeAgent))

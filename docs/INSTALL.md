@@ -337,6 +337,18 @@ the download URL contacted, and both can point to your own servers. The dashboar
 current address, the last speed and the outages of the last 30 days; an exit that goes down or
 comes back is written to the change feed.
 
+### Home Assistant
+
+**Settings → API tokens → Download the Home Assistant package** produces
+`packages/lanscape.yaml` for Home Assistant's RESTful integration: summary counters, a sensor
+per monitor (state `up`/`degraded`/`down`, latency and message as attributes) and a
+connectivity binary sensor per agent, all read from one request a minute to
+`GET /api/v1/integrations/homeassistant`. Create an API token with the viewer role and add
+`lanscape_token: "Bearer <token>"` to `secrets.yaml`; enable packages with
+`homeassistant: packages: !include_dir_named packages`. Download the package again after
+adding monitors. (Home Assistant itself can be imported as a discovery source: **Settings →
+Import**.)
+
 ### Agent updates
 
 **Settings → Agents → Agent updates** picks a release channel: `stable` (releases) or `beta`

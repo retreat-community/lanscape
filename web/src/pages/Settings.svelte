@@ -291,6 +291,9 @@
           {/each}
         </tbody>
       </table>
+      <h3>Home Assistant</h3>
+      <p class="muted small">{t("set.ha_hint")}</p>
+      <a class="button" href="/api/v1/integrations/homeassistant/config" download="lanscape.yaml">{t("set.ha_download")}</a>
     </section>
   {/if}
 

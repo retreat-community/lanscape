@@ -1169,6 +1169,33 @@ paths:
                   to: {type: string}
                   detail: {type: string}
         "502": {$ref: "#/components/responses/Error"}
+  /api/v1/integrations/homeassistant:
+    get:
+      tags: [monitors]
+      operationId: homeAssistantState
+      summary: Monitors, agents and counters for the Home Assistant RESTful integration
+      responses:
+        "200":
+          description: sensor states by object id
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summary: {type: object, additionalProperties: {type: integer}}
+                  monitors: {type: object, additionalProperties: {$ref: "#/components/schemas/HASensor"}}
+                  agents: {type: object, additionalProperties: {$ref: "#/components/schemas/HASensor"}}
+  /api/v1/integrations/homeassistant/config:
+    get:
+      tags: [monitors]
+      operationId: homeAssistantPackage
+      summary: A Home Assistant package with a sensor per monitor and agent
+      responses:
+        "200":
+          description: YAML package (packages/lanscape.yaml)
+          content:
+            application/yaml:
+              schema: {type: string}
   /api/v1/traffic:
     get:
       tags: [network]
@@ -2436,6 +2463,14 @@ components:
               last_push: {type: integer}
         traffic: {type: array, items: {$ref: "#/components/schemas/IfaceTraffic"}}
         images: {type: array, items: {$ref: "#/components/schemas/ImageUpdate"}}
+    HASensor:
+      type: object
+      properties:
+        name: {type: string}
+        state: {type: string}
+        latency_ms: {type: number}
+        message: {type: string}
+        last_check: {type: integer}
     AgentUpdates:
       type: object
       properties:

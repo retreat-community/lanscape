@@ -1130,6 +1130,45 @@ paths:
       responses:
         "202": {description: started}
         "403": {$ref: "#/components/responses/Error"}
+  /api/v1/updates/agents:
+    get:
+      tags: [agents]
+      operationId: agentUpdates
+      summary: Newest release of the update channel and which agents it would update (admin)
+      parameters:
+        - {name: refresh, in: query, description: "1 = ask the release list again", schema: {type: string, enum: ["1"]}}
+      responses:
+        "200":
+          description: channel state
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AgentUpdates"}
+  /api/v1/updates/agents/run:
+    post:
+      tags: [agents]
+      operationId: updateAllAgents
+      summary: Update every outdated agent that allows it (admin)
+      responses:
+        "202": {description: started}
+  /api/v1/agents/{id}/update:
+    post:
+      tags: [agents]
+      operationId: updateAgentBinary
+      summary: Replace the agent binary with the channel's release; the agent restarts (admin)
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: the agent installed the release
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  from: {type: string}
+                  to: {type: string}
+                  detail: {type: string}
+        "502": {$ref: "#/components/responses/Error"}
   /api/v1/traffic:
     get:
       tags: [network]
@@ -2064,6 +2103,9 @@ components:
         internet_every_min: {type: integer, description: "address check period in minutes, 0 = off"}
         internet_speed_every_h: {type: integer, description: "speed test period in hours, 0 = off"}
         image_updates_every_h: {type: integer, description: "container image tag check period in hours (6-720), 0 = off"}
+        agent_update_channel: {type: string, enum: ["", stable, beta], description: "release channel for agent updates, empty = off"}
+        agent_update_auto: {type: boolean, description: install new releases on agents every 6 hours}
+        agent_releases_url: {type: string, description: "release list in GitHub API format (default: the project's releases)"}
         internet_ip_url: {type: string}
         internet_download_url: {type: string}
         public_url: {type: string}
@@ -2394,6 +2436,31 @@ components:
               last_push: {type: integer}
         traffic: {type: array, items: {$ref: "#/components/schemas/IfaceTraffic"}}
         images: {type: array, items: {$ref: "#/components/schemas/ImageUpdate"}}
+    AgentUpdates:
+      type: object
+      properties:
+        channel: {type: string}
+        auto: {type: boolean}
+        latest:
+          type: object
+          nullable: true
+          properties:
+            version: {type: string}
+            prerelease: {type: boolean}
+            base_url: {type: string}
+        error: {type: string}
+        agents:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {type: string}
+              name: {type: string}
+              version: {type: string}
+              online: {type: boolean}
+              outdated: {type: boolean}
+              can_update: {type: boolean}
+              reason: {type: string}
     ImageUpdate:
       type: object
       description: a running image whose registry has a newer tag of the same shape

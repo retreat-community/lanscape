@@ -8,7 +8,7 @@
   import { api } from "../lib/api";
   import { when } from "../lib/format";
   import { can, t, toast, ui } from "../lib/state.svelte";
-  import type { Agent, AgentToken, APIToken, AuditEntry, Schedule, Segment, Settings, User } from "../lib/types";
+  import type { Agent, AgentToken, AgentUpdates, APIToken, AuditEntry, Schedule, Segment, Settings, User } from "../lib/types";
 
   type Tab = "general" | "agents" | "users" | "tokens" | "schedules" | "segments" | "notifications" | "discovery" | "status" | "dashboards" | "import" | "audit";
   let tab = $state<Tab>(can("admin") ? "agents" : "tokens");
@@ -21,6 +21,7 @@
   let schedules = $state<Schedule[]>([]);
   let segments = $state<Segment[]>([]);
   let audit = $state<AuditEntry[]>([]);
+  let updates = $state<AgentUpdates | null>(null);
   let created = $state<{ token: string; install?: Record<string, string> } | null>(null);
   let platform = $state("linux");
   let form = $state({ name: "", reusable: false, hours: 24, password: "", role: "viewer", spec: "every 5m", kind: "reachability" });
@@ -59,7 +60,7 @@
     schedules = sc;
     segments = sg;
     if (admin) {
-      [regTokens, users, audit] = await Promise.all([api.agentTokens(), api.users(), api.audit()]);
+      [regTokens, users, audit, updates] = await Promise.all([api.agentTokens(), api.users(), api.audit(), api.agentUpdates()]);
     }
   }
 
@@ -166,11 +167,24 @@
       <table>
         <tbody>
           {#each agents as a (a.id)}
+            {@const u = updates?.agents.find((x) => x.id === a.id)}
             <tr>
               <td><span class="dot {a.online ? 'v-green' : 'v-red'}"></span>{a.name}</td>
               <td class="muted">{a.kind} · {a.version} · {a.arch}</td>
               <td class="muted">{when(a.last_seen, ui.lang)}</td>
               <td>
+                {#if u?.outdated && updates?.latest}
+                  <button
+                    disabled={!u.can_update || !u.online}
+                    title={u.reason ?? ""}
+                    onclick={() =>
+                      confirm(t("set.update_confirm", { name: a.name, v: updates?.latest?.version ?? "" })) &&
+                      act(async () => {
+                        await api.upgradeAgent(a.id);
+                        toast(t("set.update_sent"));
+                      })}>{t("set.update_to", { v: updates.latest.version })}</button
+                  >
+                {/if}
                 <button class="danger" onclick={() => confirm(t("set.confirm_delete", { name: a.name })) && act(() => api.deleteAgent(a.id))}>
                   {t("set.delete")}
                 </button>
@@ -179,6 +193,27 @@
           {/each}
         </tbody>
       </table>
+      {#if settings}
+        <h3>{t("set.agent_updates")}</h3>
+        <div class="row">
+          <label
+            >{t("set.update_channel")}
+            <select bind:value={settings.agent_update_channel}>
+              <option value="">{t("set.update_off")}</option>
+              <option value="stable">stable</option>
+              <option value="beta">beta</option>
+            </select></label
+          >
+          <label><input type="checkbox" bind:checked={settings.agent_update_auto} /> {t("set.update_auto")}</label>
+          <input placeholder={t("set.releases_url")} bind:value={settings.agent_releases_url} />
+          <button class="primary" onclick={() => act(async () => { await api.saveSettings(settings!); toast(t("set.saved")); })}>{t("set.save")}</button>
+          {#if updates?.agents.some((x) => x.outdated && x.can_update && x.online)}
+            <button onclick={() => act(async () => { await api.updateAllAgents(); toast(t("set.update_sent")); })}>{t("set.update_all")}</button>
+          {/if}
+        </div>
+        {#if updates?.latest}<p class="muted small">{t("set.update_latest", { v: updates.latest.version })}</p>{/if}
+        {#if updates?.error}<p class="warn small">{updates.error}</p>{/if}
+      {/if}
       <h3>{t("set.reg_tokens")}</h3>
       <table class="small">
         <tbody>

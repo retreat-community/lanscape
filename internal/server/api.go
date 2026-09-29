@@ -896,6 +896,12 @@ func (s *Server) apiSaveSettings(w http.ResponseWriter, r *http.Request) {
 	st.PingCount = min(max(st.PingCount, 1), 100)
 	st.InternetEveryMin = min(max(st.InternetEveryMin, 0), 1440)
 	st.InternetSpeedEveryH = min(max(st.InternetSpeedEveryH, 0), 168)
+	switch st.AgentUpdateChannel {
+	case "", "stable", "beta":
+	default:
+		writeError(w, http.StatusBadRequest, "agent update channel must be stable or beta")
+		return
+	}
 	if st.ImageUpdatesEveryH != 0 {
 		st.ImageUpdatesEveryH = min(max(st.ImageUpdatesEveryH, 6), 720)
 	}
@@ -905,9 +911,9 @@ func (s *Server) apiSaveSettings(w http.ResponseWriter, r *http.Request) {
 	if st.AggregateDays != 0 && st.AggregateDays < st.RetentionDays {
 		st.AggregateDays = st.RetentionDays
 	}
-	for _, u := range []string{st.InternetIPURL, st.InternetDownloadURL} {
+	for _, u := range []string{st.InternetIPURL, st.InternetDownloadURL, st.AgentReleasesURL} {
 		if u != "" && !validURL(u) {
-			writeError(w, http.StatusBadRequest, "Internet test URLs must start with http:// or https://")
+			writeError(w, http.StatusBadRequest, "Internet test and release URLs must start with http:// or https://")
 			return
 		}
 	}

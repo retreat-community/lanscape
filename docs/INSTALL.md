@@ -337,6 +337,18 @@ the download URL contacted, and both can point to your own servers. The dashboar
 current address, the last speed and the outages of the last 30 days; an exit that goes down or
 comes back is written to the change feed.
 
+### Agent updates
+
+**Settings → Agents → Agent updates** picks a release channel: `stable` (releases) or `beta`
+(pre-releases too). The panel then shows which agents are behind; **Update** (or **Update all**)
+sends the release to the agent, which downloads its archive, checks the SHA-256 from
+`checksums-full.txt`, runs the new binary once (`version`) and swaps it in, keeping the old one as
+`lanscape-agent.old`; the service manager (systemd, procd, launchd, Windows service recovery)
+starts the new version. **Install new releases automatically** does this every 6 hours. Agents
+without Internet access download from the release list's URLs, so point **Release list** at a
+mirror in GitHub API format if needed. Agents in containers are updated with their image, Mini
+agents with their package; `--actions wol` (without `update`) forbids updates on a host.
+
 ### Container image updates
 
 **Settings → General → Look for newer container image tags** (off by default) asks the
@@ -366,6 +378,7 @@ listed in `--actions` (`LANSCAPE_ACTIONS`):
 |---|---|---|
 | `wol` | on | Sends a Wake-on-LAN magic packet to the broadcast address of its interfaces on the device's subnet. The server picks agents on that subnet or that have the device in their neighbour table. |
 | `restart` | off | Restarts a Docker container, performs a rolling restart of a Kubernetes deployment, statefulset or daemonset (needs `patch` on them; the Helm chart adds it when `agent.actions` contains `restart`), or reboots a Proxmox VM/CT (the API token needs `VM.PowerMgmt`). |
+| `update` | on | Replaces its binary with a release chosen by an administrator (see [Agent updates](#agent-updates)); refused in containers. |
 
 `--actions none` disables actions on an agent.
 

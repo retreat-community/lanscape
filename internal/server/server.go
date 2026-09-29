@@ -71,6 +71,11 @@ type Settings struct {
 	InternetDownloadURL string   `json:"internet_download_url,omitempty"`
 	// newer container image tags are looked up every ImageUpdatesEveryH hours (0 = off)
 	ImageUpdatesEveryH int `json:"image_updates_every_h"`
+	// agent updates from the panel: channel "" (off), "stable" or "beta"; Auto installs new
+	// releases by itself; the release list can come from a mirror
+	AgentUpdateChannel string `json:"agent_update_channel"`
+	AgentUpdateAuto    bool   `json:"agent_update_auto"`
+	AgentReleasesURL   string `json:"agent_releases_url,omitempty"`
 }
 
 // DefaultSettings are used until an administrator changes them.
@@ -103,6 +108,7 @@ type Server struct {
 	restarts   restartCounts
 	traffic    trafficState
 	images     imageState
+	rel        releaseCache
 }
 
 // New opens the store and the CA.
@@ -353,6 +359,7 @@ func (s *Server) Run(ctx context.Context) error {
 	go s.housekeeping(ctx)
 	go s.internetScheduler(ctx)
 	go s.imageScheduler(ctx)
+	go s.agentUpdateScheduler(ctx)
 	s.log.Info("lanscape server started", "version", s.cfg.Version, "ui", s.cfg.Listen, "gateway", s.cfg.GatewayListen,
 		"mini", s.cfg.MiniListen, "ca_fingerprint", pki.Fingerprint(s.ca.Cert))
 	var err error

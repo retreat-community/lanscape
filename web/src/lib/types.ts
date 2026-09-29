@@ -322,6 +322,17 @@ export interface Settings {
   internet_ip_url?: string;
   internet_download_url?: string;
   image_updates_every_h?: number;
+  agent_update_channel?: "" | "stable" | "beta";
+  agent_update_auto?: boolean;
+  agent_releases_url?: string;
+}
+
+export interface AgentUpdates {
+  channel: string;
+  auto: boolean;
+  latest: { version: string; prerelease: boolean; base_url: string } | null;
+  error?: string;
+  agents: { id: string; name: string; version: string; online: boolean; outdated: boolean; can_update: boolean; reason?: string }[];
 }
 
 export interface InternetCheck {

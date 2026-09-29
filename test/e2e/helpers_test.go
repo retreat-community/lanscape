@@ -34,7 +34,17 @@ func run(t *testing.T, name string, args ...string) {
 	}
 }
 
-func noVLAN() bool { return os.Getenv("E2E_NO_VLAN") == "1" }
+func noVLAN() bool {
+	if os.Getenv("E2E_NO_VLAN") == "1" {
+		return true
+	}
+	out := os.Getenv("E2E_OUT")
+	if out == "" {
+		out = "out"
+	}
+	_, err := os.Stat(out + "/novlan")
+	return err == nil
+}
 
 func keep() bool { return os.Getenv("E2E_KEEP") == "1" }
 

@@ -30,8 +30,27 @@ idx() {
     case $1 in n1) echo 1 ;; n2) echo 2 ;; n3) echo 3 ;; rt) echo 254 ;; pod) echo 13 ;; esac
 }
 
+vlan_supported() {
+    ip netns add "$P-probe" 2>/dev/null || return 1
+    ok=1
+    if ip -n "$P-probe" link add pv0 type dummy 2>/dev/null &&
+        ip -n "$P-probe" link add link pv0 name pv0.2 type vlan id 2 2>/dev/null; then
+        ok=0
+    fi
+    ip netns del "$P-probe"
+    return $ok
+}
+
 up() {
     down
+    OUT=${E2E_OUT:-$(dirname "$0")/out}
+    mkdir -p "$OUT"
+    rm -f "$OUT/novlan"
+    if [ "$NO_VLAN" != 1 ] && ! vlan_supported; then
+        echo "topo.sh: kernel has no 8021q support, using separate bridges instead of VLANs" >&2
+        NO_VLAN=1
+    fi
+    [ "$NO_VLAN" = 1 ] && touch "$OUT/novlan"
     for n in $NODES pod sw; do
         ip netns add "$P-$n"
         nsx "$n" ip link set lo up

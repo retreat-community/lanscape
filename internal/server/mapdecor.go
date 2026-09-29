@@ -16,6 +16,60 @@ func hypervisorSource(src string) bool {
 	return src == discovery.SourceProxmox || src == discovery.SourceLibvirt
 }
 
+// guestHosts maps agents running inside a VM/CT (matched by MAC in the hypervisor's guest list)
+// and pod-network agents (by node name) to the agent of their host: the dependency the map
+// shows by nesting and incident grouping follows (§7.1, §9.2).
+func (s *Server) guestHosts(ctx context.Context) map[string]string {
+	agents := s.hub.List()
+	byHost := map[string]string{}
+	macOwner := map[string]string{}
+	for _, a := range agents {
+		if a.Inv.Env.Kind != "k8s-pod" {
+			byHost[strings.ToLower(a.Hostname)] = a.ID
+			byHost[strings.ToLower(a.Name)] = a.ID
+		}
+		for _, ifc := range a.Inv.Ifaces {
+			if ifc.MAC != "" {
+				macOwner[strings.ToLower(ifc.MAC)] = a.ID
+			}
+		}
+	}
+	out := map[string]string{}
+	for _, a := range agents {
+		if node := strings.ToLower(a.Inv.Env.K8sNode); node != "" && a.Inv.Env.Kind == "k8s-pod" {
+			if host, ok := byHost[node]; ok && host != a.ID {
+				out[a.ID] = host
+			}
+		}
+	}
+	fs, err := s.store.Findings(ctx, "", "")
+	if err != nil {
+		return out
+	}
+	for _, f := range fs {
+		if !hypervisorSource(f.Source) || f.Gone != 0 {
+			continue
+		}
+		var it discovery.Item
+		if json.Unmarshal(f.Data, &it) != nil {
+			continue
+		}
+		host, ok := byHost[strings.ToLower(it.Labels["node"])]
+		if !ok && f.Source == discovery.SourceLibvirt {
+			host, ok = f.AgentID, true
+		}
+		if !ok {
+			continue
+		}
+		for _, n := range it.NICs {
+			if a, ok := macOwner[n.MAC]; ok && a != host {
+				out[a] = host
+			}
+		}
+	}
+	return out
+}
+
 // decorateMap nests guests in their hypervisor and pods in their node, adds Proxmox guests
 // without an agent and attaches services to the devices they run on (§7.1).
 func (s *Server) decorateMap(ctx context.Context, g *MapGraph) {

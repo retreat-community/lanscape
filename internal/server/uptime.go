@@ -459,10 +459,26 @@ func (u *uptime) parentDown(ctx context.Context, m store.Monitor) (parentInciden
 		}
 	}
 	u.mu.Unlock()
-	for _, a := range u.s.serviceAgents(ctx, m.ServiceID) {
-		if st, ok := u.s.hub.Get(a); ok && !st.Online {
-			return 0, "agent " + st.Name + " is offline"
+	agents := u.s.serviceAgents(ctx, m.ServiceID)
+	if len(agents) == 0 {
+		return 0, ""
+	}
+	hosts := u.s.guestHosts(ctx)
+	for _, a := range agents {
+		st, ok := u.s.hub.Get(a)
+		if !ok || st.Online {
+			continue
 		}
+		// the guest is offline because its hypervisor (or node) is: group under the topmost
+		// offline host (a pod on a VM on prx1 → prx1)
+		cause := "agent " + st.Name + " is offline"
+		for h, seen := hosts[a], map[string]bool{}; h != "" && !seen[h]; h = hosts[h] {
+			seen[h] = true
+			if hs, ok := u.s.hub.Get(h); ok && !hs.Online {
+				cause = "host " + hs.Name + " is offline"
+			}
+		}
+		return 0, cause
 	}
 	return 0, ""
 }

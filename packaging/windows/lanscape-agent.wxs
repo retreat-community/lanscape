@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lanscape agent for Windows (x64), built with wixl (msitools) by scripts/build-msi.sh.
+     msiexec /i lanscape-agent.msi SERVER=lanscape.lan:8443 TOKEN=<registration token> CAFINGERPRINT=<sha256>
+     The values are kept in HKLM\SOFTWARE\Lanscape\Agent for upgrades. -->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" Name="Lanscape Agent" Language="1033" Version="$(var.Version)" Manufacturer="Lanscape"
+           UpgradeCode="7d3c1b4e-2a5f-4c8e-9b61-3f0a6e2d9c17">
+    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine"
+             Description="Lanscape Agent $(var.Version)" Comments="Network tests, discovery and checks"/>
+    <MajorUpgrade DowngradeErrorMessage="A newer Lanscape Agent is already installed."/>
+    <Media Id="1" Cabinet="agent.cab" EmbedCab="yes"/>
+
+    <Property Id="SERVER">
+      <RegistrySearch Id="PrevServer" Root="HKLM" Key="SOFTWARE\Lanscape\Agent" Name="Server" Type="raw" Win64="yes"/>
+    </Property>
+    <Property Id="TOKEN">
+      <RegistrySearch Id="PrevToken" Root="HKLM" Key="SOFTWARE\Lanscape\Agent" Name="Token" Type="raw" Win64="yes"/>
+    </Property>
+    <Property Id="CAFINGERPRINT">
+      <RegistrySearch Id="PrevFingerprint" Root="HKLM" Key="SOFTWARE\Lanscape\Agent" Name="CAFingerprint" Type="raw" Win64="yes"/>
+    </Property>
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLDIR" Name="Lanscape">
+          <Component Id="Agent" Guid="3f8a2c61-9d4b-4e7a-8c15-6b2e0d9f4a73" Win64="yes">
+            <File Id="AgentExe" Name="lanscape-agent.exe" Source="lanscape-agent.exe" KeyPath="yes"/>
+            <File Id="License" Name="LICENSE.txt" Source="LICENSE"/>
+            <File Id="Notice" Name="NOTICE.txt" Source="NOTICE"/>
+            <RegistryValue Root="HKLM" Key="SOFTWARE\Lanscape\Agent" Name="Server" Type="string" Value="[SERVER]"/>
+            <RegistryValue Root="HKLM" Key="SOFTWARE\Lanscape\Agent" Name="Token" Type="string" Value="[TOKEN]"/>
+            <RegistryValue Root="HKLM" Key="SOFTWARE\Lanscape\Agent" Name="CAFingerprint" Type="string" Value="[CAFINGERPRINT]"/>
+            <ServiceInstall Id="AgentService" Name="LanscapeAgent" DisplayName="Lanscape Agent"
+                            Description="Lanscape network tests, discovery and checks" Type="ownProcess"
+                            Start="auto" ErrorControl="normal" Account="LocalSystem"
+                            Arguments="run --server=[SERVER] --token=[TOKEN] --ca-fingerprint=[CAFINGERPRINT]"/>
+            <ServiceControl Id="AgentServiceControl" Name="LanscapeAgent" Start="install" Stop="both"
+                            Remove="uninstall" Wait="yes"/>
+          </Component>
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <Feature Id="Complete" Level="1">
+      <ComponentRef Id="Agent"/>
+    </Feature>
+  </Product>
+</Wix>

@@ -81,7 +81,8 @@ var ignoredProcesses = map[string]bool{
 var kindRank = map[string]int{
 	discovery.KindDeployment: 1, discovery.KindStatefulSet: 1, discovery.KindDaemonSet: 1,
 	discovery.KindContainer: 2, discovery.KindService: 3, discovery.KindIngress: 4, discovery.KindHTTPRoute: 4,
-	discovery.KindSocket: 5, discovery.KindVM: 1, discovery.KindCT: 1,
+	discovery.KindProxyRoute: 6, // named after the backend it forwards to
+	discovery.KindSocket:     5, discovery.KindVM: 1, discovery.KindCT: 1,
 }
 
 type node struct {
@@ -115,7 +116,8 @@ func isLoopback(a string) bool {
 func include(f *Finding) bool {
 	it := &f.Item
 	switch it.Kind {
-	case discovery.KindPVC, discovery.KindLease, discovery.KindWifiClient, discovery.KindPortForward, discovery.KindSQM:
+	case discovery.KindPVC, discovery.KindLease, discovery.KindWifiClient, discovery.KindPortForward, discovery.KindSQM,
+		discovery.KindDNSRecord:
 		return false
 	case discovery.KindDevice:
 		return it.URL != "" // only LAN devices with a web interface become service cards
@@ -189,6 +191,57 @@ func Build(fs []Finding, agents map[string]AgentInfo) []Card {
 			svcByName[it.Namespace+"/"+it.Name] = i
 		case discovery.KindDeployment, discovery.KindStatefulSet, discovery.KindDaemonSet:
 			workloads = append(workloads, i)
+		}
+	}
+	// endpoints reachable at host:port, for matching reverse-proxy backends
+	endpoints := map[string]int{}
+	for i, n := range nodes {
+		it := &n.f.Item
+		hostIP := agents[n.f.Agent].IP
+		switch it.Kind {
+		case discovery.KindSocket:
+			if it.Proto != "tcp" {
+				continue
+			}
+			for _, ip := range []string{it.Addr, "127.0.0.1", "localhost", hostIP} {
+				if ip != "" && ip != "0.0.0.0" {
+					endpoints[n.f.Agent+"|"+net.JoinHostPort(ip, strconv.Itoa(it.Port))] = i
+				}
+			}
+			if hostIP != "" {
+				endpoints[net.JoinHostPort(hostIP, strconv.Itoa(it.Port))] = i
+			}
+		case discovery.KindContainer:
+			for _, p := range it.Ports {
+				for _, ip := range it.IPs {
+					endpoints[net.JoinHostPort(ip, strconv.Itoa(p.Target))] = i
+				}
+				endpoints[net.JoinHostPort(it.Name, strconv.Itoa(p.Target))] = i
+				if p.Port > 0 && hostIP != "" {
+					endpoints[net.JoinHostPort(hostIP, strconv.Itoa(p.Port))] = i
+					endpoints[n.f.Agent+"|"+net.JoinHostPort("127.0.0.1", strconv.Itoa(p.Port))] = i
+				}
+			}
+		case discovery.KindService:
+			for _, p := range it.Ports {
+				for _, ip := range it.IPs {
+					endpoints[net.JoinHostPort(ip, strconv.Itoa(p.Port))] = i
+				}
+			}
+		}
+	}
+	for i, n := range nodes {
+		it := &n.f.Item
+		if it.Kind != discovery.KindProxyRoute {
+			continue
+		}
+		for _, b := range it.Backends {
+			hp := discovery.BackendHostPort(b)
+			if j, ok := endpoints[n.f.Agent+"|"+hp]; ok {
+				u.union(j, i)
+			} else if j, ok := endpoints[hp]; ok {
+				u.union(j, i)
+			}
 		}
 	}
 	for i, n := range nodes {
@@ -306,7 +359,7 @@ func card(ms []*Finding, agents map[string]AgentInfo) Card {
 		}
 		hostIP := agents[f.Agent].IP
 		switch it.Kind {
-		case discovery.KindIngress, discovery.KindHTTPRoute:
+		case discovery.KindIngress, discovery.KindHTTPRoute, discovery.KindProxyRoute:
 			scheme := "http"
 			if it.TLS || it.Kind == discovery.KindHTTPRoute {
 				scheme = "https"

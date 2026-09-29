@@ -44,7 +44,17 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 	}
 	cfg := discovery.Config{DockerSocket: o.dockerSocket, Kubeconfig: o.kubeconfig, Probe: !o.noProbe,
 		Interval: o.discoverInterval, Signatures: cli.SplitList(o.signatures),
-		Proxmox: discovery.ProxmoxConfig{URL: o.proxmoxURL, Token: o.proxmoxToken, Insecure: o.proxmoxInsecure}}
+		Proxmox: discovery.ProxmoxConfig{URL: o.proxmoxURL, Token: o.proxmoxToken, Insecure: o.proxmoxInsecure},
+		Proxy:   discovery.ProxyConfig{TraefikURL: o.traefikURL, CaddyAdmin: o.caddyAdmin, NginxDir: o.nginxDir},
+		DNS: discovery.DNSConfig{PiholeURL: o.piholeURL, PiholePassword: o.piholePassword, AdGuardURL: o.adguardURL,
+			AdGuardUser: o.adguardUser, AdGuardPassword: o.adguardPassword, TechnitiumURL: o.technitiumURL,
+			TechnitiumToken: o.technitiumToken}}
+	if cfg.Proxy.NginxDir == "auto" {
+		cfg.Proxy.NginxDir = ""
+		if exists("/etc/nginx/nginx.conf") {
+			cfg.Proxy.NginxDir = "/etc/nginx"
+		}
+	}
 	for _, src := range cli.SplitList(o.discover) {
 		switch src {
 		case "auto":

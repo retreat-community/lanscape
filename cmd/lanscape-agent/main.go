@@ -32,6 +32,8 @@ type options struct {
 	maxDuration                                                                                 time.Duration
 	maxStreams, maxUDPMbps                                                                      int
 	discover, dockerSocket, kubeconfig, signatures, proxmoxURL, proxmoxToken                    string
+	traefikURL, caddyAdmin, nginxDir, piholeURL, piholePassword, adguardURL, adguardUser        string
+	adguardPassword, technitiumURL, technitiumToken                                             string
 	discoverInterval                                                                            time.Duration
 	noProbe, proxmoxInsecure                                                                    bool
 }
@@ -57,6 +59,16 @@ func parse(args []string) (*flag.FlagSet, *options, error) {
 	fs.StringVar(&o.proxmoxURL, "proxmox-url", "", "Proxmox VE API for VM/CT discovery, e.g. https://127.0.0.1:8006")
 	fs.StringVar(&o.proxmoxToken, "proxmox-token", "", "read-only Proxmox API token user@realm!id=secret (PVEAuditor)")
 	fs.BoolVar(&o.proxmoxInsecure, "proxmox-insecure", false, "accept a self-signed Proxmox certificate")
+	fs.StringVar(&o.traefikURL, "traefik-url", "", "Traefik API for routes (e.g. http://traefik:8080)")
+	fs.StringVar(&o.caddyAdmin, "caddy-admin", "", "Caddy admin API (e.g. http://127.0.0.1:2019)")
+	fs.StringVar(&o.nginxDir, "nginx-dir", "", `nginx configuration directory ("auto" = /etc/nginx when present)`)
+	fs.StringVar(&o.piholeURL, "pihole-url", "", "Pi-hole for local DNS names")
+	fs.StringVar(&o.piholePassword, "pihole-password", "", "Pi-hole app password (v6) or API token (v5)")
+	fs.StringVar(&o.adguardURL, "adguard-url", "", "AdGuard Home for DNS rewrites")
+	fs.StringVar(&o.adguardUser, "adguard-user", "", "AdGuard Home user")
+	fs.StringVar(&o.adguardPassword, "adguard-password", "", "AdGuard Home password")
+	fs.StringVar(&o.technitiumURL, "technitium-url", "", "Technitium DNS server for zone records")
+	fs.StringVar(&o.technitiumToken, "technitium-token", "", "Technitium API token")
 	fs.BoolVar(&o.noProbe, "no-probe", false, "do not fingerprint discovered HTTP endpoints")
 	fs.StringVar(&o.signatures, "signatures", "", "extra application signature files (YAML, comma-separated)")
 	fs.StringVar(&o.logLevel, "log-level", "info", "debug, info, warn or error")

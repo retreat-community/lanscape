@@ -174,3 +174,36 @@ func TestProxmoxCards(t *testing.T) {
 		t.Errorf("monitor: %+v", m)
 	}
 }
+
+func TestProxyRouteMerge(t *testing.T) {
+	agents := map[string]AgentInfo{"nas": {Name: "nas", IP: "192.168.1.10"}}
+	fs := []Finding{
+		{Agent: "nas", Source: discovery.SourceDocker, Item: discovery.Item{Key: "container/gitea", Kind: discovery.KindContainer,
+			Name: "gitea", State: "running", IPs: []string{"172.18.0.2"}, Ports: []discovery.Port{{Target: 3000, Proto: "tcp"}}}},
+		{Agent: "nas", Source: discovery.SourceSockets, Item: discovery.Item{Key: "tcp/8123@*", Kind: discovery.KindSocket, Proto: "tcp",
+			Addr: "0.0.0.0", Port: 8123, Process: "hass"}},
+		{Agent: "nas", Source: discovery.SourceProxy, Item: discovery.Item{Key: "traefik/gitea", Kind: discovery.KindProxyRoute,
+			Name: "gitea", Hosts: []string{"git.example"}, TLS: true, Backends: []string{"http://172.18.0.2:3000"}}},
+		{Agent: "nas", Source: discovery.SourceProxy, Item: discovery.Item{Key: "nginx/ha.lan/0", Kind: discovery.KindProxyRoute,
+			Name: "ha.lan", Hosts: []string{"ha.lan"}, Backends: []string{"http://127.0.0.1:8123/"}}},
+		{Agent: "nas", Source: discovery.SourceProxy, Item: discovery.Item{Key: "nginx/other/1", Kind: discovery.KindProxyRoute,
+			Name: "other", Hosts: []string{"other.example"}, Backends: []string{"http://10.9.9.9:80"}}},
+	}
+	cards := Build(fs, agents)
+	by := map[string]Card{}
+	for _, c := range cards {
+		by[c.Key] = c
+	}
+	if len(cards) != 3 {
+		t.Fatalf("cards: %+v", cards)
+	}
+	if g := by["docker:nas:gitea"]; g.ExternalURL != "https://git.example" || len(g.Refs) != 2 {
+		t.Errorf("gitea: %+v", g)
+	}
+	if h := by["proc:nas:hass"]; h.ExternalURL != "http://ha.lan" {
+		t.Errorf("home assistant: %+v", h)
+	}
+	if o := by["proxy:nas:nginx/other/1"]; o.ExternalURL != "http://other.example" || o.Monitor == nil {
+		t.Errorf("unmatched route: %+v", o)
+	}
+}

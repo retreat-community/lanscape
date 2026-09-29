@@ -120,6 +120,24 @@ func (s *Server) devices(ctx context.Context) []Device {
 			}
 		}
 	}
+	// names from local DNS servers for devices that have none
+	if fs, err := s.store.Findings(ctx, "", ""); err == nil {
+		for _, f := range fs {
+			if f.Source != discovery.SourceDNS || f.Gone != 0 {
+				continue
+			}
+			var it discovery.Item
+			if json.Unmarshal(f.Data, &it) != nil {
+				continue
+			}
+			for _, ip := range it.IPs {
+				if d := by[ip]; d != nil && d.Name == "" {
+					d.Name = it.Name
+					d.Sources = addUniq(d.Sources, "dns")
+				}
+			}
+		}
+	}
 	out := make([]Device, 0, len(by))
 	for _, d := range by {
 		if d.MAC != "" {

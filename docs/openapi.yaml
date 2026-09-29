@@ -1687,7 +1687,7 @@ components:
             type: object
             properties:
               agent: {type: string}
-              source: {type: string, enum: [sockets, docker, k8s, proxmox, mdns, ssdp, openwrt, scan]}
+              source: {type: string, enum: [sockets, docker, k8s, proxmox, mdns, ssdp, openwrt, scan, proxy, dns]}
               key: {type: string}
               kind: {type: string}
               gone: {type: boolean}

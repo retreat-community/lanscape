@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { api, applyConfig, type ConfigChange } from "../lib/api";
+  import { api, applyConfig, importTiles, type ConfigChange } from "../lib/api";
   import { t, toast } from "../lib/state.svelte";
 
   let prom = $state("");
@@ -49,6 +49,15 @@
     }
   }
 
+  async function tiles(ev: Event): Promise<void> {
+    const f = (ev.target as HTMLInputElement).files?.[0];
+    if (!f) return;
+    await run(async () => {
+      const r = await importTiles(await f.text());
+      return t("imp.tiles_done", { n: r.created, format: r.format, skipped: r.skipped.length });
+    });
+  }
+
   async function kuma(ev: Event): Promise<void> {
     const f = (ev.target as HTMLInputElement).files?.[0];
     if (!f) return;
@@ -66,6 +75,11 @@
     <input type="file" accept="application/json,.json" disabled={busy} onchange={(e) => void kuma(e)} data-testid="import-kuma" />
   </label>
   <p class="muted small">{t("imp.kuma_hint")}</p>
+  <label class="field"
+    >{t("imp.tiles")}
+    <input type="file" accept=".yaml,.yml,application/yaml" disabled={busy} onchange={(e) => void tiles(e)} />
+  </label>
+  <p class="muted small">{t("imp.tiles_hint")}</p>
   <div class="row">
     <label class="field grow">{t("imp.prometheus")} <input bind:value={prom} placeholder="http://prometheus:9090" /></label>
     <button

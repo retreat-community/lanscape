@@ -71,6 +71,7 @@ func (s *Server) servicesRoutes(mux *http.ServeMux, v func(string, http.HandlerF
 	mux.HandleFunc("POST /api/v1/push/subscribe", v(RoleViewer, s.apiPushSubscribe))
 	mux.HandleFunc("POST /api/v1/push/unsubscribe", v(RoleViewer, s.apiPushUnsubscribe))
 	mux.HandleFunc("POST /api/v1/push/test", v(RoleViewer, s.apiPushTest))
+	mux.HandleFunc("POST /api/v1/import/dashboard", v(RoleAdmin, s.apiImportTiles))
 	mux.HandleFunc("GET /api/v1/internet", v(RoleViewer, s.apiInternet))
 	mux.HandleFunc("POST /api/v1/internet/run", v(RoleOperator, s.apiRunInternet))
 	mux.HandleFunc("GET /api/v1/config", v(RoleAdmin, s.apiExportConfig))

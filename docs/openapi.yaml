@@ -1075,6 +1075,28 @@ paths:
                 speed: {type: boolean, description: also measure the download speed}
       responses:
         "202": {description: started}
+  /api/v1/import/dashboard:
+    post:
+      tags: [discovery]
+      operationId: importTiles
+      summary: Create dashboard tiles from a Homepage, Homer or Dashy configuration (admin)
+      requestBody:
+        required: true
+        content:
+          application/yaml:
+            schema: {type: string, description: "services.yaml, config.yml or conf.yml"}
+      responses:
+        "200":
+          description: result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  format: {type: string, enum: [homepage, homer, dashy]}
+                  created: {type: integer}
+                  skipped: {type: array, items: {type: string}}
+        "400": {$ref: "#/components/responses/Error"}
   /api/v1/import/uptime-kuma:
     post:
       tags: [discovery]

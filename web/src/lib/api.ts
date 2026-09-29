@@ -96,6 +96,20 @@ export async function applyConfig(
   return { plan: data.plan ?? [], error: r.ok ? undefined : (data.error ?? r.statusText) };
 }
 
+/** Imports tiles from a Homepage, Homer or Dashy configuration (YAML). */
+export async function importTiles(yaml: string): Promise<{ format: string; created: number; skipped: string[] }> {
+  const r = await fetch("/api/v1/import/dashboard", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/yaml" },
+    body: yaml,
+  });
+  const data = (await r.json()) as { format: string; created: number; skipped: string[]; error?: string };
+  if (r.status === 401) unauthorized();
+  if (!r.ok) throw new ApiError(r.status, data.error ?? r.statusText, data as unknown as Record<string, unknown>);
+  return data;
+}
+
 const enc = encodeURIComponent;
 
 export const api = {

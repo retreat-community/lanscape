@@ -305,6 +305,14 @@ push notifications (Web Push; the panel must be served over HTTPS). The webhooks
 General** receive every `run.finished`, `incident.opened`/`resolved`/`reminder` and `device.new`
 event as JSON (`{"event": …, "run"|"incident"|"change": …}`).
 
+### Importing from other dashboards
+
+**Settings → Import** reads an Uptime Kuma backup (monitors), Prometheus targets and Home
+Assistant entities (found devices), and the tiles of Homepage (`services.yaml`), Homer
+(`config.yml`) or Dashy (`conf.yml`): every link becomes a dashboard tile in its group, with the
+icon when it names an application; private addresses become the internal URL, the others the
+external one.
+
 ### Guest access
 
 **Settings → General → Show a read-only dashboard to visitors who are not signed in** opens the

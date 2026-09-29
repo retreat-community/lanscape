@@ -109,6 +109,125 @@ var migrations = []string{
 		first_seen BIGINT NOT NULL,
 		last_seen BIGINT NOT NULL
 	);`,
+	// 2: services, discovery, monitors, incidents, notifications
+	`CREATE TABLE findings (
+		agent_id TEXT NOT NULL,
+		source TEXT NOT NULL,
+		item_key TEXT NOT NULL,
+		kind TEXT NOT NULL,
+		data TEXT NOT NULL,
+		first_seen BIGINT NOT NULL,
+		last_seen BIGINT NOT NULL,
+		gone BIGINT NOT NULL DEFAULT 0,
+		PRIMARY KEY (agent_id, source, item_key)
+	);
+	CREATE TABLE found_state (
+		card_key TEXT PRIMARY KEY,
+		status TEXT NOT NULL,
+		service_id BIGINT NOT NULL DEFAULT 0,
+		rule TEXT NOT NULL DEFAULT '',
+		first_seen BIGINT NOT NULL,
+		updated BIGINT NOT NULL
+	);
+	CREATE TABLE services (
+		id {{PK}},
+		name TEXT NOT NULL,
+		app_id TEXT NOT NULL DEFAULT '',
+		icon TEXT NOT NULL DEFAULT '',
+		category TEXT NOT NULL DEFAULT '',
+		grp TEXT NOT NULL DEFAULT '',
+		internal_url TEXT NOT NULL DEFAULT '',
+		external_url TEXT NOT NULL DEFAULT '',
+		addresses TEXT NOT NULL DEFAULT '[]',
+		card_key TEXT NOT NULL DEFAULT '',
+		tile INTEGER NOT NULL DEFAULT 1,
+		sort INTEGER NOT NULL DEFAULT 0,
+		notes TEXT NOT NULL DEFAULT '',
+		created_at BIGINT NOT NULL
+	);
+	CREATE TABLE changes (
+		id {{PK}},
+		ts BIGINT NOT NULL,
+		kind TEXT NOT NULL,
+		subject TEXT NOT NULL,
+		detail TEXT NOT NULL DEFAULT '',
+		agent_id TEXT NOT NULL DEFAULT ''
+	);
+	CREATE INDEX changes_ts ON changes(ts);
+	CREATE TABLE monitors (
+		id {{PK}},
+		service_id BIGINT NOT NULL DEFAULT 0,
+		name TEXT NOT NULL,
+		spec TEXT NOT NULL,
+		interval_s INTEGER NOT NULL DEFAULT 60,
+		retries INTEGER NOT NULL DEFAULT 3,
+		points TEXT NOT NULL DEFAULT '[]',
+		min_failing INTEGER NOT NULL DEFAULT 1,
+		sla REAL NOT NULL DEFAULT 0,
+		enabled INTEGER NOT NULL DEFAULT 1,
+		status TEXT NOT NULL DEFAULT 'pending',
+		last_check BIGINT NOT NULL DEFAULT 0,
+		last_latency REAL NOT NULL DEFAULT 0,
+		last_message TEXT NOT NULL DEFAULT '',
+		cert_not_after BIGINT NOT NULL DEFAULT 0,
+		created_at BIGINT NOT NULL
+	);
+	CREATE TABLE checks (
+		monitor_id BIGINT NOT NULL,
+		ts BIGINT NOT NULL,
+		status TEXT NOT NULL,
+		latency_ms REAL NOT NULL DEFAULT 0,
+		point TEXT NOT NULL DEFAULT '',
+		message TEXT NOT NULL DEFAULT ''
+	);
+	CREATE INDEX checks_monitor_ts ON checks(monitor_id, ts);
+	CREATE TABLE uptime_daily (
+		monitor_id BIGINT NOT NULL,
+		day INTEGER NOT NULL,
+		up INTEGER NOT NULL DEFAULT 0,
+		down INTEGER NOT NULL DEFAULT 0,
+		degraded INTEGER NOT NULL DEFAULT 0,
+		maint INTEGER NOT NULL DEFAULT 0,
+		latency_sum REAL NOT NULL DEFAULT 0,
+		PRIMARY KEY (monitor_id, day)
+	);
+	CREATE TABLE incidents (
+		id {{PK}},
+		monitor_id BIGINT NOT NULL,
+		opened BIGINT NOT NULL,
+		closed BIGINT NOT NULL DEFAULT 0,
+		cause TEXT NOT NULL DEFAULT '',
+		acked_by TEXT NOT NULL DEFAULT '',
+		acked_at BIGINT NOT NULL DEFAULT 0,
+		parent_id BIGINT NOT NULL DEFAULT 0,
+		maintenance INTEGER NOT NULL DEFAULT 0,
+		notified BIGINT NOT NULL DEFAULT 0
+	);
+	CREATE INDEX incidents_monitor ON incidents(monitor_id, closed);
+	CREATE TABLE incident_notes (
+		id {{PK}},
+		incident_id BIGINT NOT NULL,
+		ts BIGINT NOT NULL,
+		author TEXT NOT NULL,
+		text TEXT NOT NULL
+	);
+	CREATE TABLE maintenance (
+		id {{PK}},
+		name TEXT NOT NULL,
+		starts BIGINT NOT NULL,
+		ends BIGINT NOT NULL,
+		monitors TEXT NOT NULL DEFAULT '[]',
+		created_by TEXT NOT NULL DEFAULT '',
+		created_at BIGINT NOT NULL
+	);
+	CREATE TABLE channels (
+		id {{PK}},
+		name TEXT NOT NULL,
+		type TEXT NOT NULL,
+		config TEXT NOT NULL DEFAULT '{}',
+		enabled INTEGER NOT NULL DEFAULT 1,
+		created_at BIGINT NOT NULL
+	);`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

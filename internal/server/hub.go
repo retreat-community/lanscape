@@ -43,6 +43,7 @@ type AgentState struct {
 	HostID   string          `json:"host_id"`
 	DataPort int             `json:"data_port"`
 	LastSeen int64           `json:"last_seen"`
+	Caps     []string        `json:"caps,omitempty"`
 	Inv      agent.Inventory `json:"inventory"`
 	conn     Conn
 }

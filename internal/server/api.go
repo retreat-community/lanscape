@@ -72,6 +72,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PUT /api/v1/settings", v(RoleAdmin, s.apiSaveSettings))
 	mux.HandleFunc("GET /api/v1/audit", v(RoleAdmin, s.apiAudit))
 	mux.HandleFunc("GET /api/v1/events", v(RoleViewer, s.events.ServeHTTP))
+	s.servicesRoutes(mux, v)
 	for _, r := range s.extraRoutes {
 		mux.HandleFunc(r.pattern, v(r.role, r.h))
 	}

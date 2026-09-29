@@ -173,7 +173,7 @@ func (s *Server) handleAgentWS(w http.ResponseWriter, r *http.Request) {
 	var inv agent.Inventory
 	_ = json.Unmarshal(rec.Inventory, &inv)
 	st := AgentState{ID: id, Name: rec.Name, Kind: "full", Version: hm.Version, OS: hm.OS, Arch: hm.Arch,
-		Hostname: hm.Hostname, HostID: hm.HostID, DataPort: hm.DataPort, Inv: inv}
+		Hostname: hm.Hostname, HostID: hm.HostID, DataPort: hm.DataPort, Caps: hm.Caps, Inv: inv}
 	s.hub.Connected(st, c)
 	s.log.Info("agent connected", "id", id, "name", rec.Name, "version", hm.Version)
 	defer func() {
@@ -199,6 +199,9 @@ func (s *Server) handleAgentWS(w http.ResponseWriter, r *http.Request) {
 		case proto.MsgInventory:
 			var inv agent.Inventory
 			if err := json.Unmarshal(env.Data, &inv); err == nil {
+				if prev, ok := s.hub.Get(id); ok {
+					s.inventoryChanges(ctx, id, &prev.Inv, &inv)
+				}
 				s.hub.SetInventory(id, inv)
 				rec.Inventory = env.Data
 				rec.LastSeen = time.Now().UnixMilli()

@@ -77,6 +77,9 @@ type Server struct {
 	extras  []topo.Extra
 
 	extraRoutes []route
+
+	disc   discoveryState
+	uptime *uptime
 }
 
 // New opens the store and the CA.
@@ -107,6 +110,8 @@ func New(ctx context.Context, cfg Config, log *slog.Logger) (*Server, error) {
 	s := &Server{cfg: cfg, log: log, store: st, ca: ca, hub: NewHub(), events: NewBroker(), metrics: NewMetrics(),
 		limiter: &loginLimiter{fail: map[string][]time.Time{}}, ctx: ctx}
 	s.runner = &Runner{s: s}
+	s.uptime = newUptime(s)
+	s.OnAgentMessage(s.onDiscovery)
 	s.hub.onConn = func(a *AgentState, up bool) {
 		s.metrics.SetAgent(a.ID, a.Name, a.Kind, up)
 		s.events.Publish("agent", map[string]any{"id": a.ID, "name": a.Name, "online": up})
@@ -304,6 +309,7 @@ func (s *Server) Run(ctx context.Context) error {
 		}()
 	}
 	go s.scheduler(ctx)
+	go s.uptime.run(ctx)
 	go s.housekeeping(ctx)
 	s.log.Info("lanscape server started", "version", s.cfg.Version, "ui", s.cfg.Listen, "gateway", s.cfg.GatewayListen,
 		"mini", s.cfg.MiniListen, "ca_fingerprint", pki.Fingerprint(s.ca.Cert))
@@ -329,11 +335,15 @@ func (s *Server) housekeeping(ctx context.Context) {
 			return
 		case <-t.C:
 			_ = s.store.PurgeSessions(ctx)
+			_ = s.store.PruneFindings(ctx, time.Now().Add(-7*24*time.Hour).UnixMilli())
 			st := s.settings(ctx)
 			if st.RetentionDays > 0 {
 				cut := time.Now().Add(-time.Duration(st.RetentionDays) * 24 * time.Hour).UnixMilli()
 				if n, err := s.store.PruneRuns(ctx, cut); err == nil && n > 0 {
 					s.log.Info("pruned old runs", "count", n)
+				}
+				if err := s.store.PruneChecks(ctx, cut); err != nil {
+					s.log.Warn("cannot prune checks", "err", err)
 				}
 			}
 		}

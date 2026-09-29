@@ -1,6 +1,8 @@
 package server
 
 import (
+	"strconv"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 
@@ -19,6 +21,9 @@ type Metrics struct {
 	runSeconds  *prometheus.HistogramVec
 	problems    *prometheus.GaugeVec
 	devices     prometheus.Gauge
+	monUp       *prometheus.GaugeVec
+	monLatency  *prometheus.GaugeVec
+	notifyFail  *prometheus.CounterVec
 }
 
 var verdictValue = map[string]float64{topo.Green: 0, topo.None: 1, topo.Yellow: 2, topo.Purple: 3, topo.Red: 4}
@@ -47,8 +52,15 @@ func NewMetrics() *Metrics {
 			Help: "Problems found by the last run by kind."}, []string{"kind"}),
 		devices: prometheus.NewGauge(prometheus.GaugeOpts{Name: "lanscape_devices",
 			Help: "Known devices (agents and discovered)."}),
+		monUp: prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "lanscape_monitor_up",
+			Help: "Monitor status: 1 up, 0.5 degraded, 0 down."}, []string{"monitor", "name"}),
+		monLatency: prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "lanscape_monitor_latency_seconds",
+			Help: "Response time of the last check."}, []string{"monitor", "name"}),
+		notifyFail: prometheus.NewCounterVec(prometheus.CounterOpts{Name: "lanscape_notification_failures_total",
+			Help: "Failed notification deliveries by channel type."}, []string{"type"}),
 	}
-	r.MustRegister(m.agentUp, m.pathBPS, m.pathRTT, m.pathVerdict, m.pathLoss, m.runs, m.runSeconds, m.problems, m.devices)
+	r.MustRegister(m.agentUp, m.pathBPS, m.pathRTT, m.pathVerdict, m.pathLoss, m.runs, m.runSeconds, m.problems, m.devices,
+		m.monUp, m.monLatency, m.notifyFail)
 	return m
 }
 
@@ -90,3 +102,29 @@ func (m *Metrics) ObserveReport(rep *Report) {
 		m.runSeconds.WithLabelValues(rep.Kind).Observe(float64(rep.Finished-rep.Started) / 1000)
 	}
 }
+
+// SetMonitor exports the last check of a monitor.
+func (m *Metrics) SetMonitor(id int64, name, status string, latencyMS float64) {
+	l := []string{strconv.FormatInt(id, 10), name}
+	switch status {
+	case "up":
+		m.monUp.WithLabelValues(l...).Set(1)
+	case "degraded":
+		m.monUp.WithLabelValues(l...).Set(0.5)
+	case "down":
+		m.monUp.WithLabelValues(l...).Set(0)
+	default:
+		return
+	}
+	m.monLatency.WithLabelValues(l...).Set(latencyMS / 1000)
+}
+
+// DeleteMonitor removes the series of a deleted monitor.
+func (m *Metrics) DeleteMonitor(id int64, name string) {
+	l := []string{strconv.FormatInt(id, 10), name}
+	m.monUp.DeleteLabelValues(l...)
+	m.monLatency.DeleteLabelValues(l...)
+}
+
+// NotifyFailed counts a failed notification.
+func (m *Metrics) NotifyFailed(typ string) { m.notifyFail.WithLabelValues(typ).Inc() }

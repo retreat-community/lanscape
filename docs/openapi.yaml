@@ -6,7 +6,7 @@ info:
     HTTP API of the Lanscape server (port 8080). Authenticate with the session cookie from
     `POST /api/v1/auth/login` or with an API token (`Authorization: Bearer lsk_...`).
     State-changing requests must use `Content-Type: application/json`.
-    Roles: viewer < operator (runs, incidents) < admin.
+    Roles: viewer < operator (runs, services, monitors, incidents) < admin.
   license:
     name: GPL-3.0-or-later
     url: https://www.gnu.org/licenses/gpl-3.0.html
@@ -17,12 +17,27 @@ security:
   - bearer: []
 tags:
   - name: auth
+    description: Login, sessions and two-factor authentication
   - name: users
+    description: Panel accounts and API tokens
   - name: agents
+    description: Agents, registration tokens and install commands
   - name: network
+    description: Segments, IPAM, anomalies and the map
   - name: runs
+    description: Network test runs and schedules
+  - name: discovery
+    description: Found queue, auto-add rules and the change feed
+  - name: services
+    description: Service catalog, dashboard and search
+  - name: monitors
+    description: Availability monitors, incidents and maintenance windows
+  - name: notifications
+    description: Notification channels
   - name: settings
+    description: Server settings and audit log
   - name: system
+    description: Health, metrics and events
 paths:
   /healthz:
     get:
@@ -605,9 +620,416 @@ paths:
       tags: [system]
       operationId: events
       summary: Events
-      description: "Server-sent events: run.started, run.progress, run.done, agent, inventory"
+      description: "Server-sent events: run.started, run.progress, run.done, agent, inventory, discovery, change, services, monitor, incident, maintenance"
       responses:
         "200": {description: event stream, content: {text/event-stream: {}}}
+  /api/v1/found:
+    get:
+      tags: [discovery]
+      operationId: listFound
+      summary: Found queue
+      description: Discovered services merged into cards, with their triage status.
+      parameters:
+        - {name: status, in: query, schema: {type: string, enum: [new, added, ignored, hidden]}}
+      responses:
+        "200":
+          description: cards
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/FoundCard"}}
+  /api/v1/found/add:
+    post:
+      tags: [discovery]
+      operationId: addFound
+      summary: Add a found service
+      description: Creates a service from a card, optionally with the recommended monitor and a dashboard tile.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key]
+              properties:
+                key: {type: string}
+                name: {type: string}
+                group: {type: string}
+                monitor: {type: boolean}
+                tile: {type: boolean}
+      responses:
+        "201": {$ref: "#/components/responses/Service"}
+        "404": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+  /api/v1/found/state:
+    post:
+      tags: [discovery]
+      operationId: setFoundState
+      summary: Ignore, hide or restore a card
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key, status]
+              properties:
+                key: {type: string}
+                status: {type: string, enum: [new, ignored, hidden]}
+      responses:
+        "200": {description: updated}
+        "404": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+  /api/v1/discovery/rescan:
+    post:
+      tags: [discovery]
+      operationId: rescan
+      summary: Rescan now
+      description: Asks all connected agents for a fresh discovery report.
+      responses:
+        "200":
+          description: number of agents asked
+          content:
+            application/json:
+              schema: {type: object, properties: {agents: {type: integer}}}
+  /api/v1/discovery/rules:
+    get:
+      tags: [discovery]
+      operationId: getRules
+      summary: Auto-add rules
+      responses:
+        "200":
+          description: rules
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/Rule"}}
+    put:
+      tags: [discovery]
+      operationId: saveRules
+      summary: Save auto-add rules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: array, items: {$ref: "#/components/schemas/Rule"}}
+      responses:
+        "200": {description: saved}
+        "400": {$ref: "#/components/responses/Error"}
+  /api/v1/services:
+    get:
+      tags: [services]
+      operationId: listServices
+      summary: Services
+      responses:
+        "200":
+          description: services with live status; url is the smart link for the client
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/ServiceView"}}
+    post:
+      tags: [services]
+      operationId: createService
+      summary: Create service
+      requestBody: {$ref: "#/components/requestBodies/Service"}
+      responses:
+        "200": {$ref: "#/components/responses/Service"}
+        "400": {$ref: "#/components/responses/Error"}
+  /api/v1/services/order:
+    put:
+      tags: [services]
+      operationId: orderServices
+      summary: Reorder tiles
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: {type: integer}
+                  group: {type: string}
+                  sort: {type: integer}
+      responses:
+        "200": {description: updated}
+  /api/v1/services/{id}:
+    parameters: [{$ref: "#/components/parameters/IntID"}]
+    put:
+      tags: [services]
+      operationId: updateService
+      summary: Update service
+      requestBody: {$ref: "#/components/requestBodies/Service"}
+      responses:
+        "200": {$ref: "#/components/responses/Service"}
+        "400": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+    delete:
+      tags: [services]
+      operationId: deleteService
+      summary: Delete service
+      description: The card returns to the found queue; monitors are kept unless `monitors=1`.
+      parameters:
+        - {name: monitors, in: query, schema: {type: string, enum: ["1"]}}
+      responses:
+        "204": {description: deleted}
+  /api/v1/monitors:
+    get:
+      tags: [monitors]
+      operationId: listMonitors
+      summary: Monitors
+      responses:
+        "200":
+          description: monitors with uptime
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/MonitorView"}}
+    post:
+      tags: [monitors]
+      operationId: createMonitor
+      summary: Create monitor
+      requestBody: {$ref: "#/components/requestBodies/Monitor"}
+      responses:
+        "201": {$ref: "#/components/responses/Monitor"}
+        "400": {$ref: "#/components/responses/Error"}
+  /api/v1/monitors/test:
+    post:
+      tags: [monitors]
+      operationId: testMonitor
+      summary: Try a check
+      description: Runs a check once from the given points without storing anything.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [spec]
+              properties:
+                spec: {$ref: "#/components/schemas/CheckSpec"}
+                points: {type: array, items: {type: string}}
+      responses:
+        "200": {$ref: "#/components/responses/CheckOutcome"}
+        "400": {$ref: "#/components/responses/Error"}
+  /api/v1/monitors/{id}:
+    parameters: [{$ref: "#/components/parameters/IntID"}]
+    get:
+      tags: [monitors]
+      operationId: getMonitor
+      summary: Monitor details
+      parameters:
+        - {name: since, in: query, description: "unix ms; default 24 h ago", schema: {type: integer}}
+      responses:
+        "200":
+          description: monitor, uptime, 90 daily aggregates, checks since `since`, recent incidents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  monitor: {$ref: "#/components/schemas/Monitor"}
+                  uptime: {$ref: "#/components/schemas/Uptime"}
+                  days: {type: array, items: {$ref: "#/components/schemas/DayStat"}}
+                  checks: {type: array, items: {$ref: "#/components/schemas/CheckRecord"}}
+                  incidents: {type: array, items: {$ref: "#/components/schemas/Incident"}}
+        "404": {$ref: "#/components/responses/Error"}
+    put:
+      tags: [monitors]
+      operationId: updateMonitor
+      summary: Update monitor
+      requestBody: {$ref: "#/components/requestBodies/Monitor"}
+      responses:
+        "200": {$ref: "#/components/responses/Monitor"}
+        "400": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+    delete:
+      tags: [monitors]
+      operationId: deleteMonitor
+      summary: Delete monitor
+      responses:
+        "204": {description: deleted}
+  /api/v1/monitors/{id}/check:
+    parameters: [{$ref: "#/components/parameters/IntID"}]
+    post:
+      tags: [monitors]
+      operationId: checkNow
+      summary: Check now
+      responses:
+        "200": {$ref: "#/components/responses/CheckOutcome"}
+        "409": {$ref: "#/components/responses/Error"}
+  /api/v1/incidents:
+    get:
+      tags: [monitors]
+      operationId: listIncidents
+      summary: Incidents
+      parameters:
+        - {name: open, in: query, schema: {type: string, enum: ["1"]}}
+        - {name: monitor, in: query, schema: {type: integer}}
+        - {name: days, in: query, schema: {type: integer, default: 30}}
+      responses:
+        "200":
+          description: incidents, newest first
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/Incident"}}
+  /api/v1/incidents/{id}:
+    parameters: [{$ref: "#/components/parameters/IntID"}]
+    get:
+      tags: [monitors]
+      operationId: getIncident
+      summary: Incident
+      responses:
+        "200": {$ref: "#/components/responses/Incident"}
+        "404": {$ref: "#/components/responses/Error"}
+  /api/v1/incidents/{id}/ack:
+    parameters: [{$ref: "#/components/parameters/IntID"}]
+    post:
+      tags: [monitors]
+      operationId: ackIncident
+      summary: Acknowledge incident
+      description: Stops reminders (escalation) for the incident.
+      responses:
+        "200": {$ref: "#/components/responses/Incident"}
+        "404": {$ref: "#/components/responses/Error"}
+  /api/v1/incidents/{id}/notes:
+    parameters: [{$ref: "#/components/parameters/IntID"}]
+    post:
+      tags: [monitors]
+      operationId: addIncidentNote
+      summary: Comment on incident
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [text], properties: {text: {type: string, maxLength: 4000}}}
+      responses:
+        "201": {$ref: "#/components/responses/Incident"}
+        "400": {$ref: "#/components/responses/Error"}
+  /api/v1/maintenance:
+    get:
+      tags: [monitors]
+      operationId: listMaintenance
+      summary: Maintenance windows
+      responses:
+        "200":
+          description: current and future windows
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/Maintenance"}}
+    post:
+      tags: [monitors]
+      operationId: createMaintenance
+      summary: Create maintenance window
+      description: Planned (`starts`/`ends`) or "right now" (`duration_min`). Notifications are muted inside the window.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - {$ref: "#/components/schemas/Maintenance"}
+                - type: object
+                  properties:
+                    duration_min: {type: integer}
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Maintenance"}
+        "400": {$ref: "#/components/responses/Error"}
+  /api/v1/maintenance/{id}:
+    parameters: [{$ref: "#/components/parameters/IntID"}]
+    delete:
+      tags: [monitors]
+      operationId: deleteMaintenance
+      summary: Delete maintenance window
+      responses:
+        "204": {description: deleted}
+  /api/v1/channels:
+    get:
+      tags: [notifications]
+      operationId: listChannels
+      summary: Notification channels
+      responses:
+        "200":
+          description: channels (secrets masked)
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/Channel"}}
+    post:
+      tags: [notifications]
+      operationId: createChannel
+      summary: Create channel
+      requestBody: {$ref: "#/components/requestBodies/Channel"}
+      responses:
+        "200": {$ref: "#/components/responses/Channel"}
+        "400": {$ref: "#/components/responses/Error"}
+  /api/v1/channels/{id}:
+    parameters: [{$ref: "#/components/parameters/IntID"}]
+    put:
+      tags: [notifications]
+      operationId: updateChannel
+      summary: Update channel
+      description: Masked secrets (`********`) keep their stored value.
+      requestBody: {$ref: "#/components/requestBodies/Channel"}
+      responses:
+        "200": {$ref: "#/components/responses/Channel"}
+        "400": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+    delete:
+      tags: [notifications]
+      operationId: deleteChannel
+      summary: Delete channel
+      responses:
+        "204": {description: deleted}
+  /api/v1/channels/{id}/test:
+    parameters: [{$ref: "#/components/parameters/IntID"}]
+    post:
+      tags: [notifications]
+      operationId: testChannel
+      summary: Send a test notification
+      responses:
+        "200": {description: sent}
+        "502": {$ref: "#/components/responses/Error"}
+  /api/v1/changes:
+    get:
+      tags: [discovery]
+      operationId: listChanges
+      summary: Change feed
+      parameters:
+        - {name: before, in: query, description: return changes with a smaller id, schema: {type: integer}}
+        - {name: limit, in: query, schema: {type: integer, default: 100, maximum: 500}}
+      responses:
+        "200":
+          description: changes, newest first
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/Change"}}
+  /api/v1/dashboard:
+    get:
+      tags: [services]
+      operationId: dashboard
+      summary: Dashboard
+      responses:
+        "200":
+          description: tiles, summary and widgets
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Dashboard"}
+  /api/v1/search:
+    get:
+      tags: [services]
+      operationId: search
+      summary: Search
+      description: Command palette search over services, monitors, agents, devices (IP, MAC) and new found services.
+      parameters:
+        - {name: q, in: query, schema: {type: string}}
+      responses:
+        "200":
+          description: results
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/SearchResult"}}
 components:
   securitySchemes:
     cookie: {type: apiKey, in: cookie, name: lanscape_session}
@@ -633,6 +1055,21 @@ components:
       content:
         application/json:
           schema: {$ref: "#/components/schemas/Schedule"}
+    Service:
+      required: true
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Service"}
+    Monitor:
+      required: true
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/MonitorInput"}
+    Channel:
+      required: true
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Channel"}
   responses:
     Error:
       description: error
@@ -669,6 +1106,35 @@ components:
       content:
         application/json:
           schema: {$ref: "#/components/schemas/Schedule"}
+    Service:
+      description: service
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Service"}
+    Monitor:
+      description: monitor
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Monitor"}
+    Incident:
+      description: incident
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Incident"}
+    Channel:
+      description: channel (secrets masked)
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Channel"}
+    CheckOutcome:
+      description: combined result and the result of every observation point
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              result: {$ref: "#/components/schemas/CheckResult"}
+              points: {type: array, items: {$ref: "#/components/schemas/CheckResult"}}
   schemas:
     Role: {type: string, enum: [viewer, operator, admin]}
     User:
@@ -997,3 +1463,309 @@ components:
         target: {type: string}
         result: {type: string}
         detail: {type: string}
+    Address:
+      type: object
+      properties:
+        type: {type: string, enum: [internal, external, hostport, workload, container, process]}
+        value: {type: string}
+        agent: {type: string}
+    AppMatch:
+      type: object
+      properties:
+        id: {type: string}
+        name: {type: string}
+        category: {type: string}
+        icon: {type: string}
+        score: {type: integer}
+        monitor:
+          type: object
+          properties:
+            type: {type: string}
+            path: {type: string}
+    FoundCard:
+      type: object
+      properties:
+        key: {type: string, description: "stable card key, e.g. k8s:deploy/forge/gitea or docker:<agent>:<container>"}
+        name: {type: string}
+        app: {$ref: "#/components/schemas/AppMatch"}
+        kind: {type: string}
+        namespace: {type: string}
+        agents: {type: array, items: {type: string}}
+        state: {type: string}
+        health: {type: string}
+        internal_url: {type: string}
+        external_url: {type: string}
+        host_port: {type: string}
+        tls: {type: boolean}
+        cert_not_after: {type: integer}
+        addresses: {type: array, items: {$ref: "#/components/schemas/Address"}}
+        refs:
+          type: array
+          items:
+            type: object
+            properties:
+              agent: {type: string}
+              source: {type: string, enum: [sockets, docker, k8s]}
+              key: {type: string}
+              kind: {type: string}
+              gone: {type: boolean}
+        gone: {type: boolean}
+        first_seen: {type: integer}
+        monitor: {$ref: "#/components/schemas/CheckSpec"}
+        status: {type: string, enum: [new, added, ignored, hidden]}
+        service_id: {type: integer}
+        rule: {type: string}
+    Rule:
+      type: object
+      required: [name, action]
+      properties:
+        name: {type: string}
+        kind: {type: string, enum: ["", ingress, k8s, container, socket]}
+        app: {type: string, description: application id glob; "*" = any recognised application}
+        category: {type: string}
+        tls_only: {type: boolean}
+        action: {type: string, enum: [add, ignore]}
+        monitor: {type: boolean}
+        tile: {type: boolean}
+        group: {type: string}
+    Service:
+      type: object
+      required: [name]
+      properties:
+        id: {type: integer, readOnly: true}
+        name: {type: string, maxLength: 100}
+        app_id: {type: string}
+        icon: {type: string}
+        category: {type: string}
+        group: {type: string}
+        internal_url: {type: string}
+        external_url: {type: string}
+        addresses: {type: array, items: {$ref: "#/components/schemas/Address"}}
+        card_key: {type: string, readOnly: true}
+        tile: {type: boolean}
+        sort: {type: integer}
+        notes: {type: string}
+        created_at: {type: integer, readOnly: true}
+    ServiceView:
+      allOf:
+        - {$ref: "#/components/schemas/Service"}
+        - type: object
+          properties:
+            status: {type: string}
+            latency_ms: {type: number}
+            monitors: {type: array, items: {type: integer}}
+            url: {type: string, description: "internal URL for local clients, external otherwise"}
+            uptime_day: {type: number, nullable: true}
+            incident_id: {type: integer}
+    CheckSpec:
+      type: object
+      required: [type, target]
+      properties:
+        type: {type: string, enum: [http, tcp, udp, icmp, dns, tls]}
+        target: {type: string, description: "URL (http), host:port (tcp, udp, tls), host (icmp) or record name (dns)"}
+        timeout_ms: {type: integer}
+        method: {type: string}
+        expect_status: {type: array, items: {type: integer}, description: "exact codes or classes (2 = 2xx); default 200-399"}
+        keyword: {type: string}
+        keyword_regex: {type: boolean}
+        invert_keyword: {type: boolean}
+        json_path: {type: string}
+        json_value: {type: string}
+        headers: {type: object, additionalProperties: {type: string}}
+        basic_user: {type: string}
+        basic_password: {type: string}
+        bearer: {type: string}
+        no_redirects: {type: boolean}
+        ignore_tls_errors: {type: boolean}
+        send: {type: string}
+        expect: {type: string}
+        server: {type: string}
+        record: {type: string, enum: [A, AAAA, CNAME, MX, TXT, NS]}
+        warn_days: {type: integer}
+    CheckResult:
+      type: object
+      properties:
+        status: {type: string, enum: [up, down, degraded, unknown]}
+        latency_ms: {type: number}
+        message: {type: string}
+        code: {type: integer}
+        cert_not_after: {type: integer}
+        cert_names: {type: array, items: {type: string}}
+        at: {type: integer}
+        point: {type: string}
+    MonitorInput:
+      type: object
+      required: [name, spec]
+      properties:
+        service_id: {type: integer}
+        name: {type: string}
+        spec: {$ref: "#/components/schemas/CheckSpec"}
+        interval_s: {type: integer, minimum: 5, maximum: 86400, default: 60}
+        retries: {type: integer, default: 3, description: failed checks in a row before an incident opens}
+        points: {type: array, items: {type: string}, description: "observation points: server and/or agent ids"}
+        min_failing: {type: integer, default: 1, description: points that must fail}
+        sla: {type: number}
+        enabled: {type: boolean, default: true}
+    Monitor:
+      allOf:
+        - {$ref: "#/components/schemas/MonitorInput"}
+        - type: object
+          properties:
+            id: {type: integer}
+            status: {type: string, enum: [pending, up, degraded, down, paused, maintenance]}
+            last_check: {type: integer}
+            last_latency: {type: number}
+            last_message: {type: string}
+            cert_not_after: {type: integer}
+            created_at: {type: integer}
+    Uptime:
+      type: object
+      properties:
+        day: {type: number, nullable: true}
+        week: {type: number, nullable: true}
+        month: {type: number, nullable: true}
+        year: {type: number, nullable: true}
+    MonitorView:
+      allOf:
+        - {$ref: "#/components/schemas/Monitor"}
+        - type: object
+          properties:
+            uptime: {$ref: "#/components/schemas/Uptime"}
+            incident_id: {type: integer}
+    CheckRecord:
+      type: object
+      properties:
+        ts: {type: integer}
+        status: {type: string}
+        latency_ms: {type: number}
+        point: {type: string}
+        message: {type: string}
+    DayStat:
+      type: object
+      properties:
+        day: {type: integer, description: yyyymmdd}
+        up: {type: integer}
+        down: {type: integer}
+        degraded: {type: integer}
+        maint: {type: integer}
+    Incident:
+      type: object
+      properties:
+        id: {type: integer}
+        monitor_id: {type: integer}
+        monitor: {type: string}
+        opened: {type: integer}
+        closed: {type: integer}
+        cause: {type: string}
+        acked_by: {type: string}
+        acked_at: {type: integer}
+        parent_id: {type: integer}
+        maintenance: {type: boolean}
+        notified: {type: integer}
+        notes:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {type: integer}
+              ts: {type: integer}
+              author: {type: string}
+              text: {type: string}
+    Maintenance:
+      type: object
+      properties:
+        id: {type: integer, readOnly: true}
+        name: {type: string}
+        starts: {type: integer}
+        ends: {type: integer}
+        monitors: {type: array, items: {type: integer}, description: empty = all monitors}
+        created_by: {type: string, readOnly: true}
+        created_at: {type: integer, readOnly: true}
+    Channel:
+      type: object
+      required: [type, config]
+      properties:
+        id: {type: integer, readOnly: true}
+        name: {type: string}
+        type: {type: string, enum: [telegram, webhook, email, ntfy]}
+        enabled: {type: boolean}
+        config:
+          type: object
+          description: |
+            Type-specific settings plus common ones (quiet "22:00-07:00", repeat_minutes, monitors, no_resolved).
+            telegram: bot_token, chat_id, api_url. webhook: url, headers, secret (HMAC-SHA256 in X-Lanscape-Signature).
+            email: host, port, username, password, from, to, tls (starttls, tls, none). ntfy: url, topic, token, priority.
+          additionalProperties: true
+        created_at: {type: integer, readOnly: true}
+    Change:
+      type: object
+      properties:
+        id: {type: integer}
+        ts: {type: integer}
+        kind:
+          type: string
+          enum: [service_new, port_opened, port_closed, container_gone, container_stopped, container_started, ip_changed,
+            object_new, object_gone, device_new, mac_new]
+        subject: {type: string}
+        detail: {type: string}
+        agent_id: {type: string}
+    Dashboard:
+      type: object
+      properties:
+        groups:
+          type: array
+          items:
+            type: object
+            properties:
+              name: {type: string}
+              tiles: {type: array, items: {$ref: "#/components/schemas/ServiceView"}}
+        summary: {type: object, additionalProperties: {type: integer}}
+        incidents: {type: array, items: {$ref: "#/components/schemas/Incident"}}
+        network:
+          type: object
+          nullable: true
+          properties:
+            run_id: {type: integer}
+            finished: {type: integer}
+            status: {type: string}
+            paths: {type: integer}
+            verdicts: {type: object, additionalProperties: {type: integer}}
+            problems: {type: integer}
+        agents:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {type: string}
+              name: {type: string}
+              online: {type: boolean}
+              cpus: {type: integer}
+              load1: {type: number}
+              mem_total: {type: integer}
+              mem_available: {type: integer}
+              temp_c: {type: number}
+              disk_pct: {type: number}
+              disk_mount: {type: string}
+              updates: {type: integer}
+        certificates:
+          type: array
+          items:
+            type: object
+            properties:
+              name: {type: string}
+              not_after: {type: integer}
+              source: {type: string, enum: [monitor, discovery]}
+              ref: {type: string}
+        changes: {type: array, items: {$ref: "#/components/schemas/Change"}}
+        found_new: {type: integer}
+        maintenance: {type: array, items: {$ref: "#/components/schemas/Maintenance"}}
+    SearchResult:
+      type: object
+      properties:
+        type: {type: string, enum: [service, monitor, agent, device, found]}
+        id: {type: string}
+        title: {type: string}
+        subtitle: {type: string}
+        url: {type: string}
+        href: {type: string}
+        status: {type: string}

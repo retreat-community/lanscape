@@ -741,3 +741,13 @@ export interface DiscoveredDevice {
   wifi?: string;
   ports?: string;
 }
+
+export interface SignatureInfo {
+  url?: string;
+  custom?: string;
+  fetched_at: number;
+  fetch_error?: string;
+  builtin: number;
+  fetched_count: number;
+  custom_count: number;
+}

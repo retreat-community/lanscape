@@ -294,7 +294,11 @@ The default `--discover auto` enables `sockets` on Linux, `docker` when the sock
 `k8s` inside a cluster, `openwrt` on OpenWrt and `mdns`/`ssdp` everywhere else. HTTP endpoints are fingerprinted (title, headers, favicon, characteristic
 paths) against the built-in library of 400+ application signatures; `--no-probe` turns this off and
 `--signatures my-apps.yaml` adds your own signatures in the format of
-[`internal/fingerprint/signatures.yaml`](../internal/fingerprint/signatures.yaml).
+[`internal/fingerprint/signatures.yaml`](../internal/fingerprint/signatures.yaml). **Settings → Signatures** adds
+signatures for all agents at once and can keep the library current without a new release: set the
+update URL (for example the project's `signatures.yaml` on the main branch, the button fills it in),
+and the server downloads it daily and sends it to every agent together with your own signatures
+(later ids replace built-in ones).
 
 **Active scanning** (Devices → Discovered → Scan) is off by default: an agent only port-scans
 subnets listed in `--scan-allow 192.168.1.0/24,10.0.0.0/24`, at the rate limit given in the

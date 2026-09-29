@@ -1120,6 +1120,49 @@ paths:
                     outages: {type: array, items: {type: object, properties: {from: {type: integer}, to: {type: integer}, error: {type: string}}}}
                     checks: {type: integer}
                     failures: {type: integer}
+  /api/v1/signatures:
+    get:
+      tags: [discovery]
+      operationId: signatures
+      summary: Signatures distributed to agents on top of the built-in library (admin)
+      responses:
+        "200":
+          description: the set and its counts
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SignatureInfo"}
+    put:
+      tags: [discovery]
+      operationId: saveSignatures
+      summary: Set the update URL and the administrator's signatures; agents receive them at once (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url: {type: string, description: "YAML or JSON list, downloaded daily; empty = off"}
+                custom: {type: string, description: signatures in the format of signatures.yaml}
+      responses:
+        "200":
+          description: saved
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SignatureInfo"}
+        "400": {$ref: "#/components/responses/Error"}
+  /api/v1/signatures/update:
+    post:
+      tags: [discovery]
+      operationId: updateSignatures
+      summary: Download the signatures from the update URL now (admin)
+      responses:
+        "200":
+          description: updated
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SignatureInfo"}
+        "502": {$ref: "#/components/responses/Error"}
   /api/v1/updates/images:
     get:
       tags: [services]
@@ -2473,6 +2516,16 @@ components:
               last_push: {type: integer}
         traffic: {type: array, items: {$ref: "#/components/schemas/IfaceTraffic"}}
         images: {type: array, items: {$ref: "#/components/schemas/ImageUpdate"}}
+    SignatureInfo:
+      type: object
+      properties:
+        url: {type: string}
+        custom: {type: string}
+        fetched_at: {type: integer}
+        fetch_error: {type: string}
+        builtin: {type: integer}
+        fetched_count: {type: integer}
+        custom_count: {type: integer}
     HASensor:
       type: object
       properties:

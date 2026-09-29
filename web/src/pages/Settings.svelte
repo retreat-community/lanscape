@@ -4,13 +4,27 @@
   import Boards from "../components/Boards.svelte";
   import Imports from "../components/Imports.svelte";
   import Rules from "../components/Rules.svelte";
+  import Signatures from "../components/Signatures.svelte";
   import StatusPages from "../components/StatusPages.svelte";
   import { api } from "../lib/api";
   import { when } from "../lib/format";
   import { can, t, toast, ui } from "../lib/state.svelte";
   import type { Agent, AgentToken, AgentUpdates, APIToken, AuditEntry, Schedule, Segment, Settings, User } from "../lib/types";
 
-  type Tab = "general" | "agents" | "users" | "tokens" | "schedules" | "segments" | "notifications" | "discovery" | "status" | "dashboards" | "import" | "audit";
+  type Tab =
+    | "general"
+    | "agents"
+    | "users"
+    | "tokens"
+    | "schedules"
+    | "segments"
+    | "notifications"
+    | "discovery"
+    | "signatures"
+    | "status"
+    | "dashboards"
+    | "import"
+    | "audit";
   let tab = $state<Tab>(can("admin") ? "agents" : "tokens");
   let settings = $state<Settings | null>(null);
   let webhooks = $state("");
@@ -35,6 +49,7 @@
     { id: "segments", admin: false },
     { id: "notifications", admin: true },
     { id: "discovery", admin: false },
+    { id: "signatures", admin: true },
     { id: "status", admin: false },
     { id: "dashboards", admin: true },
     { id: "import", admin: true },
@@ -360,6 +375,10 @@
 
   {#if tab === "dashboards"}
     <Boards />
+  {/if}
+
+  {#if tab === "signatures"}
+    <Signatures />
   {/if}
 
   {#if tab === "import"}

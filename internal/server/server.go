@@ -151,6 +151,9 @@ func New(ctx context.Context, cfg Config, log *slog.Logger) (*Server, error) {
 	s.OnAgentMessage(s.onTraffic)
 	s.hub.onConn = func(a *AgentState, up bool) {
 		s.metrics.SetAgent(a.ID, a.Name, a.Kind, up)
+		if up && a.Kind != "lite" {
+			go s.pushSignatures(s.ctx, a.ID)
+		}
 		s.events.Publish("agent", map[string]any{"id": a.ID, "name": a.Name, "online": up})
 	}
 	s.hub.onInv = func(a *AgentState) {
@@ -360,6 +363,7 @@ func (s *Server) Run(ctx context.Context) error {
 	go s.internetScheduler(ctx)
 	go s.imageScheduler(ctx)
 	go s.agentUpdateScheduler(ctx)
+	go s.signatureScheduler(ctx)
 	s.log.Info("lanscape server started", "version", s.cfg.Version, "ui", s.cfg.Listen, "gateway", s.cfg.GatewayListen,
 		"mini", s.cfg.MiniListen, "ca_fingerprint", pki.Fingerprint(s.ca.Cert))
 	var err error

@@ -344,6 +344,11 @@ export interface AgentToken {
   created_at: number;
 }
 
+export interface ActionResponse {
+  ok: boolean;
+  results: { agent: string; ok: boolean; detail: string }[];
+}
+
 export interface AuditEntry {
   id: number;
   ts: number;

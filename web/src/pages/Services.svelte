@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
   import AppIcon from "../components/AppIcon.svelte";
+  import { restart } from "../lib/actions";
   import { api, subscribe } from "../lib/api";
   import { latency, pct, statusClass, when } from "../lib/format";
   import { can, t, toast, ui } from "../lib/state.svelte";
@@ -59,6 +60,12 @@
 
   function source(c: FoundCard): string {
     return [...new Set(c.refs.map((r) => r.source))].join(", ");
+  }
+
+  const restartable = new Set(["container", "k8s_deployment", "k8s_statefulset", "k8s_daemonset", "vm", "ct"]);
+
+  function restartRef(c: FoundCard) {
+    return c.refs.find((r) => restartable.has(r.kind) && !r.gone);
   }
 </script>
 
@@ -198,6 +205,10 @@
                 <button onclick={() => void act(() => api.setFoundState(c.key, "hidden"))}>{t("svc.hide")}</button>
               {:else if c.status !== "added"}
                 <button onclick={() => void act(() => api.setFoundState(c.key, "new"))}>{t("svc.restore")}</button>
+              {/if}
+              {#if restartRef(c)}
+                {@const r = restartRef(c)!}
+                <button onclick={() => void restart(r.agent, r.source, r.key, c.name)}>{t("act.restart")}</button>
               {/if}
             </div>
           {/if}

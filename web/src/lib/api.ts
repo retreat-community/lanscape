@@ -1,4 +1,5 @@
 import type {
+  ActionResponse,
   Agent,
   Change,
   Channel,
@@ -151,6 +152,9 @@ export const api = {
   addFound: (key: string, opts: { name?: string; group?: string; monitor: boolean; tile: boolean }) =>
     call<Service>("POST", "/found/add", { key, ...opts }),
   setFoundState: (key: string, status: "new" | "ignored" | "hidden") => call<undefined>("POST", "/found/state", { key, status }),
+  wake: (mac: string, ip?: string) => call<ActionResponse>("POST", "/actions/wol", { mac, ip }),
+  restart: (agent: string, source: string, key: string) =>
+    call<ActionResponse>("POST", "/actions/restart", { agent, source, key }),
   rescan: () => call<{ agents: number }>("POST", "/discovery/rescan"),
   rules: () => call<Rule[]>("GET", "/discovery/rules"),
   saveRules: (rules: Rule[]) => call<Rule[]>("PUT", "/discovery/rules", rules),

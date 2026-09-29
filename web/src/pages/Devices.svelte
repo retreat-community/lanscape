@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { wake } from "../lib/actions";
   import { api } from "../lib/api";
   import { bytes, duration, when } from "../lib/format";
   import { can, t, toast, ui } from "../lib/state.svelte";
@@ -137,7 +138,7 @@
       {:else}
         <table>
           <thead>
-            <tr><th>IP</th><th>{t("set.name")}</th><th>{t("dev.kind")}</th><th>MAC</th><th>{t("dev.vendor")}</th><th>{t("dev.sources")}</th></tr>
+            <tr><th>IP</th><th>{t("set.name")}</th><th>{t("dev.kind")}</th><th>MAC</th><th>{t("dev.vendor")}</th><th>{t("dev.sources")}</th><th></th></tr>
           </thead>
           <tbody>
             {#each foundShown as d (d.ip)}
@@ -150,6 +151,11 @@
                 <td class="small">
                   {d.sources.join(", ")}{d.seen_by.length ? ` · ${d.seen_by.join(", ")}` : ""}{d.wifi ? ` · ${d.wifi}` : ""}
                   {#if d.ports}<div class="muted">TCP {d.ports}</div>{/if}
+                </td>
+                <td>
+                  {#if d.mac && can("operator")}
+                    <button class="small" onclick={() => void wake(d.mac!, d.ip, d.name ?? d.ip)}>{t("act.wake")}</button>
+                  {/if}
                 </td>
               </tr>
             {/each}

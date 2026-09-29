@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from "svelte";
+  import { wake } from "../lib/actions";
   import { api } from "../lib/api";
   import { statusClass } from "../lib/format";
   import { can, navigate, t, toast } from "../lib/state.svelte";
@@ -49,8 +50,25 @@
 
   type Item = { kind: "result"; r: SearchResult } | { kind: "action"; a: Action };
 
+  const macRe = /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i;
+
+  // devices with a known MAC get a Wake-on-LAN action next to them
+  const wakeActions = $derived<Action[]>(
+    can("operator")
+      ? results
+          .filter((r) => r.type === "device" && macRe.test(r.id))
+          .map((r) => ({
+            id: `wake:${r.id}`,
+            title: t("act.palette_wake", { name: r.title }),
+            role: "operator" as const,
+            run: () => wake(r.id, r.title, r.title),
+          }))
+      : [],
+  );
+
   const items = $derived<Item[]>([
     ...results.map((r) => ({ kind: "result" as const, r })),
+    ...wakeActions.map((a) => ({ kind: "action" as const, a })),
     ...actions
       .filter((a) => can(a.role) && (!q || t(a.title).toLowerCase().includes(q.toLowerCase())))
       .map((a) => ({ kind: "action" as const, a })),

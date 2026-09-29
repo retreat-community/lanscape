@@ -144,7 +144,7 @@ func TestFull(t *testing.T) {
 	if !strings.Contains(tok.Install["linux"], "--ca-fingerprint") {
 		t.Errorf("install command without CA pin: %q", tok.Install["linux"])
 	}
-	if out, err := exec.Command("./full.sh", "agents", tok.Token).CombinedOutput(); err != nil {
+	if out, err := exec.Command("./full.sh", "agents", tok.Token).CombinedOutput(); err != nil { //nolint:gosec // token comes from the test server
 		t.Fatalf("full.sh agents: %v\n%s", err, out)
 	}
 

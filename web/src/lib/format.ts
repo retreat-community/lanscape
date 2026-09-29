@@ -58,3 +58,52 @@ export function mask(secret: string): string {
   if (secret.length <= 8) return "••••";
   return `${secret.slice(0, 4)}••••${secret.slice(-4)}`;
 }
+
+/** CSS verdict class for a monitor status. */
+export function statusClass(s: string | undefined | null): string {
+  switch (s) {
+    case "up":
+      return "v-green";
+    case "degraded":
+      return "v-yellow";
+    case "down":
+      return "v-red";
+    case "maintenance":
+      return "v-purple";
+    default:
+      return "v-none";
+  }
+}
+
+/** Uptime percentage with sensible precision ("—" without data). */
+export function pct(v: number | null | undefined): string {
+  if (v === null || v === undefined) return "—";
+  if (v >= 99.995) return "100%";
+  return `${v >= 99 ? v.toFixed(2) : v.toFixed(1)}%`;
+}
+
+/** Response time in milliseconds. */
+export function latency(msv: number | null | undefined): string {
+  if (!msv) return "—";
+  return msv < 10 ? `${msv.toFixed(1)} ms` : `${Math.round(msv)} ms`;
+}
+
+/** Days until a unix-ms timestamp (negative when past). */
+export function daysLeft(t: number, now = Date.now()): number {
+  return Math.floor((t - now) / 86400000);
+}
+
+/** Two-letter initials for services without an icon. */
+export function initials(name: string): string {
+  const words = name.replace(/[^\p{L}\p{N} ]/gu, " ").trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+
+/** Stable hue for a name (fallback icon colour). */
+export function hue(name: string): number {
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360;
+  return h;
+}

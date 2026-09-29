@@ -1,5 +1,5 @@
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
@@ -14,8 +14,36 @@ const keepPlaceholder: Plugin = {
   },
 };
 
+// Application icons (Simple Icons, CC0) for the signatures of the built-in library only.
+const iconsModule = "virtual:app-icons";
+const appIcons: Plugin = {
+  name: "app-icons",
+  resolveId(id) {
+    return id === iconsModule ? `\0${iconsModule}` : undefined;
+  },
+  load(id) {
+    if (id !== `\0${iconsModule}`) return undefined;
+    const root = fileURLToPath(new URL(".", import.meta.url));
+    const sigs = JSON.parse(readFileSync(resolve(root, "../internal/fingerprint/signatures.json"), "utf8")) as { icon?: string }[];
+    const meta = JSON.parse(readFileSync(resolve(root, "node_modules/simple-icons/data/simple-icons.json"), "utf8")) as {
+      slug: string;
+      hex: string;
+    }[];
+    const hex = new Map(meta.map((m) => [m.slug, m.hex]));
+    const out: Record<string, [string, string]> = {};
+    for (const s of sigs) {
+      if (!s.icon || out[s.icon]) continue;
+      const file = resolve(root, "node_modules/simple-icons/icons", `${s.icon}.svg`);
+      if (!existsSync(file)) continue;
+      const d = /<path d="([^"]+)"/.exec(readFileSync(file, "utf8"));
+      if (d) out[s.icon] = [hex.get(s.icon) ?? "888888", d[1]];
+    }
+    return `export default ${JSON.stringify(out)};`;
+  },
+};
+
 export default defineConfig({
-  plugins: [svelte(), keepPlaceholder],
+  plugins: [svelte(), keepPlaceholder, appIcons],
   build: {
     outDir,
     emptyOutDir: true,

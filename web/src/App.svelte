@@ -2,19 +2,28 @@
   import { onMount } from "svelte";
   import { api, setUnauthorizedHandler } from "./lib/api";
   import { can, navigate, setLang, setTheme, t, ui } from "./lib/state.svelte";
+  import Palette from "./components/Palette.svelte";
   import Account from "./pages/Account.svelte";
+  import Changes from "./pages/Changes.svelte";
+  import Dashboard from "./pages/Dashboard.svelte";
   import Devices from "./pages/Devices.svelte";
   import Login from "./pages/Login.svelte";
   import Network from "./pages/Network.svelte";
+  import Monitors from "./pages/Monitors.svelte";
   import Runs from "./pages/Runs.svelte";
+  import Services from "./pages/Services.svelte";
   import Settings from "./pages/Settings.svelte";
 
   let phase = $state<"loading" | "setup" | "login" | "app">("loading");
 
   const nav = [
+    { path: "/dashboard", key: "nav.dashboard" },
+    { path: "/services", key: "nav.services" },
+    { path: "/monitors", key: "nav.monitors" },
     { path: "/network", key: "nav.network" },
     { path: "/map", key: "nav.map" },
     { path: "/devices", key: "nav.devices" },
+    { path: "/changes", key: "nav.changes" },
     { path: "/runs", key: "nav.runs" },
     { path: "/settings", key: "nav.settings" },
   ];
@@ -67,13 +76,14 @@
   <Login setup={phase === "setup"} onauth={init} />
 {:else}
   <header>
-    <a class="brand" href="#/network"><img src="/icon.svg" alt="" width="22" height="22" /> Lanscape</a>
+    <a class="brand" href="#/dashboard"><img src="/icon.svg" alt="" width="22" height="22" /> Lanscape</a>
     <nav>
       {#each nav as n (n.path)}
         <a href="#{n.path}" class:on={page.startsWith(n.path)}>{t(n.key)}</a>
       {/each}
     </nav>
     <span class="spacer"></span>
+    <Palette />
     <button title={t("theme.toggle")} onclick={() => setTheme(ui.theme === "dark" ? "light" : "dark")}>
       {ui.theme === "dark" ? "☀" : "☾"}
     </button>
@@ -91,6 +101,14 @@
       {:then m}
         <m.default />
       {/await}
+    {:else if page.startsWith("/services")}
+      <Services route={ui.route} />
+    {:else if page.startsWith("/monitors")}
+      {#key page}<Monitors route={ui.route} />{/key}
+    {:else if page.startsWith("/changes")}
+      <Changes />
+    {:else if page.startsWith("/network")}
+      <Network />
     {:else if page.startsWith("/devices")}
       <Devices />
     {:else if page.startsWith("/runs")}
@@ -100,7 +118,7 @@
     {:else if page.startsWith("/account")}
       <Account />
     {:else}
-      <Network />
+      <Dashboard />
     {/if}
   </main>
   <footer class="muted small">Lanscape {ui.version}</footer>
@@ -110,7 +128,7 @@
   <div class="toast" role="status">{ui.toast}</div>
 {/if}
 
-<svelte:window onkeydown={(e) => e.key === "g" && e.altKey && navigate("/network")} />
+<svelte:window onkeydown={(e) => e.key === "g" && e.altKey && navigate("/dashboard")} />
 
 <style>
   header {

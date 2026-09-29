@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bytes, duration, mask, mbps, ms, rate, worse } from "./format";
+import { bytes, daysLeft, duration, hue, initials, latency, mask, mbps, ms, pct, rate, statusClass, worse } from "./format";
 
 describe("format", () => {
   it("formats rates", () => {
@@ -21,5 +21,26 @@ describe("format", () => {
   });
   it("masks secrets", () => {
     expect(mask("lsr_abcdefghijklmnop")).toBe("lsr_••••mnop");
+  });
+});
+
+describe("service formatting", () => {
+  it("maps statuses and numbers", () => {
+    expect(statusClass("up")).toBe("v-green");
+    expect(statusClass("down")).toBe("v-red");
+    expect(statusClass("")).toBe("v-none");
+    expect(pct(null)).toBe("—");
+    expect(pct(100)).toBe("100%");
+    expect(pct(99.5)).toBe("99.50%");
+    expect(pct(50)).toBe("50.0%");
+    expect(latency(3.21)).toBe("3.2 ms");
+    expect(latency(120.4)).toBe("120 ms");
+    expect(daysLeft(86400000 * 3 + 5, 0)).toBe(3);
+  });
+  it("builds fallback icons", () => {
+    expect(initials("Home Assistant")).toBe("HA");
+    expect(initials("gitea")).toBe("GI");
+    expect(initials("media/jellyfin")).toBe("MJ");
+    expect(hue("a")).toBe(hue("a"));
   });
 });

@@ -1,5 +1,19 @@
 import type {
   Agent,
+  Change,
+  Channel,
+  CheckResult,
+  CheckSpec,
+  Dashboard,
+  FoundCard,
+  Incident,
+  Maintenance,
+  MonitorDetail,
+  MonitorView,
+  Rule,
+  SearchResult,
+  Service,
+  ServiceView,
   AgentToken,
   Anomaly,
   APIToken,
@@ -116,6 +130,46 @@ export const api = {
   settings: () => call<Settings>("GET", "/settings"),
   saveSettings: (s: Settings) => call<Settings>("PUT", "/settings", s),
   audit: () => call<AuditEntry[]>("GET", "/audit"),
+
+  dashboard: () => call<Dashboard>("GET", "/dashboard"),
+  search: (q: string) => call<SearchResult[]>("GET", `/search?q=${enc(q)}`),
+  found: () => call<FoundCard[]>("GET", "/found"),
+  addFound: (key: string, opts: { name?: string; group?: string; monitor: boolean; tile: boolean }) =>
+    call<Service>("POST", "/found/add", { key, ...opts }),
+  setFoundState: (key: string, status: "new" | "ignored" | "hidden") => call<undefined>("POST", "/found/state", { key, status }),
+  rescan: () => call<{ agents: number }>("POST", "/discovery/rescan"),
+  rules: () => call<Rule[]>("GET", "/discovery/rules"),
+  saveRules: (rules: Rule[]) => call<Rule[]>("PUT", "/discovery/rules", rules),
+  changes: (before = 0, limit = 100) => call<Change[]>("GET", `/changes?before=${before}&limit=${limit}`),
+
+  services: () => call<ServiceView[]>("GET", "/services"),
+  saveService: (s: Partial<Service>) =>
+    s.id ? call<Service>("PUT", `/services/${s.id}`, s) : call<Service>("POST", "/services", s),
+  deleteService: (id: number, monitors = false) => call<undefined>("DELETE", `/services/${id}${monitors ? "?monitors=1" : ""}`),
+  orderServices: (order: { id: number; group: string; sort: number }[]) => call<undefined>("PUT", "/services/order", order),
+
+  monitors: () => call<MonitorView[]>("GET", "/monitors"),
+  monitor: (id: number, since = 0) => call<MonitorDetail>("GET", `/monitors/${id}${since ? `?since=${since}` : ""}`),
+  saveMonitor: (m: Record<string, unknown> & { id?: number }) =>
+    m.id ? call<MonitorView>("PUT", `/monitors/${m.id}`, m) : call<MonitorView>("POST", "/monitors", m),
+  deleteMonitor: (id: number) => call<undefined>("DELETE", `/monitors/${id}`),
+  checkNow: (id: number) => call<{ result: CheckResult; points: CheckResult[] }>("POST", `/monitors/${id}/check`),
+  testMonitor: (spec: CheckSpec, points: string[]) =>
+    call<{ result: CheckResult; points: CheckResult[] }>("POST", "/monitors/test", { spec, points }),
+  incidents: (open = false, monitor = 0) =>
+    call<Incident[]>("GET", `/incidents?${open ? "open=1&" : ""}${monitor ? `monitor=${monitor}` : ""}`),
+  incident: (id: number) => call<Incident>("GET", `/incidents/${id}`),
+  ackIncident: (id: number) => call<Incident>("POST", `/incidents/${id}/ack`),
+  noteIncident: (id: number, text: string) => call<Incident>("POST", `/incidents/${id}/notes`, { text }),
+  maintenance: () => call<Maintenance[]>("GET", "/maintenance"),
+  createMaintenance: (m: Partial<Maintenance> & { duration_min?: number }) => call<Maintenance>("POST", "/maintenance", m),
+  deleteMaintenance: (id: number) => call<undefined>("DELETE", `/maintenance/${id}`),
+
+  channels: () => call<Channel[]>("GET", "/channels"),
+  saveChannel: (c: Partial<Channel>) =>
+    c.id ? call<Channel>("PUT", `/channels/${c.id}`, c) : call<Channel>("POST", "/channels", c),
+  deleteChannel: (id: number) => call<undefined>("DELETE", `/channels/${id}`),
+  testChannel: (id: number) => call<{ status: string }>("POST", `/channels/${id}/test`),
 };
 
 /** Subscribes to server-sent events; returns an unsubscribe function. */

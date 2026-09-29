@@ -28,7 +28,7 @@ export const ui = $state({
   theme: initialTheme,
   user: null as User | null,
   version: "",
-  route: location.hash.slice(1) || "/network",
+  route: location.hash.slice(1) || "/dashboard",
   progress: null as Progress | null,
   offline: false,
   toast: "",
@@ -55,7 +55,7 @@ export function navigate(path: string): void {
 }
 
 window.addEventListener("hashchange", () => {
-  ui.route = location.hash.slice(1) || "/network";
+  ui.route = location.hash.slice(1) || "/dashboard";
 });
 
 export function can(role: "viewer" | "operator" | "admin"): boolean {

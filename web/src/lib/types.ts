@@ -341,3 +341,252 @@ export interface AuditEntry {
   result: string;
   detail: string;
 }
+
+// --- services, discovery, monitors ---
+
+export interface Address {
+  type: "internal" | "external" | "hostport" | "workload" | "container" | "process";
+  value: string;
+  agent?: string;
+}
+
+export interface AppMatch {
+  id: string;
+  name: string;
+  category: string;
+  icon?: string;
+  score: number;
+  monitor: { type: string; path?: string };
+}
+
+export interface CheckSpec {
+  type: "http" | "tcp" | "udp" | "icmp" | "dns" | "tls";
+  target: string;
+  timeout_ms?: number;
+  method?: string;
+  expect_status?: number[];
+  keyword?: string;
+  keyword_regex?: boolean;
+  invert_keyword?: boolean;
+  json_path?: string;
+  json_value?: string;
+  headers?: Record<string, string>;
+  basic_user?: string;
+  basic_password?: string;
+  bearer?: string;
+  no_redirects?: boolean;
+  ignore_tls_errors?: boolean;
+  send?: string;
+  expect?: string;
+  server?: string;
+  record?: string;
+  warn_days?: number;
+}
+
+export type FoundStatus = "new" | "added" | "ignored" | "hidden";
+
+export interface FoundCard {
+  key: string;
+  name: string;
+  app?: AppMatch;
+  kind: string;
+  namespace?: string;
+  agents: string[] | null;
+  state?: string;
+  health?: string;
+  internal_url?: string;
+  external_url?: string;
+  host_port?: string;
+  tls?: boolean;
+  cert_not_after?: number;
+  addresses: Address[];
+  refs: { agent: string; source: string; key: string; kind: string; gone?: boolean }[];
+  gone?: boolean;
+  first_seen: number;
+  monitor?: CheckSpec;
+  status: FoundStatus;
+  service_id?: number;
+  rule?: string;
+}
+
+export interface Rule {
+  name: string;
+  kind?: "" | "ingress" | "k8s" | "container" | "socket";
+  app?: string;
+  category?: string;
+  tls_only?: boolean;
+  action: "add" | "ignore";
+  monitor?: boolean;
+  tile?: boolean;
+  group?: string;
+}
+
+export interface Service {
+  id: number;
+  name: string;
+  app_id: string;
+  icon: string;
+  category: string;
+  group: string;
+  internal_url: string;
+  external_url: string;
+  addresses: Address[];
+  card_key?: string;
+  tile: boolean;
+  sort: number;
+  notes: string;
+  created_at: number;
+}
+
+export type MonitorStatus = "pending" | "up" | "degraded" | "down" | "paused" | "maintenance";
+
+export interface ServiceView extends Service {
+  status: MonitorStatus | "";
+  latency_ms: number;
+  monitors: number[];
+  url: string;
+  uptime_day: number | null;
+  incident_id?: number;
+}
+
+export interface Monitor {
+  id: number;
+  service_id: number;
+  name: string;
+  spec: CheckSpec;
+  interval_s: number;
+  retries: number;
+  points: string[];
+  min_failing: number;
+  sla: number;
+  enabled: boolean;
+  status: MonitorStatus;
+  last_check: number;
+  last_latency: number;
+  last_message: string;
+  cert_not_after?: number;
+  created_at: number;
+}
+
+export interface Uptime {
+  day: number | null;
+  week: number | null;
+  month: number | null;
+  year: number | null;
+}
+
+export interface MonitorView extends Monitor {
+  uptime: Uptime;
+  incident_id?: number;
+}
+
+export interface CheckResult {
+  status: "up" | "down" | "degraded" | "unknown";
+  latency_ms: number;
+  message?: string;
+  code?: number;
+  cert_not_after?: number;
+  at: number;
+  point?: string;
+}
+
+export interface CheckRecord {
+  ts: number;
+  status: string;
+  latency_ms: number;
+  point?: string;
+  message?: string;
+}
+
+export interface DayStat {
+  day: number;
+  up: number;
+  down: number;
+  degraded: number;
+  maint: number;
+}
+
+export interface Incident {
+  id: number;
+  monitor_id: number;
+  monitor: string;
+  opened: number;
+  closed?: number;
+  cause: string;
+  acked_by?: string;
+  acked_at?: number;
+  maintenance: boolean;
+  notes?: { id: number; ts: number; author: string; text: string }[];
+}
+
+export interface MonitorDetail {
+  monitor: Monitor;
+  uptime: Uptime;
+  days: DayStat[];
+  checks: CheckRecord[];
+  incidents: Incident[];
+}
+
+export interface Maintenance {
+  id: number;
+  name: string;
+  starts: number;
+  ends: number;
+  monitors: number[];
+  created_by: string;
+  created_at: number;
+}
+
+export type ChannelType = "telegram" | "webhook" | "email" | "ntfy";
+
+export interface Channel {
+  id: number;
+  name: string;
+  type: ChannelType;
+  config: Record<string, unknown>;
+  enabled: boolean;
+  created_at: number;
+}
+
+export interface Change {
+  id: number;
+  ts: number;
+  kind: string;
+  subject: string;
+  detail?: string;
+  agent_id?: string;
+}
+
+export interface Dashboard {
+  groups: { name: string; tiles: ServiceView[] }[];
+  summary: Record<string, number>;
+  incidents: Incident[];
+  network: { run_id: number; finished: number; status: string; paths: number; verdicts: Record<string, number>; problems: number } | null;
+  agents: {
+    id: string;
+    name: string;
+    online: boolean;
+    cpus: number;
+    load1: number;
+    mem_total: number;
+    mem_available: number;
+    temp_c?: number;
+    disk_pct: number;
+    disk_mount?: string;
+    updates: number;
+  }[];
+  certificates: { name: string; not_after: number; source: string; ref?: string }[];
+  changes: Change[];
+  found_new: number;
+  maintenance: Maintenance[];
+}
+
+export interface SearchResult {
+  type: "service" | "monitor" | "agent" | "device" | "found";
+  id: string;
+  title: string;
+  subtitle?: string;
+  url?: string;
+  href: string;
+  status?: string;
+}

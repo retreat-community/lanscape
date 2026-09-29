@@ -1,11 +1,13 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import Channels from "../components/Channels.svelte";
+  import Rules from "../components/Rules.svelte";
   import { api } from "../lib/api";
   import { when } from "../lib/format";
   import { can, t, toast, ui } from "../lib/state.svelte";
   import type { Agent, AgentToken, APIToken, AuditEntry, Schedule, Segment, Settings, User } from "../lib/types";
 
-  type Tab = "general" | "agents" | "users" | "tokens" | "schedules" | "segments" | "audit";
+  type Tab = "general" | "agents" | "users" | "tokens" | "schedules" | "segments" | "notifications" | "discovery" | "audit";
   let tab = $state<Tab>(can("admin") ? "agents" : "tokens");
   let settings = $state<Settings | null>(null);
   let webhooks = $state("");
@@ -27,6 +29,8 @@
     { id: "tokens", admin: false },
     { id: "schedules", admin: false },
     { id: "segments", admin: false },
+    { id: "notifications", admin: true },
+    { id: "discovery", admin: false },
     { id: "audit", admin: true },
   ];
 
@@ -262,6 +266,14 @@
         </tbody>
       </table>
     </section>
+  {/if}
+
+  {#if tab === "notifications"}
+    <Channels />
+  {/if}
+
+  {#if tab === "discovery"}
+    <Rules />
   {/if}
 
   {#if tab === "audit"}

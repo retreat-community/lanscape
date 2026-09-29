@@ -49,6 +49,16 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 			return testengine.Internet(ctx, agent.DefaultGateways(routes),
 				testengine.InternetParams{IPURL: m.IPURL, DownloadURL: m.DownloadURL}), nil
 		})
+		// throughput to devices without an agent that run "iperf3 -s", within the agent's limits
+		a.Handle(proto.MsgIperf3, func(ctx context.Context, env proto.Envelope) (any, error) {
+			var m proto.Iperf3Msg
+			if err := json.Unmarshal(env.Data, &m); err != nil {
+				return nil, err
+			}
+			d := min(time.Duration(max(m.Seconds, 1))*time.Second, o.maxDuration)
+			return testengine.Iperf3(ctx, testengine.Iperf3Options{Host: m.Host, Port: m.Port, Duration: d,
+				Streams: min(max(m.Streams, 1), o.maxStreams), Reverse: m.Reverse})
+		})
 	}
 	allow, err := discovery.ParsePrefixes(cli.SplitList(o.scanAllow))
 	if err != nil {

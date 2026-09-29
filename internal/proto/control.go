@@ -187,3 +187,15 @@ type ConfigMsg struct {
 	// library; they are updated independently of releases
 	Signatures json.RawMessage `json:"signatures,omitempty"`
 }
+
+// MsgIperf3 asks an agent to measure TCP throughput to a device running "iperf3 -s" (§14).
+const MsgIperf3 = "iperf3"
+
+// Iperf3Msg describes the test.
+type Iperf3Msg struct {
+	Host    string `json:"host"`
+	Port    int    `json:"port,omitempty"`
+	Seconds int    `json:"seconds,omitempty"`
+	Streams int    `json:"streams,omitempty"`
+	Reverse bool   `json:"reverse,omitempty"`
+}

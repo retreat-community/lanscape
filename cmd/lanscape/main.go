@@ -46,6 +46,8 @@ type flags struct {
 	listen, gatewayListen, miniListen, miniToken, dataDir, db, gatewayHosts, expect string
 	tlsCert, tlsKey, metricsToken, adminUser, adminPassword, publicURL, logLevel    string
 	logFormat                                                                       string
+	oidcIssuer, oidcClientID, oidcClientSecret, oidcName, oidcRoleClaim             string
+	oidcAdminGroups, oidcOperatorGroups, oidcDefaultRole                            string
 	parallel                                                                        int
 	secureCookies                                                                   bool
 }
@@ -72,6 +74,14 @@ func parse(name string, args []string) (*flag.FlagSet, *flags, error) {
 	fs.StringVar(&f.logFormat, "log-format", "text", "text or json")
 	fs.IntVar(&f.parallel, "parallel", 8, "parallel reachability tests")
 	fs.BoolVar(&f.secureCookies, "secure-cookies", false, "mark session cookies Secure (behind a TLS proxy)")
+	fs.StringVar(&f.oidcIssuer, "oidc-issuer", "", "OpenID Connect issuer URL (enables single sign-on)")
+	fs.StringVar(&f.oidcClientID, "oidc-client-id", "", "OpenID Connect client id")
+	fs.StringVar(&f.oidcClientSecret, "oidc-client-secret", "", "OpenID Connect client secret (empty for public clients with PKCE)")
+	fs.StringVar(&f.oidcName, "oidc-name", "SSO", "label of the sign-in button")
+	fs.StringVar(&f.oidcRoleClaim, "oidc-role-claim", "groups", "ID token claim with group names")
+	fs.StringVar(&f.oidcAdminGroups, "oidc-admin-groups", "", "groups whose members become administrators")
+	fs.StringVar(&f.oidcOperatorGroups, "oidc-operator-groups", "", "groups whose members become operators")
+	fs.StringVar(&f.oidcDefaultRole, "oidc-default-role", "viewer", `role of other users: viewer, operator or "none" to refuse them`)
 	if err := fs.Parse(args); err != nil {
 		return nil, nil, err
 	}
@@ -86,6 +96,16 @@ func (f *flags) config() (server.Config, error) {
 		MiniToken: f.miniToken, DataDir: f.dataDir, DB: f.db, TLSCert: f.tlsCert, TLSKey: f.tlsKey,
 		MetricsToken: f.metricsToken, AdminUser: f.adminUser, AdminPassword: f.adminPassword, PublicURL: f.publicURL,
 		Parallel: f.parallel, SecureCookies: f.secureCookies, Version: buildinfo.Version, Expect: map[string]int{}}
+	cfg.OIDC = server.OIDCConfig{Issuer: f.oidcIssuer, ClientID: f.oidcClientID, ClientSecret: f.oidcClientSecret,
+		Name: f.oidcName, RoleClaim: f.oidcRoleClaim, AdminGroups: cli.SplitList(f.oidcAdminGroups),
+		OperatorGroups: cli.SplitList(f.oidcOperatorGroups), DefaultRole: f.oidcDefaultRole}
+	switch f.oidcDefaultRole {
+	case "none", "":
+		cfg.OIDC.DefaultRole = ""
+	case server.RoleViewer, server.RoleOperator:
+	default:
+		return cfg, fmt.Errorf("invalid -oidc-default-role %q", f.oidcDefaultRole)
+	}
 	cfg.GatewayHosts = cli.SplitList(f.gatewayHosts)
 	if len(cfg.GatewayHosts) == 0 {
 		cfg.GatewayHosts = defaultHosts()

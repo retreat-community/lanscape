@@ -16,14 +16,15 @@ type User struct {
 	TOTPEnabled  bool   `json:"totp_enabled"`
 	Disabled     bool   `json:"disabled"`
 	CreatedAt    int64  `json:"created_at"`
+	OIDCSubject  string `json:"oidc_subject,omitempty"` // issuer-scoped subject of an OpenID Connect account
 }
 
-const userCols = `id, username, password_hash, role, totp_secret, disabled, created_at`
+const userCols = `id, username, password_hash, role, totp_secret, disabled, created_at, oidc_subject`
 
 func scanUser(sc interface{ Scan(...any) error }) (User, error) {
 	var u User
 	var dis int
-	err := sc.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &dis, &u.CreatedAt)
+	err := sc.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &dis, &u.CreatedAt, &u.OIDCSubject)
 	u.Disabled = dis != 0
 	u.TOTPEnabled = u.TOTPSecret != ""
 	return u, err
@@ -31,14 +32,14 @@ func scanUser(sc interface{ Scan(...any) error }) (User, error) {
 
 // CreateUser inserts a user.
 func (s *Store) CreateUser(ctx context.Context, u User) (int64, error) {
-	return s.Insert(ctx, `INSERT INTO users(username, password_hash, role, totp_secret, disabled, created_at) VALUES (?,?,?,?,?,?)`,
-		u.Username, u.PasswordHash, u.Role, u.TOTPSecret, b2i(u.Disabled), now())
+	return s.Insert(ctx, `INSERT INTO users(username, password_hash, role, totp_secret, disabled, created_at, oidc_subject) VALUES (?,?,?,?,?,?,?)`,
+		u.Username, u.PasswordHash, u.Role, u.TOTPSecret, b2i(u.Disabled), now(), u.OIDCSubject)
 }
 
 // UpdateUser saves role, password hash, TOTP secret and disabled flag.
 func (s *Store) UpdateUser(ctx context.Context, u User) error {
-	_, err := s.Exec(ctx, `UPDATE users SET password_hash=?, role=?, totp_secret=?, disabled=? WHERE id=?`,
-		u.PasswordHash, u.Role, u.TOTPSecret, b2i(u.Disabled), u.ID)
+	_, err := s.Exec(ctx, `UPDATE users SET password_hash=?, role=?, totp_secret=?, disabled=?, oidc_subject=? WHERE id=?`,
+		u.PasswordHash, u.Role, u.TOTPSecret, b2i(u.Disabled), u.OIDCSubject, u.ID)
 	return err
 }
 
@@ -51,6 +52,15 @@ func (s *Store) DeleteUser(ctx context.Context, id int64) error {
 // UserByName finds a user by username.
 func (s *Store) UserByName(ctx context.Context, name string) (User, error) {
 	u, err := scanUser(s.QueryRow(ctx, `SELECT `+userCols+` FROM users WHERE username=?`, name))
+	return u, notFound(err)
+}
+
+// UserByOIDC finds the user linked to an OpenID Connect subject.
+func (s *Store) UserByOIDC(ctx context.Context, subject string) (User, error) {
+	if subject == "" {
+		return User{}, ErrNotFound
+	}
+	u, err := scanUser(s.QueryRow(ctx, `SELECT `+userCols+` FROM users WHERE oidc_subject=?`, subject))
 	return u, notFound(err)
 }
 
@@ -101,7 +111,7 @@ func (s *Store) CreateSession(ctx context.Context, id string, userID, expires in
 
 // SessionUser returns the user of a live session.
 func (s *Store) SessionUser(ctx context.Context, id string) (User, error) {
-	u, err := scanUser(s.QueryRow(ctx, `SELECT u.id, u.username, u.password_hash, u.role, u.totp_secret, u.disabled, u.created_at
+	u, err := scanUser(s.QueryRow(ctx, `SELECT u.id, u.username, u.password_hash, u.role, u.totp_secret, u.disabled, u.created_at, u.oidc_subject
 		FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id=? AND s.expires_at > ?`, id, now()))
 	return u, notFound(err)
 }
@@ -139,12 +149,12 @@ func (s *Store) CreateAPIToken(ctx context.Context, t APIToken, hash string) (in
 func (s *Store) APITokenByHash(ctx context.Context, hash string) (APIToken, User, error) {
 	var t APIToken
 	row := s.QueryRow(ctx, `SELECT t.id, t.user_id, t.name, t.role, t.created_at, t.last_used, t.expires_at,
-		u.id, u.username, u.password_hash, u.role, u.totp_secret, u.disabled, u.created_at
+		u.id, u.username, u.password_hash, u.role, u.totp_secret, u.disabled, u.created_at, u.oidc_subject
 		FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash=?`, hash)
 	var u User
 	var dis int
 	err := row.Scan(&t.ID, &t.UserID, &t.Name, &t.Role, &t.CreatedAt, &t.LastUsed, &t.ExpiresAt,
-		&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &dis, &u.CreatedAt)
+		&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &dis, &u.CreatedAt, &u.OIDCSubject)
 	u.Disabled = dis != 0
 	if err != nil {
 		return t, u, notFound(err)

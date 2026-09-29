@@ -154,6 +154,24 @@ has an environment variable `LANSCAPE_<FLAG>`. Useful flags: `--expect 10.30.0.0
 **Backup and restore**: `lanscape backup /backup/lanscape.db` (consistent copy while running);
 restore with the server stopped: `lanscape restore /backup/lanscape.db`.
 
+**Single sign-on (OpenID Connect)**: register Lanscape as a client at your provider (Authentik,
+Keycloak, Authelia, Zitadel, Google, Entra ID) with the redirect URL
+`https://panel.example/api/v1/auth/oidc/callback` (the **Public URL** setting, or the address the
+browser uses), then start the server with:
+
+```sh
+lanscape serve --oidc-issuer https://auth.example/application/o/lanscape/ \
+  --oidc-client-id lanscape --oidc-client-secret ... \
+  --oidc-admin-groups lanscape-admins --oidc-operator-groups lanscape-operators
+```
+
+The login page shows **Sign in with SSO** (`--oidc-name`). The flow uses the authorization code
+with PKCE; the ID token signature (RS256/ES256), issuer, audience, expiry and nonce are checked.
+Roles come from the `groups` claim (`--oidc-role-claim`) on every sign-in; people outside the
+listed groups get `--oidc-default-role` (`viewer`, or `none` to refuse them). An account from the
+provider never takes over a local account with the same name, and local accounts keep working
+(two-factor authentication with TOTP is available for them under **Account**).
+
 ### Agents
 
 In the panel open **Settings → Agents → Add node**. It creates a registration token (single use

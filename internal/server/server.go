@@ -42,6 +42,7 @@ type Config struct {
 	AdminUser     string // bootstrap admin when there are no users
 	AdminPassword string
 	PublicURL     string // links in notifications (settings override)
+	OIDC          OIDCConfig
 	Version       string
 }
 
@@ -82,6 +83,7 @@ type Server struct {
 	uptime *uptime
 
 	pushClient *http.Client // Web Push delivery (tests swap it)
+	oidc       oidcState
 }
 
 // New opens the store and the CA.

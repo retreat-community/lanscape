@@ -254,6 +254,9 @@ var migrations = []string{
 		user_agent TEXT NOT NULL DEFAULT '',
 		created_at BIGINT NOT NULL
 	)`,
+	// 6: users signed in through OpenID Connect
+	`ALTER TABLE users ADD COLUMN oidc_subject TEXT NOT NULL DEFAULT '';
+	CREATE INDEX users_oidc ON users(oidc_subject)`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

@@ -24,7 +24,7 @@
   let mw = $state({ name: "", minutes: 30, planned: false, starts: "", ends: "", monitors: [] as number[] });
 
   const shown = $derived(
-    monitors.filter((m) => !q || m.name.toLowerCase().includes(q.toLowerCase()) || m.spec.target.includes(q)),
+    monitors.filter((m) => !q || m.name.toLowerCase().includes(q.toLowerCase()) || (m.spec.target ?? "").includes(q)),
   );
 
   async function load(): Promise<void> {
@@ -111,7 +111,7 @@
                     <a href="#/monitors/{m.id}"><b>{m.name}</b></a>
                     <div class="muted small">{t(`mon.status.${m.status}`)}{m.last_message ? ` · ${m.last_message}` : ""}</div>
                   </td>
-                  <td class="small">{m.spec.type.toUpperCase()} {m.spec.target}</td>
+                  <td class="small">{t(`mon.type.${m.spec.type}`)} {m.spec.target || m.spec.expr || ""}</td>
                   <td>{latency(m.last_latency)}</td>
                   <td>{pct(m.uptime.day)}</td>
                   <td>{pct(m.uptime.month)}</td>

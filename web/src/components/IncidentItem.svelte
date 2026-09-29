@@ -35,6 +35,7 @@
       {t("inc.opened", { when: when(incident.opened, ui.lang) })} ·
       {incident.closed ? t("inc.closed", { d: duration(spent) }) : t("inc.ongoing", { d: duration(spent) })}
       {#if incident.maintenance}· {t("inc.in_maintenance")}{/if}
+      {#if incident.suppressed}· {t("inc.suppressed")}{/if}
       {#if incident.acked_by}· {t("inc.acked", { user: incident.acked_by })}{/if}
     </span>
     <span class="spacer"></span>

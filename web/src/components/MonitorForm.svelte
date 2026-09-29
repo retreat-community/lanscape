@@ -16,6 +16,8 @@
   let retries = $state(init?.retries ?? 3);
   let points = $state<string[]>(init?.points?.length ? [...init.points] : ["server"]);
   let minFailing = $state(init?.min_failing ?? 1);
+  let parents = $state<number[]>(init?.parents ? [...init.parents] : []);
+  let monitors = $state<{ id: number; name: string }[]>([]);
   let spec = $state<CheckSpec>(init ? { ...init.spec } : { type: "http", target: "" });
   let codes = $state((init?.spec.expect_status ?? []).join(", "));
   let agents = $state<Agent[]>([]);
@@ -23,6 +25,7 @@
   let test = $state<{ result: CheckResult; points: CheckResult[] } | null>(null);
   let busy = $state(false);
 
+  const serverSide = $derived(spec.type === "heartbeat" || spec.type === "composite");
   const hint = $derived(
     spec.type === "http" ? t("mon.target_hint_http") : spec.type === "icmp" || spec.type === "dns" ? t("mon.target_hint_host") : t("mon.target_hint_hostport"),
   );
@@ -30,7 +33,7 @@
 
   onMount(async () => {
     try {
-      [agents, services] = await Promise.all([api.agents(), api.services()]);
+      [agents, services, monitors] = await Promise.all([api.agents(), api.services(), api.monitors()]);
     } catch (e) {
       toast(e instanceof Error ? e.message : String(e));
     }
@@ -66,12 +69,13 @@
     run(async () => {
       const m = await api.saveMonitor({
         id: init?.id,
-        name: name.trim() || spec.target,
+        name: name.trim() || spec.target || spec.type,
         service_id: Number(serviceID),
         spec: cleanSpec(),
         interval_s: Number(interval),
         retries: Number(retries),
-        points,
+        points: serverSide ? [] : points,
+        parents,
         min_failing: Number(minFailing),
         enabled: init?.enabled ?? true,
       });
@@ -89,11 +93,23 @@
     <label class="field"
       >{t("mon.type")}
       <select bind:value={spec.type} data-testid="mon-type">
-        {#each ["http", "tcp", "udp", "icmp", "dns", "tls"] as ty (ty)}<option value={ty}>{ty.toUpperCase()}</option>{/each}
+        {#each ["http", "tcp", "udp", "icmp", "dns", "tls", "domain", "heartbeat", "composite"] as ty (ty)}
+          <option value={ty}>{t(`mon.type.${ty}`)}</option>
+        {/each}
       </select>
     </label>
   </div>
-  <label class="field">{t("mon.target")} <input bind:value={spec.target} placeholder={hint} data-testid="mon-target" /></label>
+  {#if spec.type === "heartbeat"}
+    <p class="small muted">{t("mon.heartbeat_hint")}</p>
+    <label class="field">{t("mon.grace")} <input type="number" min="0" bind:value={spec.grace_s} /></label>
+  {:else if spec.type === "composite"}
+    <label class="field"
+      >{t("mon.expr")} <input bind:value={spec.expr} placeholder="#1 && (#2 || #3)" data-testid="mon-expr" /></label
+    >
+    <div class="small muted">{monitors.filter((m) => m.id !== init?.id).map((m) => `#${m.id} ${m.name}`).join(" · ")}</div>
+  {:else}
+    <label class="field">{t("mon.target")} <input bind:value={spec.target} placeholder={hint} data-testid="mon-target" /></label>
+  {/if}
 
   {#if spec.type === "http"}
     <div class="cols">
@@ -125,7 +141,7 @@
       <label class="field">{t("mon.expect")} <input bind:value={spec.expect} /></label>
     </div>
   {/if}
-  {#if spec.type === "tls" || (spec.type === "http" && spec.target.startsWith("https"))}
+  {#if spec.type === "tls" || spec.type === "domain" || (spec.type === "http" && spec.target.startsWith("https"))}
     <label class="field">{t("mon.warn_days")} <input type="number" min="1" bind:value={spec.warn_days} placeholder="14" /></label>
   {/if}
 
@@ -140,6 +156,7 @@
       </select>
     </label>
   </div>
+  {#if !serverSide}
   <div class="field">
     {t("mon.points")}
     <div class="row small">
@@ -155,6 +172,24 @@
       >
     {/if}
   </div>
+  {/if}
+  {#if monitors.some((m) => m.id !== init?.id)}
+    <div class="field">
+      {t("mon.parents")}
+      <div class="row small">
+        {#each monitors.filter((m) => m.id !== init?.id) as m (m.id)}
+          <label>
+            <input
+              type="checkbox"
+              checked={parents.includes(m.id)}
+              onchange={() => (parents = parents.includes(m.id) ? parents.filter((x) => x !== m.id) : [...parents, m.id])}
+            />
+            {m.name}
+          </label>
+        {/each}
+      </div>
+    </div>
+  {/if}
 
   {#if test}
     <div class="small">
@@ -167,8 +202,8 @@
     </div>
   {/if}
   <div class="row">
-    <button class="primary" disabled={busy || !spec.target} onclick={save} data-testid="mon-save">{t("common.save")}</button>
-    <button disabled={busy || !spec.target} onclick={tryIt}>{t("mon.test")}</button>
+    <button class="primary" disabled={busy || (!serverSide && !spec.target)} onclick={save} data-testid="mon-save">{t("common.save")}</button>
+    <button disabled={busy || serverSide || !spec.target} onclick={tryIt}>{t("mon.test")}</button>
     <button onclick={oncancel}>{t("common.cancel")}</button>
   </div>
 </section>

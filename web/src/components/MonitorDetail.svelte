@@ -130,11 +130,19 @@
         {/if}
       </div>
       <div class="muted small">
-        {m.spec.type.toUpperCase()} {m.spec.target} · {m.interval_s}s ·
+        {t(`mon.type.${m.spec.type}`)} {m.spec.target || m.spec.expr || ""} · {m.interval_s}s ·
         {t("mon.last_check", { when: when(m.last_check, ui.lang) })}
         {#if m.points.length}· {m.points.join(", ")}{/if}
       </div>
       {#if m.last_message}<div class="small">{m.last_message}</div>{/if}
+      {#if m.push_token}
+        {@const url = `${location.origin}/api/push/${m.push_token}`}
+        <div class="small">
+          {t("mon.push_url")}: <code>{url}</code>
+          <button onclick={() => void navigator.clipboard?.writeText(url).then(() => toast(t("common.copied")))}>{t("common.copy")}</button>
+          <div class="muted">curl -fsS "{url}?status=up&msg=OK"</div>
+        </div>
+      {/if}
       {#if m.cert_not_after}
         <div class="small muted">{t("mon.cert", { date: when(m.cert_not_after, ui.lang) })}</div>
       {/if}

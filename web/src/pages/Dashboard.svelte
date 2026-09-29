@@ -133,11 +133,15 @@
     <div class="widgets">
       <section class="card">
         <h3>{t("dash.incidents")}</h3>
-        {#each d.incidents as i (i.id)}
+        {#each d.incidents.filter((i) => !i.suppressed || !d?.incidents.some((p) => p.id === i.parent_id)) as i (i.id)}
+          {@const deps = d.incidents.filter((x) => x.suppressed && x.parent_id === i.id)}
           <div class="line">
-            <span class="dot v-red"></span>
+            <span class="dot {i.suppressed ? 'v-yellow' : 'v-red'}"></span>
             <a href="#/monitors/{i.monitor_id}">{i.monitor}</a>
             <span class="muted small">{when(i.opened, ui.lang)} · {i.cause}</span>
+            {#if deps.length}
+              <span class="tag" title={deps.map((x) => x.monitor).join(", ")}>{t("dash.dependents", { n: deps.length })}</span>
+            {/if}
           </div>
         {:else}
           <div class="muted">{t("dash.no_incidents")}</div>

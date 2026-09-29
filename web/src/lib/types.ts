@@ -360,7 +360,7 @@ export interface AppMatch {
 }
 
 export interface CheckSpec {
-  type: "http" | "tcp" | "udp" | "icmp" | "dns" | "tls";
+  type: "http" | "tcp" | "udp" | "icmp" | "dns" | "tls" | "domain" | "heartbeat" | "composite";
   target: string;
   timeout_ms?: number;
   method?: string;
@@ -381,6 +381,8 @@ export interface CheckSpec {
   server?: string;
   record?: string;
   warn_days?: number;
+  grace_s?: number;
+  expr?: string;
 }
 
 export type FoundStatus = "new" | "added" | "ignored" | "hidden";
@@ -466,6 +468,9 @@ export interface Monitor {
   last_message: string;
   cert_not_after?: number;
   created_at: number;
+  push_token?: string;
+  last_push?: number;
+  parents: number[];
 }
 
 export interface Uptime {
@@ -516,6 +521,8 @@ export interface Incident {
   acked_by?: string;
   acked_at?: number;
   maintenance: boolean;
+  suppressed?: boolean;
+  parent_id?: number;
   notes?: { id: number; ts: number; author: string; text: string }[];
 }
 

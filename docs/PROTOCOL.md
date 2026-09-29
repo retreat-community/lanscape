@@ -192,8 +192,25 @@ WebSocket (`wss://server:8443/v1/agent`), one object per WebSocket text message:
 - All other requests require a client certificate issued by the server CA (mTLS).
 - The agent renews its certificate (`POST /v1/renew` with a new CSR) when less than 30 days of
   validity remain.
-- Message types: `hello`, `inventory`, `grant`, `grant_ack`, `test`, `test_result`, `discovery`,
-  `check`, `check_result`, `action`, `action_result`, `ping`, `pong`, `config`.
+- Requests carry an `id`; the answer has the same `id` and either the result type or `error`
+  (`{"type": "error", "id": "…", "data": {"message": "…"}}`).
+
+| Type | Direction | Purpose |
+|---|---|---|
+| `hello` / `welcome` | agent → server / reply | version, name, host id, capabilities (`action:wol`, `action:restart`, `update`, `internet`, …), data port |
+| `inventory` | agent → server | interfaces, routes, neighbours, LLDP peers, environment, resources (§5); on change and every 5 min |
+| `grant` / `grant_ack` | server → agent | allow one run token on the responder before a test |
+| `test` / `test_result` | server → agent | run one test (echo, ping, PMTU, TCP/UDP throughput) against a peer |
+| `discovery` | agent → server, or server → agent (rescan) | report of discovered sockets, containers, workloads, DHCP leases, hardware (UPS, disks, power) … |
+| `scan` | server → agent | rate-limited port scan of an allowed subnet (`--scan-allow`) |
+| `check` / `check_result` | server → agent | one monitor check (HTTP, TCP, DNS, ICMP, TLS …) from this agent |
+| `internet` | server → agent | public address and optional download speed per default gateway |
+| `traffic` | agent → server | current receive/transmit rate per interface (`--traffic-interval`) |
+| `action` / `action_result` | server → agent | Wake-on-LAN, restart of a container, workload or guest (allowed by `--actions`) |
+| `update` | server → agent | install a release: version, base URL and SHA-256 per archive; the agent restarts |
+| `run_request` / `run_summary` | agent → server | "check from this router" (LuCI, local socket) |
+| `ping` / `pong` | both | keepalive every 30 s |
+| `config` | server → agent | settings pushed by the server |
 
 Protocol versions are negotiated in `hello` (`"proto": 1`); the server rejects agents with a
 higher major version and asks for an upgrade.

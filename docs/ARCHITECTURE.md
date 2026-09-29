@@ -25,8 +25,16 @@
 | `internal/agent` | registration with CA pinning, mTLS WebSocket, inventory (§5), netlink change watch, test execution, module hooks |
 | `internal/server` | API, auth (argon2id, sessions, API tokens, TOTP), gateway, Mini port, hub of agents, runner, scheduler, metrics, map graph |
 | `internal/topo` | segments, expected speed (§7.4), verdicts, problems, IPAM, anomalies |
-| `internal/store` | migrations and repositories |
+| `internal/store` | migrations and repositories for SQLite and PostgreSQL, encryption of stored secrets |
 | `internal/pki` | CA, gateway certificate, agent certificates |
+| `internal/discovery` | sources (sockets, Docker, Kubernetes, Proxmox, libvirt, OpenWrt, mDNS/SSDP, NetBIOS/LLMNR, proxies, DNS servers, AXFR, port scan), hardware (NUT, SMART, ZFS, IPMI, smart plugs), restart actions |
+| `internal/fingerprint` | application signatures (400+, `signatures.yaml` → embedded JSON) and HTTP prober |
+| `internal/monitor` | monitor types (HTTP, TCP, UDP, ICMP, DNS incl. DoT/DoH, TLS, domain expiry, heartbeat, composite, container, VM, network path) and their checks |
+| `internal/catalog` | service catalog: merges findings into services with addresses and tiles |
+| `internal/notify` | notification channels (Telegram, Slack, Discord, Matrix, e-mail, ntfy, Gotify, Web Push) with secret masking |
+| `internal/registry` | newer tags of container images in OCI registries |
+| `internal/oui` | IEEE OUI registry (MAC vendor names) |
+| `internal/wol` | Wake-on-LAN packets |
 | `web/` | Svelte 5 SPA, built into `internal/server/webdist` |
 | `mini/` | Lanscape Mini in C (`lsm-agent`, `lsm-server`) |
 
@@ -54,3 +62,17 @@
    responder over its control channel first.
 5. Verdicts, problems and anomalies are computed, the report is stored as JSON, metrics are
    exported, webhooks are called and `run.done` is published over SSE.
+
+## Background jobs of the server
+
+| Job | Period | What it does |
+|---|---|---|
+| scheduler | per schedule | network runs ("every 5m", "daily 02:00") |
+| uptime | per monitor | checks from the server and from agents, incidents, notifications, maintenance windows |
+| housekeeping | hourly | retention of raw checks (`retention_days`) and daily aggregates (`aggregate_days`), gone findings |
+| Internet test | `internet_every_min` / `internet_speed_every_h` | public address, speed and outages per exit |
+| image updates | `image_updates_every_h` (off by default) | newer tags of running container images |
+| agent updates | 6 h when automatic | installs the channel's release on outdated agents |
+
+Everything that contacts the Internet (Internet test, registries, release list, Web Push) is off
+until an administrator enables it; Lanscape sends no telemetry.

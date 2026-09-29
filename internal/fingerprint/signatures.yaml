@@ -1,0 +1,1363 @@
+# Built-in application signatures (internal/fingerprint). Users can add their own in the same format.
+# Scores: image 5, path 4, title 3, header 3, body 1. A match needs 3 points.
+- id: gitea
+  name: "Gitea"
+  category: development
+  icon: gitea
+  title: ["^Gitea\\b"]
+  images: ["gitea/gitea", "gitea/act_runner"]
+  ports: [3000]
+  headers:
+    Set-Cookie: "i_like_gitea"
+  paths:
+    - {path: "/api/v1/version", body: "\"version\""}
+  monitor: {type: http, path: "/api/healthz"}
+- id: forgejo
+  name: "Forgejo"
+  category: development
+  icon: forgejo
+  title: ["Forgejo"]
+  images: ["codeberg.org/forgejo/forgejo", "forgejo/forgejo"]
+  ports: [3000]
+  body: ["forgejo"]
+  monitor: {type: http, path: "/api/healthz"}
+- id: gitlab
+  name: "GitLab"
+  category: development
+  icon: gitlab
+  title: ["GitLab"]
+  images: ["gitlab/gitlab-ce", "gitlab/gitlab-ee"]
+  ports: [80, 443]
+  headers:
+    Set-Cookie: "_gitlab_session"
+  monitor: {type: http, path: "/-/health"}
+- id: jenkins
+  name: "Jenkins"
+  category: development
+  icon: jenkins
+  title: ["Jenkins"]
+  images: ["jenkins/jenkins"]
+  ports: [8080]
+  headers:
+    X-Jenkins: "."
+  monitor: {type: http, path: "/login"}
+- id: drone
+  name: "Drone"
+  category: development
+  icon: drone
+  title: ["^Drone$"]
+  images: ["drone/drone"]
+  ports: [80]
+  body: ["drone"]
+  monitor: {type: http, path: "/"}
+- id: woodpecker
+  name: "Woodpecker CI"
+  category: development
+  icon: woodpecker
+  title: ["Woodpecker"]
+  images: ["woodpeckerci/woodpecker-server"]
+  ports: [8000]
+  monitor: {type: http, path: "/"}
+- id: sonarqube
+  name: "SonarQube"
+  category: development
+  icon: sonarqube
+  title: ["SonarQube"]
+  images: ["sonarqube"]
+  ports: [9000]
+  monitor: {type: http, path: "/"}
+- id: codeserver
+  name: "code-server"
+  category: development
+  icon: coder
+  title: ["code-server"]
+  images: ["codercom/code-server", "linuxserver/code-server"]
+  ports: [8080, 8443]
+  monitor: {type: http, path: "/"}
+- id: gogs
+  name: "Gogs"
+  category: development
+  icon: gogs
+  title: ["^Gogs"]
+  images: ["gogs/gogs"]
+  ports: [3000]
+  headers:
+    Set-Cookie: "i_like_gogs"
+  monitor: {type: http, path: "/"}
+- id: harbor
+  name: "Harbor"
+  category: development
+  icon: harbor
+  title: ["^Harbor$"]
+  images: ["goharbor/harbor-core", "goharbor/harbor-portal"]
+  ports: [443]
+  monitor: {type: http, path: "/"}
+- id: registry
+  name: "Docker Registry"
+  category: development
+  icon: docker
+  images: ["registry"]
+  ports: [5000]
+  headers:
+    Docker-Distribution-Api-Version: "registry"
+  monitor: {type: http, path: "/v2/"}
+- id: nexus
+  name: "Sonatype Nexus"
+  category: development
+  icon: sonatype
+  title: ["Nexus Repository"]
+  images: ["sonatype/nexus3"]
+  ports: [8081]
+  monitor: {type: http, path: "/"}
+- id: argocd
+  name: "Argo CD"
+  category: devops
+  icon: argo
+  title: ["^Argo CD$"]
+  images: ["quay.io/argoproj/argocd", "argoproj/argocd"]
+  ports: [8080]
+  monitor: {type: http, path: "/healthz"}
+- id: grafana
+  name: "Grafana"
+  category: monitoring
+  icon: grafana
+  title: ["^Grafana$"]
+  images: ["grafana/grafana", "grafana/grafana-oss"]
+  ports: [3000]
+  paths:
+    - {path: "/api/health", body: "\"database\""}
+  monitor: {type: http, path: "/api/health"}
+- id: prometheus
+  name: "Prometheus"
+  category: monitoring
+  icon: prometheus
+  title: ["Prometheus Time Series"]
+  images: ["prom/prometheus", "quay.io/prometheus/prometheus"]
+  ports: [9090]
+  monitor: {type: http, path: "/-/healthy"}
+- id: alertmanager
+  name: "Alertmanager"
+  category: monitoring
+  icon: prometheus
+  title: ["^Alertmanager$"]
+  images: ["prom/alertmanager"]
+  ports: [9093]
+  monitor: {type: http, path: "/-/healthy"}
+- id: loki
+  name: "Loki"
+  category: monitoring
+  icon: grafana
+  images: ["grafana/loki"]
+  ports: [3100]
+  paths:
+    - {path: "/ready", body: "ready"}
+  monitor: {type: http, path: "/ready"}
+- id: uptimekuma
+  name: "Uptime Kuma"
+  category: monitoring
+  icon: uptimekuma
+  title: ["Uptime Kuma"]
+  images: ["louislam/uptime-kuma"]
+  ports: [3001]
+  monitor: {type: http, path: "/"}
+- id: netdata
+  name: "Netdata"
+  category: monitoring
+  icon: netdata
+  title: ["netdata"]
+  images: ["netdata/netdata"]
+  ports: [19999]
+  monitor: {type: http, path: "/api/v1/info"}
+- id: zabbix
+  name: "Zabbix"
+  category: monitoring
+  icon: zabbix
+  title: ["Zabbix"]
+  images: ["zabbix/zabbix-web-nginx-mysql", "zabbix/zabbix-web-nginx-pgsql"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: influxdb
+  name: "InfluxDB"
+  category: monitoring
+  icon: influxdb
+  title: ["InfluxDB"]
+  images: ["influxdb"]
+  ports: [8086]
+  monitor: {type: http, path: "/health"}
+- id: victoriametrics
+  name: "VictoriaMetrics"
+  category: monitoring
+  icon: victoriametrics
+  title: ["VictoriaMetrics"]
+  images: ["victoriametrics/victoria-metrics"]
+  ports: [8428]
+  monitor: {type: http, path: "/health"}
+- id: kibana
+  name: "Kibana"
+  category: monitoring
+  icon: kibana
+  title: ["Kibana"]
+  images: ["kibana", "docker.elastic.co/kibana/kibana"]
+  ports: [5601]
+  headers:
+    kbn-name: "."
+  monitor: {type: http, path: "/"}
+- id: elasticsearch
+  name: "Elasticsearch"
+  category: monitoring
+  icon: elasticsearch
+  images: ["elasticsearch", "docker.elastic.co/elasticsearch/elasticsearch"]
+  ports: [9200]
+  body: ["\"cluster_name\""]
+  monitor: {type: http, path: "/"}
+- id: graylog
+  name: "Graylog"
+  category: monitoring
+  icon: graylog
+  title: ["Graylog"]
+  images: ["graylog/graylog"]
+  ports: [9000]
+  monitor: {type: http, path: "/"}
+- id: beszel
+  name: "Beszel"
+  category: monitoring
+  title: ["Beszel"]
+  images: ["henrygd/beszel"]
+  ports: [8090]
+  monitor: {type: http, path: "/"}
+- id: scrutiny
+  name: "Scrutiny"
+  category: monitoring
+  title: ["Scrutiny"]
+  images: ["ghcr.io/analogj/scrutiny"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: glances
+  name: "Glances"
+  category: monitoring
+  title: ["^Glances$"]
+  images: ["nicolargo/glances"]
+  ports: [61208]
+  monitor: {type: http, path: "/"}
+- id: healthchecks
+  name: "Healthchecks"
+  category: monitoring
+  title: ["Healthchecks"]
+  images: ["healthchecks/healthchecks", "linuxserver/healthchecks"]
+  ports: [8000]
+  monitor: {type: http, path: "/"}
+- id: gatus
+  name: "Gatus"
+  category: monitoring
+  title: ["^Gatus$"]
+  images: ["twinproduction/gatus"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: homeassistant
+  name: "Home Assistant"
+  category: home
+  icon: homeassistant
+  title: ["^Home Assistant$"]
+  images: ["homeassistant/home-assistant", "ghcr.io/home-assistant/home-assistant"]
+  ports: [8123]
+  monitor: {type: http, path: "/manifest.json"}
+- id: nodered
+  name: "Node-RED"
+  category: home
+  icon: nodered
+  title: ["^Node-RED"]
+  images: ["nodered/node-red"]
+  ports: [1880]
+  monitor: {type: http, path: "/"}
+- id: zigbee2mqtt
+  name: "Zigbee2MQTT"
+  category: home
+  icon: zigbee
+  title: ["Zigbee2MQTT"]
+  images: ["koenkk/zigbee2mqtt"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: esphome
+  name: "ESPHome"
+  category: home
+  icon: esphome
+  title: ["ESPHome"]
+  images: ["esphome/esphome"]
+  ports: [6052]
+  monitor: {type: http, path: "/"}
+- id: mosquitto
+  name: "Mosquitto"
+  category: home
+  icon: eclipsemosquitto
+  images: ["eclipse-mosquitto"]
+  ports: [1883]
+  monitor: {type: tcp}
+- id: openhab
+  name: "openHAB"
+  category: home
+  icon: openhab
+  title: ["openHAB"]
+  images: ["openhab/openhab"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: frigate
+  name: "Frigate"
+  category: home
+  title: ["Frigate"]
+  images: ["ghcr.io/blakeblackshear/frigate"]
+  ports: [5000]
+  monitor: {type: http, path: "/"}
+- id: scrypted
+  name: "Scrypted"
+  category: home
+  title: ["Scrypted"]
+  images: ["koush/scrypted"]
+  ports: [10443]
+  monitor: {type: http, path: "/"}
+- id: homebridge
+  name: "Homebridge"
+  category: home
+  icon: homebridge
+  title: ["Homebridge"]
+  images: ["homebridge/homebridge"]
+  ports: [8581]
+  monitor: {type: http, path: "/"}
+- id: jellyfin
+  name: "Jellyfin"
+  category: media
+  icon: jellyfin
+  title: ["^Jellyfin$"]
+  images: ["jellyfin/jellyfin", "linuxserver/jellyfin"]
+  ports: [8096]
+  paths:
+    - {path: "/System/Info/Public", body: "\"ProductName\""}
+  monitor: {type: http, path: "/health"}
+- id: plex
+  name: "Plex"
+  category: media
+  icon: plex
+  title: ["^Plex"]
+  images: ["plexinc/pms-docker", "linuxserver/plex"]
+  ports: [32400]
+  headers:
+    X-Plex-Protocol: "."
+  monitor: {type: http, path: "/identity"}
+- id: emby
+  name: "Emby"
+  category: media
+  icon: emby
+  title: ["^Emby"]
+  images: ["emby/embyserver"]
+  ports: [8096]
+  monitor: {type: http, path: "/"}
+- id: navidrome
+  name: "Navidrome"
+  category: media
+  icon: navidrome
+  title: ["Navidrome"]
+  images: ["deluan/navidrome"]
+  ports: [4533]
+  monitor: {type: http, path: "/ping"}
+- id: audiobookshelf
+  name: "Audiobookshelf"
+  category: media
+  icon: audiobookshelf
+  title: ["audiobookshelf"]
+  images: ["advplyr/audiobookshelf"]
+  ports: [13378]
+  monitor: {type: http, path: "/"}
+- id: immich
+  name: "Immich"
+  category: media
+  icon: immich
+  title: ["^Immich$"]
+  images: ["ghcr.io/immich-app/immich-server"]
+  ports: [2283]
+  paths:
+    - {path: "/api/server/ping", body: "\"pong\""}
+  monitor: {type: http, path: "/api/server/ping"}
+- id: photoprism
+  name: "PhotoPrism"
+  category: media
+  icon: photoprism
+  title: ["PhotoPrism"]
+  images: ["photoprism/photoprism"]
+  ports: [2342]
+  monitor: {type: http, path: "/"}
+- id: kavita
+  name: "Kavita"
+  category: media
+  title: ["Kavita"]
+  images: ["jvmilazz0/kavita", "linuxserver/kavita"]
+  ports: [5000]
+  monitor: {type: http, path: "/"}
+- id: komga
+  name: "Komga"
+  category: media
+  title: ["Komga"]
+  images: ["gotson/komga"]
+  ports: [25600]
+  monitor: {type: http, path: "/"}
+- id: calibreweb
+  name: "Calibre-Web"
+  category: media
+  icon: calibreweb
+  title: ["Calibre-Web"]
+  images: ["linuxserver/calibre-web"]
+  ports: [8083]
+  monitor: {type: http, path: "/"}
+- id: tautulli
+  name: "Tautulli"
+  category: media
+  title: ["Tautulli"]
+  images: ["tautulli/tautulli", "linuxserver/tautulli"]
+  ports: [8181]
+  monitor: {type: http, path: "/"}
+- id: jellyseerr
+  name: "Jellyseerr"
+  category: media
+  title: ["Jellyseerr"]
+  images: ["fallenbagel/jellyseerr"]
+  ports: [5055]
+  monitor: {type: http, path: "/"}
+- id: overseerr
+  name: "Overseerr"
+  category: media
+  title: ["Overseerr"]
+  images: ["sctx/overseerr", "linuxserver/overseerr"]
+  ports: [5055]
+  monitor: {type: http, path: "/"}
+- id: sonarr
+  name: "Sonarr"
+  category: media
+  title: ["^Sonarr$"]
+  images: ["linuxserver/sonarr", "ghcr.io/hotio/sonarr"]
+  ports: [8989]
+  monitor: {type: http, path: "/ping"}
+- id: radarr
+  name: "Radarr"
+  category: media
+  title: ["^Radarr$"]
+  images: ["linuxserver/radarr", "ghcr.io/hotio/radarr"]
+  ports: [7878]
+  monitor: {type: http, path: "/ping"}
+- id: lidarr
+  name: "Lidarr"
+  category: media
+  title: ["^Lidarr$"]
+  images: ["linuxserver/lidarr"]
+  ports: [8686]
+  monitor: {type: http, path: "/ping"}
+- id: readarr
+  name: "Readarr"
+  category: media
+  title: ["^Readarr$"]
+  images: ["linuxserver/readarr"]
+  ports: [8787]
+  monitor: {type: http, path: "/ping"}
+- id: prowlarr
+  name: "Prowlarr"
+  category: media
+  title: ["^Prowlarr$"]
+  images: ["linuxserver/prowlarr"]
+  ports: [9696]
+  monitor: {type: http, path: "/ping"}
+- id: bazarr
+  name: "Bazarr"
+  category: media
+  title: ["Bazarr"]
+  images: ["linuxserver/bazarr"]
+  ports: [6767]
+  monitor: {type: http, path: "/"}
+- id: qbittorrent
+  name: "qBittorrent"
+  category: downloads
+  icon: qbittorrent
+  title: ["qBittorrent"]
+  images: ["linuxserver/qbittorrent", "qbittorrentofficial/qbittorrent-nox"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: transmission
+  name: "Transmission"
+  category: downloads
+  icon: transmission
+  title: ["Transmission"]
+  images: ["linuxserver/transmission"]
+  ports: [9091]
+  headers:
+    X-Transmission-Session-Id: "."
+  monitor: {type: http, path: "/"}
+- id: deluge
+  name: "Deluge"
+  category: downloads
+  icon: deluge
+  title: ["Deluge"]
+  images: ["linuxserver/deluge"]
+  ports: [8112]
+  monitor: {type: http, path: "/"}
+- id: sabnzbd
+  name: "SABnzbd"
+  category: downloads
+  icon: sabnzbd
+  title: ["SABnzbd"]
+  images: ["linuxserver/sabnzbd"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: nzbget
+  name: "NZBGet"
+  category: downloads
+  title: ["NZBGet"]
+  images: ["linuxserver/nzbget"]
+  ports: [6789]
+  monitor: {type: http, path: "/"}
+- id: jdownloader
+  name: "JDownloader"
+  category: downloads
+  title: ["JDownloader"]
+  images: ["jlesage/jdownloader-2"]
+  ports: [5800]
+  monitor: {type: http, path: "/"}
+- id: nextcloud
+  name: "Nextcloud"
+  category: files
+  icon: nextcloud
+  title: ["Nextcloud"]
+  images: ["nextcloud", "linuxserver/nextcloud"]
+  ports: [80, 443]
+  paths:
+    - {path: "/status.php", body: "\"productname\""}
+  monitor: {type: http, path: "/status.php"}
+- id: owncloud
+  name: "ownCloud"
+  category: files
+  icon: owncloud
+  title: ["ownCloud"]
+  images: ["owncloud/server"]
+  ports: [8080]
+  paths:
+    - {path: "/status.php", body: "\"productname\""}
+  monitor: {type: http, path: "/"}
+- id: seafile
+  name: "Seafile"
+  category: files
+  icon: seafile
+  title: ["^Seafile"]
+  images: ["seafileltd/seafile-mc"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: syncthing
+  name: "Syncthing"
+  category: files
+  icon: syncthing
+  title: ["Syncthing"]
+  images: ["syncthing/syncthing", "linuxserver/syncthing"]
+  ports: [8384]
+  monitor: {type: http, path: "/rest/noauth/health"}
+- id: filebrowser
+  name: "File Browser"
+  category: files
+  icon: filebrowser
+  title: ["File Browser"]
+  images: ["filebrowser/filebrowser"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: paperless
+  name: "Paperless-ngx"
+  category: files
+  icon: paperlessngx
+  title: ["Paperless-ngx"]
+  images: ["ghcr.io/paperless-ngx/paperless-ngx"]
+  ports: [8000]
+  monitor: {type: http, path: "/"}
+- id: minio
+  name: "MinIO"
+  category: files
+  icon: minio
+  title: ["MinIO"]
+  images: ["minio/minio", "quay.io/minio/minio"]
+  ports: [9000, 9001]
+  headers:
+    Server: "MinIO"
+  monitor: {type: http, path: "/minio/health/live"}
+- id: garage
+  name: "Garage"
+  category: files
+  images: ["dxflrs/garage"]
+  ports: [3900]
+  monitor: {type: http, path: "/"}
+- id: vaultwarden
+  name: "Vaultwarden"
+  category: security
+  icon: vaultwarden
+  title: ["Vaultwarden"]
+  images: ["vaultwarden/server"]
+  ports: [80]
+  paths:
+    - {path: "/alive", body: "."}
+  monitor: {type: http, path: "/alive"}
+- id: bitwarden
+  name: "Bitwarden"
+  category: security
+  icon: bitwarden
+  title: ["Bitwarden"]
+  images: ["bitwarden/self-host", "bitwarden/web"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: authentik
+  name: "authentik"
+  category: security
+  icon: authentik
+  title: ["authentik"]
+  images: ["ghcr.io/goauthentik/server"]
+  ports: [9000]
+  monitor: {type: http, path: "/-/health/live/"}
+- id: authelia
+  name: "Authelia"
+  category: security
+  icon: authelia
+  title: ["Authelia"]
+  images: ["authelia/authelia"]
+  ports: [9091]
+  monitor: {type: http, path: "/api/health"}
+- id: keycloak
+  name: "Keycloak"
+  category: security
+  icon: keycloak
+  title: ["Keycloak"]
+  images: ["quay.io/keycloak/keycloak", "keycloak/keycloak"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: wazuh
+  name: "Wazuh"
+  category: security
+  icon: wazuh
+  title: ["Wazuh"]
+  images: ["wazuh/wazuh-dashboard"]
+  ports: [443]
+  monitor: {type: http, path: "/"}
+- id: crowdsec
+  name: "CrowdSec"
+  category: security
+  icon: crowdsec
+  images: ["crowdsecurity/crowdsec"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: pihole
+  name: "Pi-hole"
+  category: network
+  icon: pihole
+  title: ["Pi-hole"]
+  images: ["pihole/pihole"]
+  ports: [80]
+  paths:
+    - {path: "/admin/", body: "pi-hole"}
+  monitor: {type: http, path: "/admin/"}
+- id: adguard
+  name: "AdGuard Home"
+  category: network
+  icon: adguard
+  title: ["AdGuard Home"]
+  images: ["adguard/adguardhome"]
+  ports: [3000, 80]
+  monitor: {type: http, path: "/"}
+- id: technitium
+  name: "Technitium DNS"
+  category: network
+  title: ["Technitium DNS"]
+  images: ["technitium/dns-server"]
+  ports: [5380]
+  monitor: {type: http, path: "/"}
+- id: unbound
+  name: "Unbound"
+  category: network
+  images: ["mvance/unbound", "klutchell/unbound"]
+  ports: [53]
+  monitor: {type: dns}
+- id: bind9
+  name: "BIND 9"
+  category: network
+  images: ["ubuntu/bind9", "internetsystemsconsortium/bind9"]
+  ports: [53]
+  monitor: {type: dns}
+- id: nginxproxymanager
+  name: "Nginx Proxy Manager"
+  category: network
+  icon: nginxproxymanager
+  title: ["Nginx Proxy Manager"]
+  images: ["jc21/nginx-proxy-manager"]
+  ports: [81]
+  monitor: {type: http, path: "/"}
+- id: traefik
+  name: "Traefik"
+  category: network
+  icon: traefikproxy
+  title: ["Traefik"]
+  images: ["traefik"]
+  ports: [8080]
+  paths:
+    - {path: "/api/version", body: "\"Version\""}
+  monitor: {type: http, path: "/ping"}
+- id: caddy
+  name: "Caddy"
+  category: network
+  icon: caddy
+  images: ["caddy"]
+  ports: [2019]
+  headers:
+    Server: "Caddy"
+  monitor: {type: http, path: "/"}
+- id: nginx
+  name: "nginx"
+  category: network
+  icon: nginx
+  title: ["Welcome to nginx"]
+  images: ["nginx"]
+  ports: [80]
+  headers:
+    Server: "^nginx"
+  monitor: {type: http, path: "/"}
+- id: apache
+  name: "Apache HTTP Server"
+  category: network
+  icon: apache
+  title: ["Apache2 .* Default Page"]
+  images: ["httpd"]
+  ports: [80]
+  headers:
+    Server: "^Apache"
+  monitor: {type: http, path: "/"}
+- id: haproxy
+  name: "HAProxy"
+  category: network
+  icon: haproxy
+  title: ["HAProxy"]
+  images: ["haproxy"]
+  ports: [8404]
+  monitor: {type: http, path: "/"}
+- id: openwrt
+  name: "OpenWrt LuCI"
+  category: network
+  icon: openwrt
+  title: ["LuCI"]
+  body: ["luci-static"]
+  paths:
+    - {path: "/cgi-bin/luci", body: "luci"}
+  monitor: {type: http, path: "/"}
+- id: opnsense
+  name: "OPNsense"
+  category: network
+  icon: opnsense
+  title: ["OPNsense"]
+  ports: [443]
+  monitor: {type: http, path: "/"}
+- id: pfsense
+  name: "pfSense"
+  category: network
+  icon: pfsense
+  title: ["pfSense"]
+  ports: [443]
+  monitor: {type: http, path: "/"}
+- id: unifi
+  name: "UniFi Network"
+  category: network
+  icon: ubiquiti
+  title: ["UniFi"]
+  images: ["linuxserver/unifi-network-application", "jacobalberty/unifi"]
+  ports: [8443]
+  monitor: {type: http, path: "/"}
+- id: omada
+  name: "Omada Controller"
+  category: network
+  icon: tplink
+  title: ["Omada"]
+  images: ["mbentley/omada-controller"]
+  ports: [8043]
+  monitor: {type: http, path: "/"}
+- id: wgeasy
+  name: "wg-easy"
+  category: network
+  icon: wireguard
+  title: ["WireGuard"]
+  images: ["ghcr.io/wg-easy/wg-easy", "weejewel/wg-easy"]
+  ports: [51821]
+  monitor: {type: http, path: "/"}
+- id: headscale
+  name: "Headscale"
+  category: network
+  icon: headscale
+  images: ["headscale/headscale"]
+  ports: [8080]
+  paths:
+    - {path: "/health", body: "pass"}
+  monitor: {type: http, path: "/health"}
+- id: netbird
+  name: "NetBird"
+  category: network
+  icon: netbird
+  title: ["NetBird"]
+  images: ["netbirdio/dashboard"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: speedtesttracker
+  name: "Speedtest Tracker"
+  category: network
+  icon: speedtest
+  title: ["Speedtest Tracker"]
+  images: ["linuxserver/speedtest-tracker"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: librespeed
+  name: "LibreSpeed"
+  category: network
+  title: ["LibreSpeed"]
+  images: ["linuxserver/librespeed"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: smokeping
+  name: "SmokePing"
+  category: network
+  title: ["SmokePing"]
+  images: ["linuxserver/smokeping"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: netbox
+  name: "NetBox"
+  category: network
+  icon: netbox
+  title: ["NetBox"]
+  images: ["netboxcommunity/netbox"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: phpipam
+  name: "phpIPAM"
+  category: network
+  title: ["phpipam"]
+  images: ["phpipam/phpipam-www"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: proxmox
+  name: "Proxmox VE"
+  category: infrastructure
+  icon: proxmox
+  title: ["Proxmox Virtual Environment"]
+  ports: [8006]
+  headers:
+    Server: "pve-api-daemon"
+  monitor: {type: http, path: "/"}
+- id: pbs
+  name: "Proxmox Backup Server"
+  category: infrastructure
+  icon: proxmox
+  title: ["Proxmox Backup Server"]
+  ports: [8007]
+  monitor: {type: http, path: "/"}
+- id: truenas
+  name: "TrueNAS"
+  category: infrastructure
+  icon: truenas
+  title: ["TrueNAS"]
+  body: ["truenas"]
+  monitor: {type: http, path: "/"}
+- id: synology
+  name: "Synology DSM"
+  category: infrastructure
+  icon: synology
+  title: ["Synology"]
+  body: ["synology"]
+  monitor: {type: http, path: "/"}
+- id: qnap
+  name: "QNAP QTS"
+  category: infrastructure
+  icon: qnap
+  title: ["QNAP"]
+  body: ["qnap"]
+  monitor: {type: http, path: "/"}
+- id: unraid
+  name: "Unraid"
+  category: infrastructure
+  icon: unraid
+  title: ["Unraid"]
+  body: ["unraid"]
+  monitor: {type: http, path: "/"}
+- id: openmediavault
+  name: "openmediavault"
+  category: infrastructure
+  icon: openmediavault
+  title: ["openmediavault"]
+  monitor: {type: http, path: "/"}
+- id: terramaster
+  name: "TerraMaster TOS"
+  category: infrastructure
+  title: ["^TOS$"]
+  body: ["terramaster"]
+  monitor: {type: http, path: "/"}
+- id: portainer
+  name: "Portainer"
+  category: infrastructure
+  icon: portainer
+  title: ["Portainer"]
+  images: ["portainer/portainer-ce", "portainer/portainer-ee"]
+  ports: [9000, 9443]
+  monitor: {type: http, path: "/api/system/status"}
+- id: dockge
+  name: "Dockge"
+  category: infrastructure
+  title: ["Dockge"]
+  images: ["louislam/dockge"]
+  ports: [5001]
+  monitor: {type: http, path: "/"}
+- id: yacht
+  name: "Yacht"
+  category: infrastructure
+  title: ["^Yacht$"]
+  images: ["selfhostedpro/yacht"]
+  ports: [8000]
+  monitor: {type: http, path: "/"}
+- id: rancher
+  name: "Rancher"
+  category: infrastructure
+  icon: rancher
+  title: ["Rancher"]
+  images: ["rancher/rancher"]
+  ports: [443]
+  monitor: {type: http, path: "/"}
+- id: longhorn
+  name: "Longhorn"
+  category: infrastructure
+  icon: longhorn
+  title: ["Longhorn"]
+  images: ["longhornio/longhorn-ui", "longhornio/longhorn-manager"]
+  ports: [8000]
+  monitor: {type: http, path: "/"}
+- id: kubernetesdashboard
+  name: "Kubernetes Dashboard"
+  category: infrastructure
+  icon: kubernetes
+  title: ["Kubernetes Dashboard"]
+  images: ["kubernetesui/dashboard"]
+  ports: [8443]
+  monitor: {type: http, path: "/"}
+- id: headlamp
+  name: "Headlamp"
+  category: infrastructure
+  title: ["Headlamp"]
+  images: ["ghcr.io/headlamp-k8s/headlamp"]
+  ports: [4466]
+  monitor: {type: http, path: "/"}
+- id: cockpit
+  name: "Cockpit"
+  category: infrastructure
+  icon: cockpit
+  title: ["Cockpit"]
+  ports: [9090]
+  paths:
+    - {path: "/cockpit/login", body: "cockpit"}
+  monitor: {type: http, path: "/"}
+- id: webmin
+  name: "Webmin"
+  category: infrastructure
+  icon: webmin
+  title: ["Webmin"]
+  ports: [10000]
+  monitor: {type: http, path: "/"}
+- id: guacamole
+  name: "Apache Guacamole"
+  category: infrastructure
+  icon: apacheguacamole
+  title: ["Guacamole"]
+  images: ["guacamole/guacamole"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: meshcentral
+  name: "MeshCentral"
+  category: infrastructure
+  title: ["MeshCentral"]
+  images: ["typhonragewind/meshcentral"]
+  ports: [443]
+  monitor: {type: http, path: "/"}
+- id: ipmi
+  name: "IPMI / BMC"
+  category: infrastructure
+  body: ["(idrac|ilo|supermicro|ipmi)"]
+  monitor: {type: http, path: "/"}
+- id: nut
+  name: "Network UPS Tools"
+  category: infrastructure
+  images: ["instantlinux/nut-upsd"]
+  ports: [3493]
+  monitor: {type: tcp}
+- id: homepage
+  name: "Homepage"
+  category: dashboard
+  title: ["^Homepage$"]
+  images: ["ghcr.io/gethomepage/homepage"]
+  ports: [3000]
+  monitor: {type: http, path: "/"}
+- id: homer
+  name: "Homer"
+  category: dashboard
+  title: ["^Homer$"]
+  images: ["b4bz/homer"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: dashy
+  name: "Dashy"
+  category: dashboard
+  title: ["Dashy"]
+  images: ["lissy93/dashy"]
+  ports: [4000]
+  monitor: {type: http, path: "/"}
+- id: heimdall
+  name: "Heimdall"
+  category: dashboard
+  title: ["Heimdall"]
+  images: ["linuxserver/heimdall"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: homarr
+  name: "Homarr"
+  category: dashboard
+  title: ["Homarr"]
+  images: ["ghcr.io/ajnart/homarr", "ghcr.io/homarr-labs/homarr"]
+  ports: [7575]
+  monitor: {type: http, path: "/"}
+- id: organizr
+  name: "Organizr"
+  category: dashboard
+  title: ["Organizr"]
+  images: ["organizr/organizr"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: lanscape
+  name: "Lanscape"
+  category: dashboard
+  title: ["^Lanscape"]
+  images: ["ghcr.io/retreat-community/lanscape"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: bookstack
+  name: "BookStack"
+  category: productivity
+  icon: bookstack
+  title: ["BookStack"]
+  images: ["linuxserver/bookstack"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: wikijs
+  name: "Wiki.js"
+  category: productivity
+  icon: wikidotjs
+  title: ["Wiki.js"]
+  images: ["ghcr.io/requarks/wiki", "requarks/wiki"]
+  ports: [3000]
+  monitor: {type: http, path: "/"}
+- id: outline
+  name: "Outline"
+  category: productivity
+  icon: outline
+  title: ["^Outline$"]
+  images: ["outlinewiki/outline"]
+  ports: [3000]
+  monitor: {type: http, path: "/"}
+- id: hedgedoc
+  name: "HedgeDoc"
+  category: productivity
+  icon: hedgedoc
+  title: ["HedgeDoc"]
+  images: ["quay.io/hedgedoc/hedgedoc"]
+  ports: [3000]
+  monitor: {type: http, path: "/"}
+- id: trilium
+  name: "Trilium Notes"
+  category: productivity
+  title: ["Trilium"]
+  images: ["zadam/trilium", "triliumnext/notes"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: joplin
+  name: "Joplin Server"
+  category: productivity
+  icon: joplin
+  title: ["^Joplin"]
+  images: ["joplin/server"]
+  ports: [22300]
+  monitor: {type: http, path: "/"}
+- id: vikunja
+  name: "Vikunja"
+  category: productivity
+  title: ["Vikunja"]
+  images: ["vikunja/vikunja"]
+  ports: [3456]
+  monitor: {type: http, path: "/"}
+- id: mealie
+  name: "Mealie"
+  category: productivity
+  title: ["Mealie"]
+  images: ["ghcr.io/mealie-recipes/mealie"]
+  ports: [9000]
+  monitor: {type: http, path: "/"}
+- id: tandoor
+  name: "Tandoor Recipes"
+  category: productivity
+  title: ["Tandoor"]
+  images: ["vabene1111/recipes"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: firefly
+  name: "Firefly III"
+  category: productivity
+  title: ["Firefly III"]
+  images: ["fireflyiii/core"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: actualbudget
+  name: "Actual Budget"
+  category: productivity
+  title: ["^Actual$"]
+  images: ["actualbudget/actual-server"]
+  ports: [5006]
+  monitor: {type: http, path: "/"}
+- id: linkwarden
+  name: "Linkwarden"
+  category: productivity
+  title: ["Linkwarden"]
+  images: ["ghcr.io/linkwarden/linkwarden"]
+  ports: [3000]
+  monitor: {type: http, path: "/"}
+- id: freshrss
+  name: "FreshRSS"
+  category: productivity
+  title: ["FreshRSS"]
+  images: ["freshrss/freshrss", "linuxserver/freshrss"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: miniflux
+  name: "Miniflux"
+  category: productivity
+  icon: miniflux
+  title: ["Miniflux"]
+  images: ["miniflux/miniflux"]
+  ports: [8080]
+  monitor: {type: http, path: "/healthcheck"}
+- id: stirlingpdf
+  name: "Stirling PDF"
+  category: productivity
+  title: ["Stirling PDF"]
+  images: ["frooodle/s-pdf", "stirlingtools/stirling-pdf"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: searxng
+  name: "SearXNG"
+  category: productivity
+  icon: searxng
+  title: ["SearXNG"]
+  images: ["searxng/searxng"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: changedetection
+  name: "changedetection.io"
+  category: productivity
+  title: ["Change Detection"]
+  images: ["ghcr.io/dgtlmoon/changedetection.io"]
+  ports: [5000]
+  monitor: {type: http, path: "/"}
+- id: n8n
+  name: "n8n"
+  category: productivity
+  icon: n8n
+  title: ["n8n"]
+  images: ["n8nio/n8n", "docker.n8n.io/n8nio/n8n"]
+  ports: [5678]
+  monitor: {type: http, path: "/healthz"}
+- id: mattermost
+  name: "Mattermost"
+  category: communication
+  icon: mattermost
+  title: ["Mattermost"]
+  images: ["mattermost/mattermost-team-edition"]
+  ports: [8065]
+  monitor: {type: http, path: "/api/v4/system/ping"}
+- id: rocketchat
+  name: "Rocket.Chat"
+  category: communication
+  icon: rocketdotchat
+  title: ["Rocket.Chat"]
+  images: ["rocket.chat", "registry.rocket.chat/rocketchat/rocket.chat"]
+  ports: [3000]
+  monitor: {type: http, path: "/"}
+- id: synapse
+  name: "Matrix Synapse"
+  category: communication
+  icon: matrix
+  images: ["matrixdotorg/synapse"]
+  ports: [8008]
+  paths:
+    - {path: "/_matrix/client/versions", body: "\"versions\""}
+  monitor: {type: http, path: "/health"}
+- id: element
+  name: "Element"
+  category: communication
+  icon: element
+  title: ["^Element$"]
+  images: ["vectorim/element-web"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: ntfy
+  name: "ntfy"
+  category: communication
+  icon: ntfy
+  title: ["ntfy"]
+  images: ["binwiederhier/ntfy"]
+  ports: [80]
+  monitor: {type: http, path: "/v1/health"}
+- id: gotify
+  name: "Gotify"
+  category: communication
+  icon: gotify
+  title: ["Gotify"]
+  images: ["gotify/server"]
+  ports: [80]
+  monitor: {type: http, path: "/health"}
+- id: mailcow
+  name: "mailcow"
+  category: communication
+  icon: mailcow
+  title: ["mailcow"]
+  body: ["mailcow"]
+  monitor: {type: http, path: "/"}
+- id: roundcube
+  name: "Roundcube"
+  category: communication
+  icon: roundcube
+  title: ["Roundcube"]
+  images: ["roundcube/roundcubemail"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: postgresql
+  name: "PostgreSQL"
+  category: database
+  icon: postgresql
+  images: ["postgres", "bitnami/postgresql", "postgis/postgis"]
+  ports: [5432]
+  monitor: {type: tcp}
+- id: mysql
+  name: "MySQL"
+  category: database
+  icon: mysql
+  images: ["mysql"]
+  ports: [3306]
+  monitor: {type: tcp}
+- id: mariadb
+  name: "MariaDB"
+  category: database
+  icon: mariadb
+  images: ["mariadb", "linuxserver/mariadb"]
+  ports: [3306]
+  monitor: {type: tcp}
+- id: redis
+  name: "Redis"
+  category: database
+  icon: redis
+  images: ["redis", "valkey/valkey"]
+  ports: [6379]
+  monitor: {type: tcp}
+- id: mongodb
+  name: "MongoDB"
+  category: database
+  icon: mongodb
+  images: ["mongo"]
+  ports: [27017]
+  monitor: {type: tcp}
+- id: pgadmin
+  name: "pgAdmin"
+  category: database
+  icon: postgresql
+  title: ["pgAdmin"]
+  images: ["dpage/pgadmin4"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: adminer
+  name: "Adminer"
+  category: database
+  title: ["Adminer"]
+  images: ["adminer"]
+  ports: [8080]
+  monitor: {type: http, path: "/"}
+- id: phpmyadmin
+  name: "phpMyAdmin"
+  category: database
+  icon: phpmyadmin
+  title: ["phpMyAdmin"]
+  images: ["phpmyadmin"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: rabbitmq
+  name: "RabbitMQ"
+  category: database
+  icon: rabbitmq
+  title: ["RabbitMQ Management"]
+  images: ["rabbitmq"]
+  ports: [15672]
+  monitor: {type: http, path: "/"}
+- id: nfs
+  name: "NFS server"
+  category: storage
+  images: ["itsthenetwork/nfs-server-alpine"]
+  ports: [2049]
+  monitor: {type: tcp}
+- id: samba
+  name: "Samba"
+  category: storage
+  icon: samba
+  images: ["dperson/samba", "servercontainers/samba"]
+  ports: [445]
+  monitor: {type: tcp}
+- id: cups
+  name: "CUPS"
+  category: devices
+  icon: cups
+  title: ["CUPS"]
+  images: ["olbat/cupsd"]
+  ports: [631]
+  monitor: {type: http, path: "/"}
+- id: octoprint
+  name: "OctoPrint"
+  category: devices
+  icon: octoprint
+  title: ["OctoPrint"]
+  images: ["octoprint/octoprint"]
+  ports: [5000]
+  monitor: {type: http, path: "/"}
+- id: mainsail
+  name: "Mainsail"
+  category: devices
+  title: ["^Mainsail$"]
+  ports: [80]
+  monitor: {type: http, path: "/"}
+- id: wled
+  name: "WLED"
+  category: devices
+  title: ["^WLED$"]
+  paths:
+    - {path: "/json/info", body: "\"ver\""}
+  monitor: {type: http, path: "/"}
+- id: tasmota
+  name: "Tasmota"
+  category: devices
+  icon: tasmota
+  title: ["Tasmota"]
+  body: ["tasmota"]
+  monitor: {type: http, path: "/"}
+- id: shelly
+  name: "Shelly"
+  category: devices
+  icon: shelly
+  paths:
+    - {path: "/shelly", body: "\"type\""}
+  monitor: {type: http, path: "/"}
+- id: hikvision
+  name: "Hikvision camera"
+  category: devices
+  icon: hikvision
+  body: ["hikvision"]
+  monitor: {type: http, path: "/"}

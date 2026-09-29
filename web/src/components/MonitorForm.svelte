@@ -132,7 +132,7 @@
     </div>
   {:else if spec.type === "dns"}
     <div class="cols">
-      <label class="field">{t("mon.dns_server")} <input bind:value={spec.server} placeholder="192.168.1.1" /></label>
+      <label class="field">{t("mon.dns_server")} <input bind:value={spec.server} placeholder="192.168.1.1, tls://1.1.1.1, https://dns.example/dns-query" /></label>
       <label class="field"
         >{t("mon.record")}
         <select bind:value={spec.record}>

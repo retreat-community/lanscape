@@ -74,7 +74,7 @@ type Spec struct {
 	Expect string `json:"expect,omitempty"`
 
 	// DNS
-	Server string `json:"server,omitempty"` // host[:53]; empty = system resolver
+	Server string `json:"server,omitempty"` // host[:53], tcp://host, tls://host[:853], https://host/dns-query; empty = system resolver
 	Record string `json:"record,omitempty"` // A, AAAA, CNAME, MX, TXT, NS
 
 	// TLS (also applies to https:// HTTP checks) and domain expiry
@@ -478,19 +478,6 @@ func runICMP(ctx context.Context, s *Spec) Result {
 		r.Message = fmt.Sprintf("%d/%d replies", p.Recv, p.Sent)
 	}
 	return r
-}
-
-func resolver(server string) *net.Resolver {
-	if server == "" {
-		return net.DefaultResolver
-	}
-	if _, _, err := net.SplitHostPort(server); err != nil {
-		server = net.JoinHostPort(server, "53")
-	}
-	return &net.Resolver{PreferGo: true, Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-		var d net.Dialer
-		return d.DialContext(ctx, network, server)
-	}}
 }
 
 func runDNS(ctx context.Context, s *Spec) Result {

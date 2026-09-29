@@ -34,6 +34,7 @@ type ConfigFile struct {
 	Rules       *[]catalog.Rule   `yaml:"rules,omitempty" json:"rules,omitempty"`
 	Channels    *[]ConfChannel    `yaml:"channels,omitempty" json:"channels,omitempty"`
 	StatusPages *[]ConfStatusPage `yaml:"status_pages,omitempty" json:"status_pages,omitempty"`
+	Dashboards  *[]Board          `yaml:"dashboards,omitempty" json:"dashboards,omitempty"`
 }
 
 // ConfService is a service (dashboard tile) keyed by name.
@@ -176,7 +177,9 @@ func (s *Server) ExportConfig(ctx context.Context) (ConfigFile, error) {
 	for _, p := range pages {
 		status = append(status, n.confStatusPage(p))
 	}
+	boards := s.boards(ctx)
 	cf.Services, cf.Monitors, cf.Segments, cf.Rules, cf.Channels, cf.StatusPages = &services, &mons, &segs, &rules, &channels, &status
+	cf.Dashboards = &boards
 	return cf, nil
 }
 
@@ -371,6 +374,22 @@ func (s *Server) ApplyConfig(ctx context.Context, cf ConfigFile, dryRun, prune b
 			add("rules", strconv.Itoa(len(rules)), "update")
 			if !dryRun {
 				if err := s.store.SetSetting(ctx, "discovery_rules", rules); err != nil {
+					return plan, err
+				}
+			}
+		}
+	}
+
+	if cf.Dashboards != nil {
+		if err := validateBoards(*cf.Dashboards); err != nil {
+			return plan, err
+		}
+		if reflect.DeepEqual(s.boards(ctx), *cf.Dashboards) {
+			add("dashboards", strconv.Itoa(len(*cf.Dashboards)), "unchanged")
+		} else {
+			add("dashboards", strconv.Itoa(len(*cf.Dashboards)), "update")
+			if !dryRun {
+				if err := s.store.SetSetting(ctx, "dashboards", *cf.Dashboards); err != nil {
 					return plan, err
 				}
 			}

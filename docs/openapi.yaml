@@ -1062,6 +1062,29 @@ paths:
         - {name: id, in: path, required: true, schema: {type: string}}
       responses:
         "204": {description: removed}
+  /api/v1/dashboards:
+    get:
+      tags: [services]
+      operationId: listDashboards
+      summary: Dashboards visible to the current user
+      responses:
+        "200":
+          description: dashboards
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/Board"}}
+    put:
+      tags: [services]
+      operationId: saveDashboards
+      summary: Replace the list of dashboards (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: array, items: {$ref: "#/components/schemas/Board"}}
+      responses:
+        "200": {description: saved}
+        "400": {$ref: "#/components/responses/Error"}
   /api/v1/internet:
     get:
       tags: [network]
@@ -1491,7 +1514,10 @@ paths:
     get:
       tags: [services]
       operationId: dashboard
-      summary: Dashboard
+      summary: Dashboard (anonymous visitors get a reduced view when the guest dashboard is on)
+      security: [{}, {cookie: []}, {bearer: []}]
+      parameters:
+        - {name: board, in: query, schema: {type: string}, description: dashboard id (default the first visible one)}
       responses:
         "200":
           description: tiles, summary and widgets
@@ -1661,6 +1687,15 @@ components:
               result: {$ref: "#/components/schemas/CheckResult"}
               points: {type: array, items: {$ref: "#/components/schemas/CheckResult"}}
   schemas:
+    Board:
+      type: object
+      required: [id, name]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        groups: {type: array, items: {type: string}, description: "tile groups shown, empty = all"}
+        min_role: {type: string, enum: [viewer, operator, admin]}
+        notes: {type: string, description: "free text; http(s) links are clickable"}
     ConfigFile:
       type: object
       description: declarative configuration, see docs/INSTALL.md (Configuration as code)

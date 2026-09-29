@@ -1,5 +1,6 @@
 import type {
   ActionResponse,
+  Board,
   InternetExit,
   Agent,
   Change,
@@ -187,7 +188,9 @@ export const api = {
   saveSettings: (s: Settings) => call<Settings>("PUT", "/settings", s),
   audit: () => call<AuditEntry[]>("GET", "/audit"),
 
-  dashboard: () => call<Dashboard>("GET", "/dashboard"),
+  dashboard: (board?: string) => call<Dashboard>("GET", board ? `/dashboard?board=${enc(board)}` : "/dashboard"),
+  boards: () => call<Board[]>("GET", "/dashboards"),
+  saveBoards: (b: Board[]) => call<Board[]>("PUT", "/dashboards", b),
   search: (q: string) => call<SearchResult[]>("GET", `/search?q=${enc(q)}`),
   found: () => call<FoundCard[]>("GET", "/found"),
   addFound: (key: string, opts: { name?: string; group?: string; monitor: boolean; tile: boolean }) =>

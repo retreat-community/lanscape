@@ -4,14 +4,40 @@
   import { api, subscribe } from "../lib/api";
   import { bytes, daysLeft, latency, pct, statusClass, when } from "../lib/format";
   import { can, t, toast, ui } from "../lib/state.svelte";
-  import type { Dashboard, ServiceView } from "../lib/types";
+  import type { Board, Dashboard, ServiceView } from "../lib/types";
 
   let d = $state<Dashboard | null>(null);
+  let boards = $state<Board[]>([]);
+  let board = $state(readBoard());
+
+  function readBoard(): string {
+    try {
+      return localStorage.getItem("lanscape-board") ?? "";
+    } catch {
+      return "";
+    }
+  }
+
+  function pick(id: string): void {
+    board = id;
+    try {
+      localStorage.setItem("lanscape-board", id);
+    } catch {
+      // private mode: the choice lasts for this page only
+    }
+    void load();
+  }
+
+  // notes: plain text; http(s) links become anchors (no HTML is interpreted)
+  function linkify(line: string): { text: string; href?: string }[] {
+    return line.split(/(https?:\/\/\S+)/).filter(Boolean).map((p) => (/^https?:\/\//.test(p) ? { text: p, href: p } : { text: p }));
+  }
   let dragging = $state<ServiceView | null>(null);
 
   async function load(): Promise<void> {
     try {
-      d = await api.dashboard();
+      d = await api.dashboard(board || undefined);
+      if (ui.user && boards.length === 0) boards = await api.boards();
     } catch (e) {
       toast(e instanceof Error ? e.message : String(e));
     }
@@ -86,6 +112,25 @@
         {t("dash.found_new", { n: d.found_new })}
         <a href="#/services?tab=found">{t("dash.review")}</a>
       </div>
+    {/if}
+
+    {#if boards.length > 1}
+      <div class="tabs">
+        {#each boards as b (b.id)}
+          <button class:on={d.board?.id === b.id} onclick={() => pick(b.id)}>{b.name}</button>
+        {/each}
+      </div>
+    {/if}
+    {#if d.board?.notes}
+      <section class="card notes">
+        {#each d.board.notes.split("\n") as line, i (i)}
+          <div>
+            {#each linkify(line) as part, j (j)}
+              {#if part.href}<a href={part.href} target="_blank" rel="noopener">{part.text}</a>{:else}{part.text}{/if}
+            {/each}
+          </div>
+        {/each}
+      </section>
     {/if}
 
     <div class="summary" data-testid="summary">

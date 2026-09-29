@@ -62,6 +62,8 @@ func (s *Server) servicesRoutes(mux *http.ServeMux, v func(string, http.HandlerF
 
 	mux.HandleFunc("GET /api/v1/changes", v(RoleViewer, s.apiChanges))
 	mux.HandleFunc("GET /api/v1/dashboard", s.guestOr(RoleViewer, s.apiDashboard))
+	mux.HandleFunc("GET /api/v1/dashboards", v(RoleViewer, s.apiBoards))
+	mux.HandleFunc("PUT /api/v1/dashboards", v(RoleAdmin, s.apiSaveBoards))
 	mux.HandleFunc("GET /api/v1/search", v(RoleViewer, s.apiSearch))
 	mux.HandleFunc("GET /api/v1/paths/history", v(RoleViewer, s.apiPathHistory))
 	mux.HandleFunc("GET /api/v1/devices/discovered", v(RoleViewer, s.apiDevices))
@@ -994,6 +996,7 @@ type Dashboard struct {
 	Storage      []HardwareView      `json:"storage"` // pools and disks
 	Backups      []BackupView        `json:"backups"`
 	Internet     []InternetExit      `json:"internet"` // last 30 days
+	Board        Board               `json:"board"`    // the dashboard shown (tile groups, notes)
 }
 
 // HardwareView is a UPS, disk or storage pool reported by an agent.
@@ -1034,7 +1037,7 @@ type NetworkSummary struct {
 func guestDashboard(d Dashboard) Dashboard {
 	g := Dashboard{Summary: d.Summary, Groups: []TileGroup{}, Incidents: []IncidentView{}, Agents: []AgentResources{},
 		Certificates: []CertExpiry{}, Changes: []store.Change{}, Maintenance: d.Maintenance, UPS: []HardwareView{},
-		Storage: []HardwareView{}, Backups: []BackupView{}, Internet: []InternetExit{}}
+		Storage: []HardwareView{}, Backups: []BackupView{}, Internet: []InternetExit{}, Board: d.Board}
 	for _, grp := range d.Groups {
 		tg := TileGroup{Name: grp.Name}
 		for _, t := range grp.Tiles {
@@ -1166,6 +1169,18 @@ func (s *Server) apiDashboard(w http.ResponseWriter, r *http.Request) {
 			d.Maintenance = append(d.Maintenance, m)
 		}
 	}
+	role := ""
+	if p, ok := principal(ctx); ok {
+		role = p.Role
+	}
+	boards := s.visibleBoards(ctx, role)
+	board := boards[0]
+	for _, b := range boards {
+		if b.ID == r.URL.Query().Get("board") {
+			board = b
+		}
+	}
+	applyBoard(&d, board)
 	if isGuest(ctx) {
 		d = guestDashboard(d)
 	}

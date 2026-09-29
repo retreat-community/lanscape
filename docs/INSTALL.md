@@ -313,6 +313,13 @@ Assistant entities (found devices), and the tiles of Homepage (`services.yaml`),
 icon when it names an application; private addresses become the internal URL, the others the
 external one.
 
+### Dashboards
+
+**Settings → Dashboards** defines several start pages ("Main", "Media", "Infrastructure"): each
+shows the chosen tile groups to users with at least the given role and carries free notes and
+links (runbooks, documentation). Users switch between them above the tiles; guests see the
+first one. Dashboards are part of the YAML configuration (`dashboards:`).
+
 ### Guest access
 
 **Settings → General → Show a read-only dashboard to visitors who are not signed in** opens the

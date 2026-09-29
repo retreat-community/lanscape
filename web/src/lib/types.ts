@@ -640,6 +640,15 @@ export interface Dashboard {
   storage: HardwareView[];
   backups: { monitor_id: number; name: string; status: string; last_push: number }[];
   internet?: InternetExit[];
+  board?: Board;
+}
+
+export interface Board {
+  id: string;
+  name: string;
+  groups?: string[] | null;
+  min_role?: string;
+  notes?: string;
 }
 
 export interface HardwareView {

@@ -409,6 +409,18 @@ export const en = {
   "ch.homeserver": "Homeserver",
   "ch.access_token": "Access token",
   "ch.room_id": "Room ID",
+  "set.status": "Status pages",
+  "st.slug": "Address (slug)",
+  "st.title": "Title",
+  "st.public": "public",
+  "st.link_only": "by link only",
+  "st.description": "Description",
+  "st.domain": "Custom domain",
+  "st.accent": "Accent colour",
+  "st.logo": "Logo URL",
+  "st.theme": "Theme",
+  "st.add_group": "Add group",
+  "st.none": "No status pages yet.",
 } as const;
 
 export type Key = keyof typeof en;
@@ -822,6 +834,18 @@ export const ru: Record<Key, string> = {
   "ch.homeserver": "Homeserver",
   "ch.access_token": "Токен доступа",
   "ch.room_id": "ID комнаты",
+  "set.status": "Страницы статуса",
+  "st.slug": "Адрес (slug)",
+  "st.title": "Заголовок",
+  "st.public": "публичная",
+  "st.link_only": "только по ссылке",
+  "st.description": "Описание",
+  "st.domain": "Свой домен",
+  "st.accent": "Цвет акцента",
+  "st.logo": "URL логотипа",
+  "st.theme": "Тема",
+  "st.add_group": "Добавить группу",
+  "st.none": "Страниц статуса пока нет.",
 };
 
 export type Lang = "en" | "ru";

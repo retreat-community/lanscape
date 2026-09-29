@@ -609,3 +609,21 @@ export interface SearchResult {
   href: string;
   status?: string;
 }
+
+export interface StatusPage {
+  id: number;
+  slug: string;
+  title: string;
+  public: boolean;
+  token?: string;
+  domain?: string;
+  config: {
+    description?: string;
+    groups: { name: string; monitors: number[] }[];
+    accent?: string;
+    logo_url?: string;
+    theme?: string;
+    footer?: string;
+  };
+  created_at: number;
+}

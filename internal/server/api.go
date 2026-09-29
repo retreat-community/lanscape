@@ -77,7 +77,7 @@ func (s *Server) Handler() http.Handler {
 		mux.HandleFunc(r.pattern, v(r.role, r.h))
 	}
 	mux.Handle("/", s.spa())
-	return securityHeaders(mux)
+	return securityHeaders(s.statusDomain(mux))
 }
 
 type route struct {

@@ -13,6 +13,7 @@ import type {
   PathPoint,
   Rule,
   SearchResult,
+  StatusPage,
   Service,
   ServiceView,
   AgentToken,
@@ -173,6 +174,10 @@ export const api = {
     c.id ? call<Channel>("PUT", `/channels/${c.id}`, c) : call<Channel>("POST", "/channels", c),
   deleteChannel: (id: number) => call<undefined>("DELETE", `/channels/${id}`),
   testChannel: (id: number) => call<{ status: string }>("POST", `/channels/${id}/test`),
+  statusPages: () => call<StatusPage[]>("GET", "/status-pages"),
+  saveStatusPage: (p: StatusPage) =>
+    p.id ? call<StatusPage>("PUT", `/status-pages/${p.id}`, p) : call<StatusPage>("POST", "/status-pages", p),
+  deleteStatusPage: (id: number) => call<undefined>("DELETE", `/status-pages/${id}`),
 };
 
 /** Subscribes to server-sent events; returns an unsubscribe function. */

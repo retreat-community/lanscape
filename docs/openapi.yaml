@@ -34,6 +34,8 @@ tags:
     description: Availability monitors, incidents and maintenance windows
   - name: notifications
     description: Notification channels
+  - name: status
+    description: Public status pages
   - name: settings
     description: Server settings and audit log
   - name: system
@@ -676,6 +678,71 @@ paths:
       responses:
         "200": {description: recorded}
         "404": {$ref: "#/components/responses/Error"}
+  /status/{slug}:
+    get:
+      tags: [status]
+      operationId: statusPageHTML
+      summary: Status page (HTML)
+      description: Public pages need no authentication; link-only pages need the page token in `t`. Custom domains serve the page at `/`.
+      security: []
+      parameters:
+        - {name: slug, in: path, required: true, schema: {type: string}}
+        - {name: t, in: query, schema: {type: string}}
+      responses:
+        "200": {description: page, content: {text/html: {}}}
+        "404": {description: unknown page or missing token}
+  /api/status/{slug}:
+    get:
+      tags: [status]
+      operationId: statusPageJSON
+      summary: Status page (JSON)
+      security: []
+      parameters:
+        - {name: slug, in: path, required: true, schema: {type: string}}
+        - {name: t, in: query, schema: {type: string}}
+      responses:
+        "200":
+          description: overall state, groups with 90-day history, incidents of 7 days and planned maintenance
+          content:
+            application/json:
+              schema: {type: object, additionalProperties: true}
+        "404": {$ref: "#/components/responses/Error"}
+  /api/v1/status-pages:
+    get:
+      tags: [status]
+      operationId: listStatusPages
+      summary: Status pages
+      responses:
+        "200":
+          description: pages
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/StatusPage"}}
+    post:
+      tags: [status]
+      operationId: createStatusPage
+      summary: Create status page
+      requestBody: {$ref: "#/components/requestBodies/StatusPage"}
+      responses:
+        "200": {$ref: "#/components/responses/StatusPage"}
+        "400": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+  /api/v1/status-pages/{id}:
+    parameters: [{$ref: "#/components/parameters/IntID"}]
+    put:
+      tags: [status]
+      operationId: updateStatusPage
+      summary: Update status page
+      requestBody: {$ref: "#/components/requestBodies/StatusPage"}
+      responses:
+        "200": {$ref: "#/components/responses/StatusPage"}
+        "400": {$ref: "#/components/responses/Error"}
+    delete:
+      tags: [status]
+      operationId: deleteStatusPage
+      summary: Delete status page
+      responses:
+        "204": {description: deleted}
   /api/v1/found:
     get:
       tags: [discovery]
@@ -1123,6 +1190,11 @@ components:
       content:
         application/json:
           schema: {$ref: "#/components/schemas/Channel"}
+    StatusPage:
+      required: true
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/StatusPage"}
   responses:
     Error:
       description: error
@@ -1179,6 +1251,11 @@ components:
       content:
         application/json:
           schema: {$ref: "#/components/schemas/Channel"}
+    StatusPage:
+      description: status page
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/StatusPage"}
     CheckOutcome:
       description: combined result and the result of every observation point
       content:
@@ -1830,3 +1907,29 @@ components:
         url: {type: string}
         href: {type: string}
         status: {type: string}
+    StatusPage:
+      type: object
+      required: [slug]
+      properties:
+        id: {type: integer, readOnly: true}
+        slug: {type: string, pattern: "^[a-z0-9][a-z0-9-]{0,62}$"}
+        title: {type: string}
+        public: {type: boolean}
+        token: {type: string, readOnly: true, description: "link token for pages that are not public"}
+        domain: {type: string, description: custom domain served at /}
+        config:
+          type: object
+          properties:
+            description: {type: string}
+            groups:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: {type: string}
+                  monitors: {type: array, items: {type: integer}}
+            accent: {type: string}
+            logo_url: {type: string}
+            theme: {type: string, enum: ["", auto, light, dark]}
+            footer: {type: string}
+        created_at: {type: integer, readOnly: true}

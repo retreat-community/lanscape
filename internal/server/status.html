@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"{{if eq .Theme "dark"}} data-theme="dark"{{else if eq .Theme "light"}} data-theme="light"{{end}}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="60">
+<title>{{.Title}}</title>
+<style>
+:root{--bg:#f5f7fa;--fg:#18202c;--muted:#5f6b7c;--card:#fff;--line:#dbe1ea;--accent:{{if .Accent}}{{.Accent}}{{else}}#1f5fd6{{end}};
+--up:#1f9d55;--degraded:#c99700;--down:#d64545;--maint:#8b5cf6;--none:#c5ccd6;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0f141c;--fg:#e6e9ef;--muted:#8d98aa;--card:#171d27;--line:#2a3242;--none:#2f3747;color-scheme:dark}}
+:root[data-theme=dark]{--bg:#0f141c;--fg:#e6e9ef;--muted:#8d98aa;--card:#171d27;--line:#2a3242;--none:#2f3747;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:860px;margin:0 auto;padding:24px 16px}header{display:flex;gap:12px;align-items:center;margin-bottom:16px}
+header img{height:40px}h1{margin:0;font-size:24px}h2{font-size:17px;margin:0 0 8px}.muted{color:var(--muted)}.small{font-size:13px}
+.banner{padding:14px 16px;border-radius:10px;color:#fff;font-weight:600;margin-bottom:20px}
+.b-up{background:var(--up)}.b-degraded{background:var(--degraded)}.b-down{background:var(--down)}.b-maintenance{background:var(--maint)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.mon{padding:10px 0;border-top:1px solid var(--line)}.mon:first-of-type{border-top:0}
+.row{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.bars{display:flex;gap:2px;height:28px;margin-top:6px}.bars span{flex:1;border-radius:2px;background:var(--none)}
+.d-up{background:var(--up)!important}.d-degraded{background:var(--degraded)!important}.d-down{background:var(--down)!important}.d-maint{background:var(--maint)!important}
+.st{font-weight:600}.s-up{color:var(--up)}.s-degraded{color:var(--degraded)}.s-down{color:var(--down)}.s-maintenance{color:var(--maint)}
+footer{text-align:center;margin-top:24px}a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+<header>{{if .LogoURL}}<img src="{{.LogoURL}}" alt="">{{end}}<div><h1>{{.Title}}</h1>{{if .Description}}<div class="muted">{{.Description}}</div>{{end}}</div></header>
+<div class="banner b-{{.Overall}}" data-status="{{.Overall}}">
+{{if eq .Overall "up"}}All systems operational{{else if eq .Overall "degraded"}}Some systems are degraded{{else if eq .Overall "maintenance"}}Maintenance in progress{{else}}Some systems are down{{end}}
+</div>
+{{range .Maintenance}}<div class="card"><b>Planned maintenance: {{.Name}}</b><div class="muted small">{{date .Starts}} — {{date .Ends}}</div></div>{{end}}
+{{range .Groups}}<section class="card">{{if .Name}}<h2>{{.Name}}</h2>{{end}}
+{{range .Monitors}}<div class="mon"><div class="row"><span>{{.Name}}</span><span class="st s-{{.Status}}">{{.Status}}</span></div>
+<div class="bars">{{range .Days}}<span class="d-{{.Class}}" title="{{.Date}}: {{pct .Uptime}}"></span>{{end}}</div>
+<div class="row muted small"><span>90 days ago</span><span>{{pct .Uptime}} uptime</span><span>today</span></div></div>{{end}}
+</section>{{end}}
+{{if .Incidents}}<section class="card"><h2>Incidents (7 days)</h2>
+{{range .Incidents}}<div class="mon"><div class="row"><b>{{.Monitor}}</b><span class="small {{if .Resolved}}s-up{{else}}s-down{{end}}">{{if .Resolved}}resolved{{else}}ongoing{{end}}</span></div>
+<div class="muted small">{{date .Opened}}{{if .Resolved}} — {{date .Closed}}{{end}}</div></div>{{end}}
+</section>{{end}}
+<footer class="muted small">{{if .Footer}}{{.Footer}} · {{end}}Updated {{date .Updated}} · Powered by Lanscape</footer>
+</main>
+</body>
+</html>

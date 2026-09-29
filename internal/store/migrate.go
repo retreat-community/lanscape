@@ -233,6 +233,17 @@ var migrations = []string{
 	ALTER TABLE monitors ADD COLUMN last_push BIGINT NOT NULL DEFAULT 0;
 	ALTER TABLE monitors ADD COLUMN parents TEXT NOT NULL DEFAULT '[]';
 	ALTER TABLE incidents ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0`,
+	// 4: status pages
+	`CREATE TABLE status_pages (
+		id {{PK}},
+		slug TEXT NOT NULL UNIQUE,
+		title TEXT NOT NULL,
+		public INTEGER NOT NULL DEFAULT 0,
+		token TEXT NOT NULL DEFAULT '',
+		domain TEXT NOT NULL DEFAULT '',
+		config TEXT NOT NULL DEFAULT '{}',
+		created_at BIGINT NOT NULL
+	)`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

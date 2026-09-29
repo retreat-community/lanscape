@@ -748,3 +748,99 @@ func (s *Store) DeleteChannel(ctx context.Context, id int64) error {
 	_, err := s.Exec(ctx, `DELETE FROM channels WHERE id=?`, id)
 	return err
 }
+
+// --- status pages ---
+
+// StatusGroup is a titled list of monitors on a status page.
+type StatusGroup struct {
+	Name     string  `json:"name"`
+	Monitors []int64 `json:"monitors"`
+}
+
+// StatusConfig is the content and theme of a status page.
+type StatusConfig struct {
+	Description string        `json:"description,omitempty"`
+	Groups      []StatusGroup `json:"groups"`
+	Accent      string        `json:"accent,omitempty"` // CSS colour
+	LogoURL     string        `json:"logo_url,omitempty"`
+	Theme       string        `json:"theme,omitempty"` // auto, light, dark
+	Footer      string        `json:"footer,omitempty"`
+}
+
+// StatusPage is a public (or link-only) status page.
+type StatusPage struct {
+	ID        int64        `json:"id"`
+	Slug      string       `json:"slug"`
+	Title     string       `json:"title"`
+	Public    bool         `json:"public"`
+	Token     string       `json:"token,omitempty"` // required in ?t= when not public
+	Domain    string       `json:"domain,omitempty"`
+	Config    StatusConfig `json:"config"`
+	CreatedAt int64        `json:"created_at"`
+}
+
+const statusCols = `id, slug, title, public, token, domain, config, created_at`
+
+func scanStatusPage(sc interface{ Scan(...any) error }) (StatusPage, error) {
+	var p StatusPage
+	var pub int
+	var cfg string
+	err := sc.Scan(&p.ID, &p.Slug, &p.Title, &pub, &p.Token, &p.Domain, &cfg, &p.CreatedAt)
+	p.Public = pub != 0
+	_ = json.Unmarshal([]byte(cfg), &p.Config)
+	if p.Config.Groups == nil {
+		p.Config.Groups = []StatusGroup{}
+	}
+	return p, err
+}
+
+// SaveStatusPage inserts (ID 0) or updates a status page.
+func (s *Store) SaveStatusPage(ctx context.Context, p StatusPage) (int64, error) {
+	cfg, _ := json.Marshal(p.Config)
+	if p.ID == 0 {
+		return s.Insert(ctx, `INSERT INTO status_pages(slug, title, public, token, domain, config, created_at) VALUES (?,?,?,?,?,?,?)`,
+			p.Slug, p.Title, b2i(p.Public), p.Token, p.Domain, string(cfg), now())
+	}
+	_, err := s.Exec(ctx, `UPDATE status_pages SET slug=?, title=?, public=?, token=?, domain=?, config=? WHERE id=?`,
+		p.Slug, p.Title, b2i(p.Public), p.Token, p.Domain, string(cfg), p.ID)
+	return p.ID, err
+}
+
+// StatusPages lists status pages.
+func (s *Store) StatusPages(ctx context.Context) ([]StatusPage, error) {
+	rows, err := s.Query(ctx, `SELECT `+statusCols+` FROM status_pages ORDER BY title`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []StatusPage{}
+	for rows.Next() {
+		p, err := scanStatusPage(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// StatusPageBy finds a page by id, slug or domain (the first non-empty one).
+func (s *Store) StatusPageBy(ctx context.Context, id int64, slug, domain string) (StatusPage, error) {
+	var row interface{ Scan(...any) error }
+	switch {
+	case id > 0:
+		row = s.QueryRow(ctx, `SELECT `+statusCols+` FROM status_pages WHERE id=?`, id)
+	case slug != "":
+		row = s.QueryRow(ctx, `SELECT `+statusCols+` FROM status_pages WHERE slug=?`, slug)
+	default:
+		row = s.QueryRow(ctx, `SELECT `+statusCols+` FROM status_pages WHERE domain=? AND domain<>''`, domain)
+	}
+	p, err := scanStatusPage(row)
+	return p, notFound(err)
+}
+
+// DeleteStatusPage removes a status page.
+func (s *Store) DeleteStatusPage(ctx context.Context, id int64) error {
+	_, err := s.Exec(ctx, `DELETE FROM status_pages WHERE id=?`, id)
+	return err
+}

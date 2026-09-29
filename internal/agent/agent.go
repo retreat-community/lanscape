@@ -469,9 +469,14 @@ func (a *Agent) Inventory() Inventory {
 	if err != nil {
 		a.log.Warn("interface inventory failed", "err", err)
 	}
+	names := make([]string, 0, len(ifs))
+	for _, i := range ifs {
+		names = append(names, i.Name)
+	}
 	ifs = netio.Filter(ifs, a.cfg.Exclude)
 	inv := Inventory{Ifaces: ifs}
 	inv.Routes, inv.Rules, inv.Neighbors, inv.Env, inv.Resources = CollectSystem()
+	inv.Env.CNI = DetectCNI(names) // from all interfaces: CNI devices are excluded from tests
 	inv.Resources.Updates = pendingUpdates()
 	inv.LLDP = collectLLDP(context.Background())
 	inv.Resources.UptimeS = inv.Resources.UptimeS / 60 * 60 // avoid resending every minute

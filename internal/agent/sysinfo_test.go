@@ -58,3 +58,17 @@ func TestDefaultGateways(t *testing.T) {
 		t.Errorf("%+v", gws)
 	}
 }
+
+func TestDetectCNI(t *testing.T) {
+	for want, names := range map[string][]string{
+		"cilium":  {"lo", "eth0", "cilium_host", "cilium_net", "lxc12ab"},
+		"calico":  {"eth0", "tunl0", "cali1234"},
+		"flannel": {"eth0", "cni0", "flannel.1"},
+		"bridge":  {"eth0", "cni0"},
+		"":        {"eth0", "docker0"},
+	} {
+		if got := DetectCNI(names); got != want {
+			t.Errorf("%v: %q, want %q", names, got, want)
+		}
+	}
+}

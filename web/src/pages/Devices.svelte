@@ -69,7 +69,7 @@
               <td><span class="dot {a.online ? 'v-green' : 'v-red'}"></span></td>
               <td><b>{a.name}</b><div class="muted small">{a.hostname} · {a.version}</div></td>
               <td>{a.kind === "lite" ? t("dev.lite") : a.kind} · {a.arch}</td>
-              <td>{a.inventory.env?.kind ?? "—"}{a.inventory.env?.virt ? ` (${a.inventory.env.virt})` : ""}</td>
+              <td>{a.inventory.env?.kind ?? "—"}{a.inventory.env?.virt ? ` (${a.inventory.env.virt})` : ""}{a.inventory.env?.cni ? ` · CNI ${a.inventory.env.cni}` : ""}</td>
               <td>{a.inventory.resources?.os ?? a.os}</td>
               <td>{a.inventory.resources?.uptime_s ? duration(a.inventory.resources.uptime_s) : "—"}</td>
               <td><button onclick={() => (open = open === a.id ? null : a.id)}>{t("dev.interfaces")}</button></td>

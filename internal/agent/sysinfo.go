@@ -48,6 +48,26 @@ type Env struct {
 	K8sNode    string `json:"k8s_node,omitempty"`
 	Hypervisor string `json:"hypervisor,omitempty"`
 	HostNet    bool   `json:"host_network"`
+	CNI        string `json:"cni,omitempty"` // Kubernetes network plugin of the node (cilium, calico …)
+}
+
+// cniDevices are interfaces the Kubernetes network plugins create, most specific first.
+var cniDevices = []struct{ prefix, cni string }{
+	{"cilium_", "cilium"}, {"lxc_health", "cilium"}, {"vxlan.calico", "calico"}, {"cali", "calico"},
+	{"flannel", "flannel"}, {"weave", "weave"}, {"antrea-", "antrea"}, {"ovn-k8s-", "ovn-kubernetes"},
+	{"kube-bridge", "kube-router"}, {"kube-ovn", "kube-ovn"}, {"cni0", "bridge"},
+}
+
+// DetectCNI names the Kubernetes network plugin from the interface names of a node.
+func DetectCNI(ifnames []string) string {
+	for _, d := range cniDevices {
+		for _, n := range ifnames {
+			if strings.HasPrefix(n, d.prefix) {
+				return d.cni
+			}
+		}
+	}
+	return ""
 }
 
 // Resources are host resources.

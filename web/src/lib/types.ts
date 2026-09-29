@@ -48,7 +48,7 @@ export interface Inventory {
   rules?: string[] | null;
   neighbors?: { ip: string; mac: string; dev: string; state: string }[] | null;
   lldp?: { iface: string; proto: string; name: string; mgmt_ip?: string; port: string; port_descr?: string }[] | null;
-  env: { kind: string; virt?: string; k8s_node?: string; hypervisor?: string };
+  env: { kind: string; virt?: string; k8s_node?: string; hypervisor?: string; cni?: string };
   resources: {
     os: string;
     os_version: string;

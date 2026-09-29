@@ -330,6 +330,19 @@
         </section>
       {/if}
 
+      {#if d.power?.length}
+        <section class="card">
+          <h3>{t("dash.power")} <span class="muted">{Math.round(d.power.reduce((n, p) => n + Number(p.labels.watts ?? 0), 0))} W</span></h3>
+          {#each d.power as p (p.agent + p.name)}
+            <div class="line small" title={p.labels.error ?? ""}>
+              <span class="dot {p.state === 'on' ? 'v-green' : p.state === 'off' ? 'v-none' : 'v-yellow'}"></span>
+              <b>{p.name}</b>
+              <span class="muted">{p.agent} · {p.labels.watts ? `${p.labels.watts} W` : "—"}</span>
+            </div>
+          {/each}
+        </section>
+      {/if}
+
       {#if d.storage.length}
         <section class="card">
           <h3>{t("dash.storage")}</h3>

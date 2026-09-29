@@ -1002,6 +1002,7 @@ type Dashboard struct {
 	Board        Board               `json:"board"`    // the dashboard shown (tile groups, notes)
 	Traffic      []IfaceTrafficView  `json:"traffic"`  // WAN/LAN throughput of routers
 	Images       []ImageUpdate       `json:"images"`   // containers with a newer image tag
+	Power        []HardwareView      `json:"power"`    // BMC readings and smart plugs
 }
 
 // HardwareView is a UPS, disk or storage pool reported by an agent.
@@ -1042,7 +1043,7 @@ type NetworkSummary struct {
 func guestDashboard(d Dashboard) Dashboard {
 	g := Dashboard{Summary: d.Summary, Groups: []TileGroup{}, Incidents: []IncidentView{}, Agents: []AgentResources{},
 		Certificates: []CertExpiry{}, Changes: []store.Change{}, Maintenance: d.Maintenance, UPS: []HardwareView{},
-		Storage: []HardwareView{}, Backups: []BackupView{}, Internet: []InternetExit{}, Traffic: []IfaceTrafficView{}, Images: []ImageUpdate{},
+		Storage: []HardwareView{}, Backups: []BackupView{}, Internet: []InternetExit{}, Traffic: []IfaceTrafficView{}, Images: []ImageUpdate{}, Power: []HardwareView{},
 		Board: d.Board}
 	for _, grp := range d.Groups {
 		tg := TileGroup{Name: grp.Name}
@@ -1087,7 +1088,7 @@ func (s *Server) apiDashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	d := Dashboard{Summary: map[string]int{}, Groups: []TileGroup{}, Agents: []AgentResources{}, Certificates: []CertExpiry{},
 		UPS: []HardwareView{}, Storage: []HardwareView{}, Backups: []BackupView{}, Internet: []InternetExit{},
-		Traffic: s.trafficViews(true), Images: s.imageCheck(ctx).Updates}
+		Traffic: s.trafficViews(true), Images: s.imageCheck(ctx).Updates, Power: []HardwareView{}}
 	s.hardwareWidgets(ctx, &d)
 	if checks, err := s.store.InternetChecks(ctx, time.Now().AddDate(0, 0, -30).UnixMilli()); err == nil {
 		d.Internet = s.internetExits(checks)
@@ -1309,6 +1310,8 @@ func (s *Server) hardwareWidgets(ctx context.Context, d *Dashboard) {
 			d.UPS = append(d.UPS, hv)
 		case discovery.KindPool, discovery.KindDisk:
 			d.Storage = append(d.Storage, hv)
+		case discovery.KindPower:
+			d.Power = append(d.Power, hv)
 		}
 	}
 }

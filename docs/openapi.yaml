@@ -2381,6 +2381,7 @@ components:
         found_new: {type: integer}
         maintenance: {type: array, items: {$ref: "#/components/schemas/Maintenance"}}
         ups: {type: array, items: {$ref: "#/components/schemas/Hardware"}}
+        power: {type: array, items: {$ref: "#/components/schemas/Hardware"}, description: "BMC (IPMI) and smart plug readings, labels.watts"}
         storage: {type: array, items: {$ref: "#/components/schemas/Hardware"}}
         backups:
           type: array

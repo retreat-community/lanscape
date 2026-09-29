@@ -644,6 +644,7 @@ export interface Dashboard {
   board?: Board;
   traffic?: IfaceTraffic[];
   images?: ImageUpdate[];
+  power?: HardwareView[];
 }
 
 export interface ImageUpdate {

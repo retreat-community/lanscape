@@ -640,4 +640,5 @@ export interface DiscoveredDevice {
   sources: string[];
   seen_by: string[];
   wifi?: string;
+  ports?: string;
 }

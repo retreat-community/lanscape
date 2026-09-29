@@ -425,6 +425,10 @@ export const en = {
   "dev.vendor": "vendor",
   "dev.sources": "found via",
   "dev.none_discovered": "No devices discovered yet: agents report ARP neighbours, mDNS and SSDP announcements.",
+  "dev.scan": "Port scan",
+  "dev.scan_start": "Start",
+  "dev.scan_started": "Scan started; results appear here when it finishes",
+  "dev.scan_hint": "popular TCP ports, 200 connections/s, up to 1024 addresses",
 } as const;
 
 export type Key = keyof typeof en;
@@ -854,6 +858,10 @@ export const ru: Record<Key, string> = {
   "dev.vendor": "производитель",
   "dev.sources": "найдено через",
   "dev.none_discovered": "Устройства ещё не найдены: агенты сообщают соседей ARP, объявления mDNS и SSDP.",
+  "dev.scan": "Сканирование портов",
+  "dev.scan_start": "Запустить",
+  "dev.scan_started": "Сканирование запущено; результаты появятся здесь по окончании",
+  "dev.scan_hint": "популярные TCP-порты, 200 соединений/с, до 1024 адресов",
 };
 
 export type Lang = "en" | "ru";

@@ -469,6 +469,7 @@ paths:
                     sources: {type: array, items: {type: string}}
                     seen_by: {type: array, items: {type: string}}
                     wifi: {type: string, description: band and signal on an OpenWrt access point}
+                    ports: {type: string, description: open TCP ports from the last scan}
   /api/v1/paths/history:
     get:
       tags: [network]
@@ -838,6 +839,29 @@ paths:
           content:
             application/json:
               schema: {type: object, properties: {agents: {type: integer}}}
+  /api/v1/discovery/scan:
+    post:
+      tags: [discovery]
+      operationId: scan
+      summary: Port scan
+      description: Starts an explicit, rate-limited TCP scan of subnets from one agent; results appear in the discovered devices.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent, cidrs]
+              properties:
+                agent: {type: string}
+                cidrs: {type: array, items: {type: string}, description: "IPv4 subnets or addresses, at most max_hosts addresses in total"}
+                ports: {type: array, items: {type: integer}, description: default popular service ports}
+                rate_per_s: {type: integer, default: 200, maximum: 2000}
+                timeout_ms: {type: integer, default: 700}
+                max_hosts: {type: integer, default: 1024}
+      responses:
+        "202": {description: started}
+        "400": {$ref: "#/components/responses/Error"}
   /api/v1/discovery/rules:
     get:
       tags: [discovery]
@@ -1663,7 +1687,7 @@ components:
             type: object
             properties:
               agent: {type: string}
-              source: {type: string, enum: [sockets, docker, k8s, proxmox, mdns, ssdp, openwrt]}
+              source: {type: string, enum: [sockets, docker, k8s, proxmox, mdns, ssdp, openwrt, scan]}
               key: {type: string}
               kind: {type: string}
               gone: {type: boolean}

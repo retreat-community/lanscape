@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/retreat-community/lanscape/internal/discovery"
 	"github.com/retreat-community/lanscape/internal/oui"
+	"github.com/retreat-community/lanscape/internal/proto"
 	"github.com/retreat-community/lanscape/internal/topo"
 )
 
@@ -25,8 +27,9 @@ type Device struct {
 	URL      string   `json:"url,omitempty"`
 	Services []string `json:"services,omitempty"`
 	Sources  []string `json:"sources"`
-	SeenBy   []string `json:"seen_by"`        // agents that have it in their neighbour table
-	Wifi     string   `json:"wifi,omitempty"` // band and signal when associated to an OpenWrt access point
+	SeenBy   []string `json:"seen_by"`         // agents that have it in their neighbour table
+	Wifi     string   `json:"wifi,omitempty"`  // band and signal when associated to an OpenWrt access point
+	Ports    string   `json:"ports,omitempty"` // open TCP ports from the last scan
 }
 
 // devices merges discovered hosts by IP address.
@@ -74,7 +77,8 @@ func (s *Server) devices(ctx context.Context) []Device {
 	}
 	if fs, err := s.store.Findings(ctx, "", ""); err == nil {
 		for _, f := range fs {
-			if f.Gone != 0 || (f.Source != discovery.SourceMDNS && f.Source != discovery.SourceSSDP && f.Source != discovery.SourceOpenWrt) {
+			if f.Gone != 0 || (f.Source != discovery.SourceMDNS && f.Source != discovery.SourceSSDP && f.Source != discovery.SourceOpenWrt &&
+				f.Source != discovery.SourceScan) {
 				continue
 			}
 			var it discovery.Item
@@ -92,8 +96,11 @@ func (s *Server) devices(ctx context.Context) []Device {
 				d := get(ip)
 				d.Sources = addUniq(d.Sources, f.Source)
 				// mDNS names are chosen by the owner; prefer them over UPnP friendly names
-				if d.Name == "" || f.Source == discovery.SourceMDNS {
+				if (d.Name == "" && f.Source != discovery.SourceScan) || f.Source == discovery.SourceMDNS {
 					d.Name = it.Name
+				}
+				if op := it.Labels["open_ports"]; op != "" {
+					d.Ports = op
 				}
 				if t := it.Labels["type"]; t != "" && t != "device" {
 					d.Type = t
@@ -187,4 +194,46 @@ func (s *Server) mergeRouterItem(it *discovery.Item, get func(string) *Device, b
 			d.Wifi = it.Labels["band"] + " GHz, " + it.Labels["signal"] + " dBm"
 		}
 	}
+}
+
+// apiScan starts an explicit port scan from one agent; results arrive as the "scan" source.
+func (s *Server) apiScan(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Agent string `json:"agent"`
+		discovery.ScanRequest
+	}
+	if !readJSON(w, r, &req) {
+		return
+	}
+	if len(req.CIDRs) == 0 {
+		writeError(w, http.StatusBadRequest, "cidrs are required")
+		return
+	}
+	a, ok := s.hub.Get(req.Agent)
+	c, online := s.hub.Conn(req.Agent)
+	if !ok || !online || !hasCap(a.Caps, proto.MsgScan) {
+		writeError(w, http.StatusBadRequest, "the agent is offline or cannot scan")
+		return
+	}
+	s.audit(r, "discovery.scan", req.Agent, "started", strings.Join(req.CIDRs, ","))
+	go func() {
+		ctx, cancel := context.WithTimeout(s.ctx, 30*time.Minute)
+		defer cancel()
+		raw, err := c.Request(ctx, proto.MsgScan, req.ScanRequest)
+		if err != nil {
+			s.log.Warn("scan failed", "agent", req.Agent, "err", err)
+			s.events.Publish("scan", map[string]any{"agent": req.Agent, "error": err.Error()})
+			return
+		}
+		var sr discovery.SourceReport
+		if json.Unmarshal(raw, &sr) != nil {
+			return
+		}
+		sr.Source = discovery.SourceScan
+		if err := s.ingestDiscovery(ctx, req.Agent, discovery.Report{At: time.Now().UnixMilli(), Sources: []discovery.SourceReport{sr}}); err != nil {
+			s.log.Warn("scan results not stored", "err", err)
+		}
+		s.events.Publish("scan", map[string]any{"agent": req.Agent, "hosts": len(sr.Items)})
+	}()
+	writeJSON(w, http.StatusAccepted, map[string]string{"status": "started"})
 }

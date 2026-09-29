@@ -28,6 +28,20 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 			return monitor.Run(ctx, s), nil
 		})
 	}
+	if o.mode != "respond-only" {
+		// explicit, rate-limited port scans of subnets named by an administrator
+		a.Handle(proto.MsgScan, func(ctx context.Context, env proto.Envelope) (any, error) {
+			var req discovery.ScanRequest
+			if err := json.Unmarshal(env.Data, &req); err != nil {
+				return nil, err
+			}
+			items, err := discovery.Scan(ctx, req)
+			if err != nil && len(items) == 0 {
+				return nil, err
+			}
+			return discovery.SourceReport{Source: discovery.SourceScan, Items: items}, nil
+		})
+	}
 	cfg := discovery.Config{DockerSocket: o.dockerSocket, Kubeconfig: o.kubeconfig, Probe: !o.noProbe,
 		Interval: o.discoverInterval, Signatures: cli.SplitList(o.signatures),
 		Proxmox: discovery.ProxmoxConfig{URL: o.proxmoxURL, Token: o.proxmoxToken, Insecure: o.proxmoxInsecure}}

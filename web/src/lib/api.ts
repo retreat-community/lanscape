@@ -112,6 +112,7 @@ export const api = {
     call<undefined>("PUT", `/segments/${enc(id)}`, { name, expected_mbps: expected }),
   ipam: () => call<IPAM[]>("GET", "/ipam"),
   discoveredDevices: () => call<DiscoveredDevice[]>("GET", "/devices/discovered"),
+  scan: (agent: string, cidrs: string[]) => call<{ status: string }>("POST", "/discovery/scan", { agent, cidrs }),
   anomalies: () => call<Anomaly[]>("GET", "/anomalies"),
   map: () => call<MapGraph>("GET", "/map"),
   pathHistory: (src: string, dst: string, seg = "") =>

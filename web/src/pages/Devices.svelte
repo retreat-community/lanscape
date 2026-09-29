@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { api } from "../lib/api";
   import { bytes, duration, when } from "../lib/format";
-  import { t, toast, ui } from "../lib/state.svelte";
+  import { can, t, toast, ui } from "../lib/state.svelte";
   import type { Agent, DiscoveredDevice, IPAM } from "../lib/types";
 
   let agents = $state<Agent[]>([]);
@@ -10,6 +10,16 @@
   let open = $state<string | null>(null);
   let tab = $state<"agents" | "discovered" | "ipam">("agents");
   let found = $state<DiscoveredDevice[]>([]);
+  let scan = $state({ agent: "", cidrs: "" });
+
+  async function startScan(): Promise<void> {
+    try {
+      await api.scan(scan.agent, scan.cidrs.split(/[\s,]+/).filter(Boolean));
+      toast(t("dev.scan_started"));
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e));
+    }
+  }
   const foundShown = $derived(
     found.filter((d) => !q || [d.ip, d.mac, d.name, d.vendor, d.model].some((f) => f?.toLowerCase().includes(q.toLowerCase()))),
   );
@@ -110,6 +120,17 @@
       </table>
     </section>
   {:else if tab === "discovered"}
+    {#if can("admin")}
+      <section class="card row">
+        <b>{t("dev.scan")}</b>
+        <select bind:value={scan.agent}>
+          {#each agents.filter((a) => a.online && a.kind !== "lite") as a (a.id)}<option value={a.id}>{a.name}</option>{/each}
+        </select>
+        <input bind:value={scan.cidrs} placeholder="192.168.1.0/24" />
+        <button disabled={!scan.agent || !scan.cidrs} onclick={() => void startScan()}>{t("dev.scan_start")}</button>
+        <span class="muted small">{t("dev.scan_hint")}</span>
+      </section>
+    {/if}
     <section class="card">
       {#if foundShown.length === 0}
         <p class="muted">{t("dev.none_discovered")}</p>
@@ -126,7 +147,10 @@
                 <td>{d.type}</td>
                 <td class="small">{d.mac ?? ""}</td>
                 <td class="small">{d.vendor ?? ""}</td>
-                <td class="small">{d.sources.join(", ")}{d.seen_by.length ? ` · ${d.seen_by.join(", ")}` : ""}{d.wifi ? ` · ${d.wifi}` : ""}</td>
+                <td class="small">
+                  {d.sources.join(", ")}{d.seen_by.length ? ` · ${d.seen_by.join(", ")}` : ""}{d.wifi ? ` · ${d.wifi}` : ""}
+                  {#if d.ports}<div class="muted">TCP {d.ports}</div>{/if}
+                </td>
               </tr>
             {/each}
           </tbody>

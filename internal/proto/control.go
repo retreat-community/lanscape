@@ -15,6 +15,7 @@ const (
 	MsgTest         = "test"
 	MsgTestResult   = "test_result"
 	MsgDiscovery    = "discovery"
+	MsgScan         = "scan"
 	MsgCheck        = "check"
 	MsgCheckResult  = "check_result"
 	MsgAction       = "action"

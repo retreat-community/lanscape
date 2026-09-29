@@ -1,0 +1,19 @@
+# Lanscape server with Docker Compose:
+#   LANSCAPE_ADMIN_PASSWORD=... LANSCAPE_GATEWAY_HOSTS=lanscape.lan,192.168.1.10 docker compose -f server.yaml up -d
+services:
+  lanscape:
+    image: ghcr.io/retreat-community/lanscape:${LANSCAPE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+      - "47701:47701"
+    environment:
+      LANSCAPE_ADMIN_PASSWORD: ${LANSCAPE_ADMIN_PASSWORD:-}
+      LANSCAPE_GATEWAY_HOSTS: ${LANSCAPE_GATEWAY_HOSTS:-}
+      LANSCAPE_MINI_TOKEN: ${LANSCAPE_MINI_TOKEN:-}
+    volumes:
+      - lanscape-data:/data
+
+volumes:
+  lanscape-data:

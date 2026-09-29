@@ -1,0 +1,23 @@
+# Lanscape agent for a NAS or any Docker host (TerraMaster, Synology, QNAP, Unraid, TrueNAS):
+#   LANSCAPE_SERVER=lanscape.lan:8443 LANSCAPE_TOKEN=lsr_... LANSCAPE_CA_FINGERPRINT=... docker compose -f agent-nas.yaml up -d
+services:
+  lanscape-agent:
+    image: ghcr.io/retreat-community/lanscape-agent:${LANSCAPE_TAG:-latest}
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    cap_add: [NET_RAW, NET_ADMIN]
+    environment:
+      LANSCAPE_SERVER: ${LANSCAPE_SERVER:?set LANSCAPE_SERVER}
+      LANSCAPE_TOKEN: ${LANSCAPE_TOKEN:-}
+      LANSCAPE_CA_FINGERPRINT: ${LANSCAPE_CA_FINGERPRINT:-}
+      LANSCAPE_NAME: ${LANSCAPE_NAME:-}
+    volumes:
+      - lanscape-agent:/var/lib/lanscape-agent
+      # optional: container discovery (read-only)
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # optional: disks of the host for the resources widget
+      - /:/host:ro
+
+volumes:
+  lanscape-agent:

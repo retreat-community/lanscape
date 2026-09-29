@@ -267,15 +267,14 @@ Deviation agreed with the owner: §16 asks for MIT or Apache-2.0; the project is
 
 ## §17. Stages
 
-| Stage | Release |
+| Stage | Release (tag, commit) |
 |---|---|
-| 0 Mini | v0.1.0 |
-| 1 MVP network Full (server + agent, Mini agents, inventory, matrix, check all) | v0.2.0 |
-| 2 MVP services (sockets, Docker, k8s discovery; HTTP/TCP/ICMP/TLS monitors; incidents, Telegram, webhook; tile dashboard) | v0.3.0 |
-| 3 Map (graph, nesting, services, path history) | v0.4.0 |
-| 4 Kubernetes and hypervisors (Helm, two DaemonSet modes, Proxmox, dependencies and suppression) | v0.5.0 |
-| 5 OpenWrt (packages, LuCI, leases and Wi-Fi clients, 🟣) | v0.6.0 |
-| 6 Extensions (mDNS/SSDP/scanner, fingerprints, status page, heartbeat, widgets, PWA, imports, macOS/Windows/FreeBSD) | v1.0.0 |
+| 0 Mini | v0.1.0 `cba3e94` |
+| 1 MVP network Full (server + agent, Mini agents, inventory, matrix, check all) | v0.2.0 `2cdb810` |
+| 2 MVP services (sockets, Docker, k8s discovery; HTTP/TCP/ICMP/TLS monitors; incidents, Telegram, webhook; tile dashboard) | v0.3.0 `663c365` |
+| 3 Map (graph, nesting, services, path history) and 4 Kubernetes and hypervisors (Helm, two DaemonSet modes, Proxmox, dependencies and suppression) | v0.4.0 `79e533c` |
+| 5 OpenWrt (packages, LuCI, leases and Wi-Fi clients, 🟣) with the first extensions (mDNS/SSDP/scanner, status pages, widgets, imports, web push) | v0.5.0 `8717dfb` |
+| 6 Extensions completed, OIDC, PostgreSQL, GitOps, actions, macOS/Windows/FreeBSD packaging, this document | v1.0.0 |
 
 ## §18. Acceptance criteria
 

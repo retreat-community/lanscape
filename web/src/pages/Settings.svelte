@@ -85,6 +85,34 @@
       <label class="field">{t("set.mini_token")}<input type="password" autocomplete="off" bind:value={settings.mini_token} /></label>
       <label class="field">{t("set.public_url")}<input bind:value={settings.public_url} placeholder="https://lanscape.example.com" /></label>
       <label class="field">{t("set.webhooks")}<textarea rows="3" bind:value={webhooks}></textarea></label>
+      <label class="field">{t("set.aggregates")}<input type="number" min="0" bind:value={settings.aggregate_days} /></label>
+      <h3>{t("set.internet")}</h3>
+      <p class="muted small">{t("set.internet_hint")}</p>
+      <div class="row wrap">
+        {#each [{ id: "server", name: t("mon.server") }, ...agents.filter((a) => a.kind !== "lite")] as p (p.id)}
+          <label>
+            <input
+              type="checkbox"
+              checked={(settings.internet_points ?? ["server"]).includes(p.id)}
+              onchange={(e) => {
+                const cur = (settings!.internet_points ?? ["server"]).filter((x) => x !== p.id);
+                settings!.internet_points = (e.target as HTMLInputElement).checked ? [...cur, p.id] : cur;
+              }}
+            />
+            {p.name}
+          </label>
+        {/each}
+      </div>
+      <label class="field">{t("set.internet_every")}<input type="number" min="0" max="1440" bind:value={settings.internet_every_min} /></label>
+      <label class="field">{t("set.internet_speed_every")}<input type="number" min="0" max="168" bind:value={settings.internet_speed_every_h} /></label>
+      <label class="field">{t("set.internet_ip_url")}<input bind:value={settings.internet_ip_url} placeholder="https://1.1.1.1/cdn-cgi/trace" /></label>
+      <label class="field"
+        >{t("set.internet_download_url")}<input bind:value={settings.internet_download_url} placeholder="https://speed.cloudflare.com/__down?bytes=50000000" /></label
+      >
+      <div class="row">
+        <button onclick={() => act(async () => { await api.runInternet(false); toast(t("set.internet_started")); })}>{t("set.internet_run")}</button>
+        <button onclick={() => act(async () => { await api.runInternet(true); toast(t("set.internet_started")); })}>{t("set.internet_run_speed")}</button>
+      </div>
       <button
         class="primary"
         onclick={() =>

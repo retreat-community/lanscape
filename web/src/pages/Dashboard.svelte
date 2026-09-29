@@ -170,6 +170,24 @@
         {/if}
       </section>
 
+      {#if d.internet?.length}
+        <section class="card">
+          <h3>{t("dash.internet")}</h3>
+          {#each d.internet as e (e.point + (e.dev ?? ""))}
+            {@const ongoing = e.outages.some((o) => !o.to)}
+            <div class="small">
+              <span class="dot {e.last.ok ? 'v-green' : 'v-red'}"></span>
+              <b>{e.name}</b>{e.dev ? ` ${e.dev}` : ""}
+              {#if e.last.public_ip}<span class="muted"> · {e.last.public_ip}</span>{/if}
+              {#if e.speeds.length}<span> · ↓ {Math.round(e.speeds[e.speeds.length - 1].mbps)} Mbit/s</span>{/if}
+              {#if e.outages.length}
+                <span class:warn={ongoing}> · {t("dash.outages", { n: e.outages.length })}</span>
+              {/if}
+            </div>
+          {/each}
+        </section>
+      {/if}
+
       <section class="card">
         <h3>{t("dash.resources")}</h3>
         {#each d.agents as a (a.id)}

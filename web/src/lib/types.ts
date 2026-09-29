@@ -313,6 +313,36 @@ export interface Settings {
   webhooks: string[] | null;
   retention_days: number;
   public_url?: string;
+  aggregate_days?: number;
+  internet_points?: string[] | null;
+  internet_every_min?: number;
+  internet_speed_every_h?: number;
+  internet_ip_url?: string;
+  internet_download_url?: string;
+}
+
+export interface InternetCheck {
+  ts: number;
+  point: string;
+  dev?: string;
+  gateway?: string;
+  ok: boolean;
+  error?: string;
+  public_ip?: string;
+  latency_ms: number;
+  down_mbps: number;
+}
+
+export interface InternetExit {
+  point: string;
+  name: string;
+  dev?: string;
+  gateway?: string;
+  last: InternetCheck;
+  speeds: { ts: number; mbps: number }[];
+  outages: { from: number; to: number; error: string }[];
+  checks: number;
+  failures: number;
 }
 
 export interface Schedule {
@@ -607,6 +637,7 @@ export interface Dashboard {
   ups: HardwareView[];
   storage: HardwareView[];
   backups: { monitor_id: number; name: string; status: string; last_push: number }[];
+  internet?: InternetExit[];
 }
 
 export interface HardwareView {

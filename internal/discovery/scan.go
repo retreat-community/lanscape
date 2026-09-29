@@ -31,6 +31,50 @@ type ScanRequest struct {
 	MaxHosts  int      `json:"max_hosts,omitempty"`  // refused above (default 1024)
 }
 
+// ScanAllowed reports whether every requested subnet lies inside one of the subnets the
+// administrator allowed on the agent (--scan-allow). An empty allow list forbids scanning.
+func ScanAllowed(allow []netip.Prefix, cidrs []string) error {
+	if len(allow) == 0 {
+		return errors.New("active scanning is disabled on this agent (--scan-allow)")
+	}
+	for _, c := range cidrs {
+		c = strings.TrimSpace(c)
+		p, err := netip.ParsePrefix(c)
+		if err != nil {
+			a, aerr := netip.ParseAddr(c)
+			if aerr != nil {
+				return fmt.Errorf("scan: %q is not a subnet", c)
+			}
+			p = netip.PrefixFrom(a, a.BitLen())
+		}
+		p = p.Masked()
+		ok := false
+		for _, a := range allow {
+			if a.Bits() <= p.Bits() && a.Contains(p.Addr()) {
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			return fmt.Errorf("scanning %s is not allowed on this agent (--scan-allow)", c)
+		}
+	}
+	return nil
+}
+
+// ParsePrefixes parses a list of subnets.
+func ParsePrefixes(list []string) ([]netip.Prefix, error) {
+	var out []netip.Prefix
+	for _, c := range list {
+		p, err := netip.ParsePrefix(strings.TrimSpace(c))
+		if err != nil {
+			return nil, fmt.Errorf("%q is not a subnet: %w", c, err)
+		}
+		out = append(out, p.Masked())
+	}
+	return out, nil
+}
+
 // Scan probes TCP ports on every address of the given subnets at a limited rate and reads a
 // short banner from open ports. Only explicit subnets are scanned (§8.1).
 func Scan(ctx context.Context, req ScanRequest) ([]Item, error) {

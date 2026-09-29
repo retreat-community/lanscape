@@ -34,11 +34,18 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 			return monitor.Run(ctx, s), nil
 		})
 	}
-	if o.mode != "respond-only" {
-		// explicit, rate-limited port scans of subnets named by an administrator
+	allow, err := discovery.ParsePrefixes(cli.SplitList(o.scanAllow))
+	if err != nil {
+		log.Error("active scanning disabled", "err", err)
+	}
+	if o.mode != "respond-only" && len(allow) > 0 {
+		// explicit, rate-limited port scans, only inside the subnets allowed on this agent
 		a.Handle(proto.MsgScan, func(ctx context.Context, env proto.Envelope) (any, error) {
 			var req discovery.ScanRequest
 			if err := json.Unmarshal(env.Data, &req); err != nil {
+				return nil, err
+			}
+			if err := discovery.ScanAllowed(allow, req.CIDRs); err != nil {
 				return nil, err
 			}
 			items, err := discovery.Scan(ctx, req)

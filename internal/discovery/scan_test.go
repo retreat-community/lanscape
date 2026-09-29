@@ -42,3 +42,22 @@ func TestScan(t *testing.T) {
 		t.Error("types")
 	}
 }
+
+func TestScanAllowed(t *testing.T) {
+	allow, err := ParsePrefixes([]string{"192.168.1.0/24", " 10.0.0.0/8"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for req, ok := range map[string]bool{"192.168.1.0/24": true, "192.168.1.128/25": true, "192.168.1.7": true, "10.20.0.0/16": true,
+		"192.168.0.0/16": false, "192.168.2.1": false, "0.0.0.0/0": false, "bogus": false} {
+		if err := ScanAllowed(allow, []string{req}); (err == nil) != ok {
+			t.Errorf("%s: %v", req, err)
+		}
+	}
+	if ScanAllowed(nil, []string{"192.168.1.0/24"}) == nil {
+		t.Error("scanning allowed without an allow list")
+	}
+	if _, err := ParsePrefixes([]string{"x"}); err == nil {
+		t.Error("bad prefix accepted")
+	}
+}

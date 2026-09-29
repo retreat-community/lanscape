@@ -37,7 +37,7 @@ type options struct {
 	adguardPassword, technitiumURL, technitiumToken, nut, smart, zfs                            string
 	discoverInterval                                                                            time.Duration
 	noProbe, proxmoxInsecure                                                                    bool
-	localSocket, openwrtParts, actions                                                          string
+	localSocket, openwrtParts, actions, scanAllow                                               string
 }
 
 func parse(args []string) (*flag.FlagSet, *options, error) {
@@ -77,6 +77,7 @@ func parse(args []string) (*flag.FlagSet, *options, error) {
 	fs.BoolVar(&o.noProbe, "no-probe", false, "do not fingerprint discovered HTTP endpoints")
 	fs.StringVar(&o.signatures, "signatures", "", "extra application signature files (YAML, comma-separated)")
 	fs.StringVar(&o.openwrtParts, "openwrt-parts", "", "OpenWrt source: leases,wifi,forwards,sqm (default all)")
+	fs.StringVar(&o.scanAllow, "scan-allow", "", "subnets the server may ask this agent to port-scan, e.g. 192.168.1.0/24 (default: none, scanning disabled)")
 	fs.StringVar(&o.actions, "actions", "wol", `Actions the server may request: wol, restart (containers, workloads, guests); "none" disables`)
 	fs.StringVar(&o.localSocket, "local-socket", defaultSocket(), `Unix socket for local tools ("lanscape-agent status", LuCI); "" disables`)
 	fs.StringVar(&o.logLevel, "log-level", "info", "debug, info, warn or error")

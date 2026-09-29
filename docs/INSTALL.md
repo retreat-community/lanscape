@@ -254,6 +254,10 @@ paths) against the built-in library of application signatures; `--no-probe` turn
 `--signatures my-apps.yaml` adds your own signatures in the format of
 [`internal/fingerprint/signatures.yaml`](../internal/fingerprint/signatures.yaml).
 
+**Active scanning** (Devices → Discovered → Scan) is off by default: an agent only port-scans
+subnets listed in `--scan-allow 192.168.1.0/24,10.0.0.0/24`, at the rate limit given in the
+request (200 connections/s by default).
+
 Found services wait in the queue until you add, ignore or hide them. Rules in
 **Settings → Discovery** triage new cards automatically, for example "every Ingress with TLS →
 add with an HTTPS monitor and a dashboard tile".

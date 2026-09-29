@@ -128,3 +128,12 @@ func (h *hookReceiver) all() [][]byte {
 	defer h.mu.Unlock()
 	return append([][]byte(nil), h.bodies...)
 }
+
+type httpError struct {
+	code int
+	body string
+}
+
+func (e *httpError) Error() string { return fmt.Sprintf("HTTP %d: %s", e.code, e.body) }
+
+func decode(r io.Reader, v any) error { return json.NewDecoder(r).Decode(v) }

@@ -19,6 +19,13 @@ iptables -t nat -L > /dev/null 2>&1 || update-alternatives --set iptables /usr/s
 modprobe 8021q 2> /dev/null || true
 corepack enable > /dev/null 2>&1 || npm install -g pnpm@9 > /dev/null
 export E2E_OUT=$PWD/test/e2e/out
+# Full binaries: use prebuilt ones when given, otherwise build them (the web UI is embedded
+# only when internal/server/webdist was built before)
+if [ -z "${LANSCAPE_BIN:-}" ] || [ ! -x "${LANSCAPE_BIN}/lanscape" ]; then
+    export LANSCAPE_BIN=$PWD/test/e2e/out/bin
+    mkdir -p "$LANSCAPE_BIN"
+    CGO_ENABLED=0 go build -o "$LANSCAPE_BIN/" ./cmd/lanscape ./cmd/lanscape-agent
+fi
 mkdir -p "$E2E_OUT" test/e2e/screenshots
 (cd test/ui && pnpm install --frozen-lockfile > /dev/null)
 status=0
@@ -39,7 +46,7 @@ case $suite in
 mini | all) run_suite mini TestMini mini.spec.ts "test/e2e/mini.sh stop" ;;
 esac
 case $suite in
-full | all) [ -f test/e2e/full.sh ] && run_suite full 'TestFull' full.spec.ts "test/e2e/full.sh stop" ;;
+full | all) run_suite full TestFull full.spec.ts "test/e2e/full.sh stop" ;;
 esac
 chmod -R a+rwX test/e2e/out test/e2e/screenshots 2> /dev/null || true
 exit $status

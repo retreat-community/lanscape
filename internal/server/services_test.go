@@ -322,3 +322,124 @@ func TestCombine(t *testing.T) {
 		t.Errorf("message: %+v", got)
 	}
 }
+
+func TestHeartbeatCompositeSuppression(t *testing.T) {
+	s, ts := newTestServer(t)
+	c := client(t)
+	do(t, c, "POST", ts.URL+"/api/v1/auth/login", credentials{Username: "admin", Password: "correct-horse-battery"}, nil)
+	var sent []string
+	var mu sync.Mutex
+	s.uptime.sendHook = func(_ store.Channel, m notify.Message) {
+		mu.Lock()
+		sent = append(sent, m.Event+" "+m.Monitor)
+		mu.Unlock()
+	}
+	do(t, c, "POST", ts.URL+"/api/v1/channels", map[string]any{"type": "webhook", "enabled": true,
+		"config": map[string]any{"url": "http://127.0.0.1:1/"}}, nil)
+
+	// heartbeat
+	var hb store.Monitor
+	if code := do(t, c, "POST", ts.URL+"/api/v1/monitors", map[string]any{"name": "backup", "retries": 1, "interval_s": 3600,
+		"spec": map[string]any{"type": "heartbeat"}}, &hb); code != 201 || !strings.HasPrefix(hb.PushToken, "lsh_") {
+		t.Fatalf("heartbeat monitor: %d %+v", code, hb)
+	}
+	run := func(id int64) store.Monitor {
+		s.uptime.mu.Lock()
+		st := s.uptime.mons[id]
+		s.uptime.mu.Unlock()
+		s.uptime.execute(context.Background(), st)
+		m, _ := s.uptime.get(id)
+		return m
+	}
+	if m := run(hb.ID); m.Status != StatusPending {
+		t.Errorf("before the first push: %s %s", m.Status, m.LastMessage)
+	}
+	if code := do(t, c, "GET", ts.URL+"/api/push/"+hb.PushToken+"?msg=ok&ping=12", nil, nil); code != 200 {
+		t.Fatalf("push: %d", code)
+	}
+	if code := do(t, c, "GET", ts.URL+"/api/push/lsh_wrong", nil, nil); code != 404 {
+		t.Errorf("wrong token: %d", code)
+	}
+	if m := run(hb.ID); m.Status != monitor.Up || m.LastLatency != 12 {
+		t.Errorf("after push: %+v", m)
+	}
+	do(t, c, "POST", ts.URL+"/api/push/"+hb.PushToken+"?status=down&msg=disk+full", nil, nil)
+	if m := run(hb.ID); m.Status != monitor.Down || m.LastMessage != "disk full" {
+		t.Errorf("failed job: %+v", m)
+	}
+	// silence: pretend the last push was long ago
+	s.uptime.mu.Lock()
+	s.uptime.mons[hb.ID].m.LastPush = time.Now().Add(-3 * time.Hour).UnixMilli()
+	s.uptime.mons[hb.ID].pushDown = false
+	s.uptime.mu.Unlock()
+	if m := run(hb.ID); m.Status != monitor.Down || !strings.Contains(m.LastMessage, "no heartbeat for") {
+		t.Errorf("silence: %+v", m)
+	}
+
+	// a router and a service behind it: the service incident is suppressed while the router is down
+	var up, routerBack atomic.Bool
+	up.Store(true)
+	app := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !up.Load() && (!routerBack.Load() || r.URL.Path != "/router") {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+	}))
+	defer app.Close()
+	var router, svc store.Monitor
+	do(t, c, "POST", ts.URL+"/api/v1/monitors", map[string]any{"name": "router", "retries": 1,
+		"spec": map[string]any{"type": "http", "target": app.URL + "/router"}}, &router)
+	if code := do(t, c, "POST", ts.URL+"/api/v1/monitors", map[string]any{"name": "nas", "retries": 1, "parents": []int64{router.ID},
+		"spec": map[string]any{"type": "http", "target": app.URL + "/nas"}}, &svc); code != 201 {
+		t.Fatalf("child: %d", code)
+	}
+	if code := do(t, c, "POST", ts.URL+"/api/v1/monitors", map[string]any{"name": "loop", "parents": []int64{999},
+		"spec": map[string]any{"type": "http", "target": app.URL}}, nil); code != 400 {
+		t.Errorf("unknown parent accepted: %d", code)
+	}
+	var comp store.Monitor
+	if code := do(t, c, "POST", ts.URL+"/api/v1/monitors", map[string]any{"name": "storage", "retries": 1,
+		"spec": map[string]any{"type": "composite", "expr": "#" + strconv.FormatInt(router.ID, 10) + " && #" + strconv.FormatInt(svc.ID, 10)}},
+		&comp); code != 201 {
+		t.Fatalf("composite: %d", code)
+	}
+	run(router.ID)
+	run(svc.ID)
+	if m := run(comp.ID); m.Status != monitor.Up {
+		t.Errorf("composite up: %+v", m)
+	}
+	up.Store(false)
+	run(router.ID)
+	run(svc.ID)
+	if m := run(comp.ID); m.Status != monitor.Down || !strings.Contains(m.LastMessage, "router") {
+		t.Errorf("composite down: %+v", m)
+	}
+	var incs []IncidentView
+	do(t, c, "GET", ts.URL+"/api/v1/incidents?open=1", nil, &incs)
+	var child *IncidentView
+	for i := range incs {
+		if incs[i].MonitorID == svc.ID {
+			child = &incs[i]
+		}
+	}
+	if child == nil || !child.Suppressed || child.ParentID == 0 || !strings.Contains(child.Cause, "router is down") {
+		t.Fatalf("child incident: %+v", incs)
+	}
+	time.Sleep(100 * time.Millisecond)
+	mu.Lock()
+	joined := strings.Join(sent, ";")
+	mu.Unlock()
+	if !strings.Contains(joined, "incident.opened router") || strings.Contains(joined, "incident.opened nas") {
+		t.Errorf("notifications: %v", sent)
+	}
+	// the router recovers, the nas stays down: its incident is announced now
+	routerBack.Store(true)
+	run(router.ID)
+	run(svc.ID)
+	time.Sleep(100 * time.Millisecond)
+	mu.Lock()
+	joined = strings.Join(sent, ";")
+	mu.Unlock()
+	if !strings.Contains(joined, "incident.resolved router") || !strings.Contains(joined, "incident.opened nas") {
+		t.Errorf("after the parent recovered: %v", sent)
+	}
+}

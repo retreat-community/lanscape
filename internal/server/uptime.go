@@ -34,6 +34,10 @@ type monState struct {
 	next     time.Time
 	incident int64 // open incident id
 	notified bool  // the open incident was announced
+	// last heartbeat push: status reported by the job ("down" when it failed)
+	pushDown bool
+	pushMsg  string
+	pushMS   float64
 }
 
 // uptime schedules monitors, opens and closes incidents and sends notifications.
@@ -343,8 +347,119 @@ func (u *uptime) execute(ctx context.Context, st *monState) {
 	u.mu.Lock()
 	m, spec := st.m, st.spec
 	u.mu.Unlock()
-	r := combine(u.observe(ctx, spec, m.Points), m.MinFailing)
+	var r monitor.Result
+	if spec.ServerSide() {
+		r = u.evaluate(st)
+	} else {
+		r = combine(u.observe(ctx, spec, m.Points), m.MinFailing)
+	}
 	u.record(ctx, st, r)
+}
+
+// evaluate computes heartbeat and composite monitors from state kept by the server.
+func (u *uptime) evaluate(st *monState) monitor.Result {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	now := time.Now()
+	res := monitor.Result{At: now.UnixMilli()}
+	switch st.spec.Type {
+	case monitor.TypeHeartbeat:
+		interval := time.Duration(max(st.m.IntervalS, minIntervalS)) * time.Second
+		grace := time.Duration(st.spec.GraceS) * time.Second
+		if grace <= 0 {
+			grace = min(interval/2, 5*time.Minute)
+		}
+		last := time.UnixMilli(st.m.LastPush)
+		switch {
+		case st.m.LastPush == 0 && now.Sub(time.UnixMilli(st.m.CreatedAt)) < interval+grace:
+			res.Status, res.Message = statusUnknown, "waiting for the first heartbeat"
+		case st.m.LastPush == 0:
+			res.Status, res.Message = monitor.Down, "no heartbeat received"
+		case now.Sub(last) > interval+grace:
+			res.Status = monitor.Down
+			res.Message = "no heartbeat for " + now.Sub(last).Round(time.Second).String()
+		case st.pushDown:
+			res.Status, res.Message = monitor.Down, st.pushMsg
+		default:
+			res.Status, res.Message, res.LatencyMS = monitor.Up, st.pushMsg, st.pushMS
+		}
+	case monitor.TypeComposite:
+		e, err := monitor.ParseExpr(st.spec.Expr)
+		if err != nil {
+			res.Status, res.Message = monitor.Down, err.Error()
+			return res
+		}
+		var downs []string
+		v, known := e.Eval(func(id int64) (bool, bool) {
+			o, ok := u.mons[id]
+			if !ok || !o.m.Enabled {
+				return false, false
+			}
+			switch o.m.Status {
+			case monitor.Up, monitor.Degraded:
+				return true, true
+			case monitor.Down:
+				downs = append(downs, o.m.Name)
+				return false, true
+			}
+			return false, false
+		})
+		switch {
+		case !known:
+			res.Status, res.Message = statusUnknown, "some monitors have no state yet"
+		case v:
+			res.Status = monitor.Up
+		default:
+			res.Status, res.Message = monitor.Down, "down: "+strings.Join(downs, ", ")
+		}
+	}
+	return res
+}
+
+// push records a heartbeat and evaluates the monitor at once.
+func (u *uptime) push(ctx context.Context, token, status, msg string, pingMS float64) bool {
+	u.mu.Lock()
+	var st *monState
+	for _, x := range u.mons {
+		if x.m.PushToken != "" && x.m.PushToken == token && x.spec.Type == monitor.TypeHeartbeat {
+			st = x
+		}
+	}
+	if st == nil {
+		u.mu.Unlock()
+		return false
+	}
+	now := time.Now()
+	st.m.LastPush = now.UnixMilli()
+	st.pushDown = status == "down" || status == "fail" || status == "error"
+	st.pushMsg, st.pushMS = msg, pingMS
+	st.next = now // the scheduler evaluates it on its next tick
+	id := st.m.ID
+	u.mu.Unlock()
+	if err := u.s.store.SetMonitorPush(ctx, id, now.UnixMilli()); err != nil {
+		u.s.log.Warn("cannot store heartbeat", "monitor", id, "err", err)
+	}
+	return true
+}
+
+// parentDown explains why a failure of st is a consequence of another failure: a parent
+// monitor with an open incident, or the agent the service runs on being offline (§9.2).
+func (u *uptime) parentDown(ctx context.Context, m store.Monitor) (parentIncident int64, why string) {
+	u.mu.Lock()
+	for _, p := range m.Parents {
+		if ps, ok := u.mons[p]; ok && ps.incident != 0 {
+			id, name := ps.incident, ps.m.Name
+			u.mu.Unlock()
+			return id, name + " is down"
+		}
+	}
+	u.mu.Unlock()
+	for _, a := range u.s.serviceAgents(ctx, m.ServiceID) {
+		if st, ok := u.s.hub.Get(a); ok && !st.Online {
+			return 0, "agent " + st.Name + " is offline"
+		}
+	}
+	return 0, ""
 }
 
 // record stores a result and drives the incident state machine.
@@ -411,6 +526,9 @@ func (u *uptime) record(ctx context.Context, st *monState, r monitor.Result) {
 	switch {
 	case open:
 		inc := store.Incident{MonitorID: m.ID, Opened: now.UnixMilli(), Cause: r.Message, Maintenance: inMaint}
+		if pid, why := u.parentDown(ctx, m); why != "" {
+			inc.ParentID, inc.Suppressed, inc.Cause = pid, true, why+"; "+r.Message
+		}
 		id, err := u.s.store.OpenIncident(ctx, inc)
 		if err != nil {
 			u.s.log.Warn("cannot open incident", "monitor", m.ID, "err", err)
@@ -421,13 +539,25 @@ func (u *uptime) record(ctx context.Context, st *monState, r monitor.Result) {
 		u.mu.Unlock()
 		u.s.log.Info("incident opened", "monitor", m.Name, "incident", id, "cause", r.Message)
 		u.s.events.Publish("incident", map[string]any{"id": id, "monitor_id": m.ID, "state": "opened"})
-		if !inMaint {
+		if !inMaint && !inc.Suppressed {
 			u.dispatch(ctx, notify.Message{Event: "incident.opened", Severity: notify.SevDown, Title: m.Name + " is down",
 				Text: r.Message, IncidentID: id, MonitorID: m.ID, Monitor: m.Name, URL: u.link(ctx, m.ID)})
 			_ = u.s.store.SetIncidentNotified(ctx, id, now.UnixMilli())
 			u.mu.Lock()
 			st.notified = true
 			u.mu.Unlock()
+		}
+	case incident != 0 && r.Status == monitor.Down && !wasNotified && !inMaint:
+		// a suppressed incident whose parent recovered while this monitor is still down
+		if _, why := u.parentDown(ctx, m); why == "" {
+			_ = u.s.store.Unsuppress(ctx, incident)
+			u.dispatch(ctx, notify.Message{Event: "incident.opened", Severity: notify.SevDown, Title: m.Name + " is down",
+				Text: r.Message, IncidentID: incident, MonitorID: m.ID, Monitor: m.Name, URL: u.link(ctx, m.ID)})
+			_ = u.s.store.SetIncidentNotified(ctx, incident, now.UnixMilli())
+			u.mu.Lock()
+			st.notified = true
+			u.mu.Unlock()
+			u.s.events.Publish("incident", map[string]any{"id": incident, "monitor_id": m.ID, "state": "opened"})
 		}
 	case closeInc:
 		if err := u.s.store.CloseIncident(ctx, incident, now.UnixMilli()); err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"sort"
@@ -18,6 +19,10 @@ import (
 )
 
 func (s *Server) servicesRoutes(mux *http.ServeMux, v func(string, http.HandlerFunc) http.HandlerFunc) {
+	// heartbeat push URLs are authenticated by their secret token (cron jobs, backup scripts)
+	mux.HandleFunc("GET /api/push/{token}", s.apiPush)
+	mux.HandleFunc("POST /api/push/{token}", s.apiPush)
+
 	mux.HandleFunc("GET /api/v1/found", v(RoleViewer, s.apiFound))
 	mux.HandleFunc("POST /api/v1/found/add", v(RoleOperator, s.apiFoundAdd))
 	mux.HandleFunc("POST /api/v1/found/state", v(RoleOperator, s.apiFoundState))
@@ -447,6 +452,42 @@ type monitorReq struct {
 	MinFailing int             `json:"min_failing"`
 	SLA        float64         `json:"sla"`
 	Enabled    *bool           `json:"enabled"`
+	Parents    []int64         `json:"parents"`
+}
+
+// checkRefs validates parents and composite operands (existing monitors, not the monitor itself).
+func (s *Server) checkRefs(self int64, spec monitor.Spec, parents []int64) error {
+	ids := append([]int64(nil), parents...)
+	if spec.Type == monitor.TypeComposite {
+		e, err := monitor.ParseExpr(spec.Expr)
+		if err != nil {
+			return err
+		}
+		ids = append(ids, e.IDs()...)
+	}
+	for _, id := range ids {
+		if id == self && self != 0 {
+			return errors.New("a monitor cannot depend on itself")
+		}
+		if _, ok := s.uptime.get(id); !ok {
+			return fmt.Errorf("unknown monitor #%d", id)
+		}
+	}
+	return nil
+}
+
+func (s *Server) apiPush(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	ping, _ := strconv.ParseFloat(q.Get("ping"), 64)
+	msg := q.Get("msg")
+	if len(msg) > 500 {
+		msg = msg[:500]
+	}
+	if !s.uptime.push(r.Context(), r.PathValue("token"), q.Get("status"), msg, ping) {
+		writeError(w, http.StatusNotFound, "unknown push token")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (s *Server) checkPoints(points []string) error {
@@ -471,8 +512,14 @@ func (s *Server) apiSaveMonitor(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "name is required")
 		return
 	}
-	if _, err := validateSpec(req.Spec); err != nil {
+	spec, err := validateSpec(req.Spec)
+	if err != nil {
 		writeError(w, http.StatusBadRequest, "spec: "+err.Error())
+		return
+	}
+	self, _ := pathID(r)
+	if err := s.checkRefs(self, spec, req.Parents); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if req.IntervalS != 0 && (req.IntervalS < minIntervalS || req.IntervalS > 86400) {
@@ -484,7 +531,10 @@ func (s *Server) apiSaveMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	m := store.Monitor{ServiceID: req.ServiceID, Name: req.Name, Spec: req.Spec, IntervalS: req.IntervalS, Retries: req.Retries,
-		Points: req.Points, MinFailing: req.MinFailing, SLA: req.SLA, Enabled: req.Enabled == nil || *req.Enabled}
+		Points: req.Points, MinFailing: req.MinFailing, SLA: req.SLA, Enabled: req.Enabled == nil || *req.Enabled, Parents: req.Parents}
+	if spec.ServerSide() {
+		m.Points = nil
+	}
 	if m.IntervalS == 0 {
 		m.IntervalS = 60
 	}
@@ -495,6 +545,9 @@ func (s *Server) apiSaveMonitor(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if r.PathValue("id") == "" {
+		if spec.Type == monitor.TypeHeartbeat {
+			m.PushToken = NewSecret("lsh_")
+		}
 		id, err := s.createMonitor(r.Context(), m)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
@@ -515,7 +568,10 @@ func (s *Server) apiSaveMonitor(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "not found")
 		return
 	}
-	m.ID, m.CreatedAt = id, old.CreatedAt
+	m.ID, m.CreatedAt, m.PushToken, m.LastPush = id, old.CreatedAt, old.PushToken, old.LastPush
+	if spec.Type == monitor.TypeHeartbeat && m.PushToken == "" {
+		m.PushToken = NewSecret("lsh_")
+	}
 	if m.Retries <= 0 {
 		m.Retries = 3
 	}

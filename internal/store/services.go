@@ -308,22 +308,29 @@ type Monitor struct {
 	LastMessage  string          `json:"last_message"`
 	CertNotAfter int64           `json:"cert_not_after,omitempty"`
 	CreatedAt    int64           `json:"created_at"`
+	PushToken    string          `json:"push_token,omitempty"` // heartbeat monitors
+	LastPush     int64           `json:"last_push,omitempty"`
+	Parents      []int64         `json:"parents"` // manual dependencies: incidents are suppressed while a parent is down
 }
 
 const monitorCols = `id, service_id, name, spec, interval_s, retries, points, min_failing, sla, enabled, status, last_check,
-	last_latency, last_message, cert_not_after, created_at`
+	last_latency, last_message, cert_not_after, created_at, push_token, last_push, parents`
 
 func scanMonitor(sc interface{ Scan(...any) error }) (Monitor, error) {
 	var m Monitor
-	var spec, points string
+	var spec, points, parents string
 	var en int
 	err := sc.Scan(&m.ID, &m.ServiceID, &m.Name, &spec, &m.IntervalS, &m.Retries, &points, &m.MinFailing, &m.SLA, &en,
-		&m.Status, &m.LastCheck, &m.LastLatency, &m.LastMessage, &m.CertNotAfter, &m.CreatedAt)
+		&m.Status, &m.LastCheck, &m.LastLatency, &m.LastMessage, &m.CertNotAfter, &m.CreatedAt, &m.PushToken, &m.LastPush, &parents)
 	m.Spec = json.RawMessage(spec)
 	m.Enabled = en != 0
 	_ = json.Unmarshal([]byte(points), &m.Points)
 	if m.Points == nil {
 		m.Points = []string{}
+	}
+	_ = json.Unmarshal([]byte(parents), &m.Parents)
+	if m.Parents == nil {
+		m.Parents = []int64{}
 	}
 	return m, err
 }
@@ -333,15 +340,19 @@ func (s *Store) SaveMonitor(ctx context.Context, m Monitor) (int64, error) {
 	if m.Points == nil {
 		m.Points = []string{}
 	}
+	if m.Parents == nil {
+		m.Parents = []int64{}
+	}
 	points, _ := json.Marshal(m.Points)
+	parents, _ := json.Marshal(m.Parents)
 	if m.ID == 0 {
 		return s.Insert(ctx, `INSERT INTO monitors(service_id, name, spec, interval_s, retries, points, min_failing, sla, enabled,
-			status, created_at) VALUES (?,?,?,?,?,?,?,?,?,'pending',?)`, m.ServiceID, m.Name, string(m.Spec), m.IntervalS,
-			m.Retries, string(points), m.MinFailing, m.SLA, b2i(m.Enabled), now())
+			status, created_at, push_token, parents) VALUES (?,?,?,?,?,?,?,?,?,'pending',?,?,?)`, m.ServiceID, m.Name, string(m.Spec),
+			m.IntervalS, m.Retries, string(points), m.MinFailing, m.SLA, b2i(m.Enabled), now(), m.PushToken, string(parents))
 	}
 	_, err := s.Exec(ctx, `UPDATE monitors SET service_id=?, name=?, spec=?, interval_s=?, retries=?, points=?, min_failing=?,
-		sla=?, enabled=? WHERE id=?`, m.ServiceID, m.Name, string(m.Spec), m.IntervalS, m.Retries, string(points),
-		m.MinFailing, m.SLA, b2i(m.Enabled), m.ID)
+		sla=?, enabled=?, push_token=?, parents=? WHERE id=?`, m.ServiceID, m.Name, string(m.Spec), m.IntervalS, m.Retries,
+		string(points), m.MinFailing, m.SLA, b2i(m.Enabled), m.PushToken, string(parents), m.ID)
 	return m.ID, err
 }
 
@@ -349,6 +360,12 @@ func (s *Store) SaveMonitor(ctx context.Context, m Monitor) (int64, error) {
 func (s *Store) SetMonitorState(ctx context.Context, m Monitor) error {
 	_, err := s.Exec(ctx, `UPDATE monitors SET status=?, last_check=?, last_latency=?, last_message=?, cert_not_after=? WHERE id=?`,
 		m.Status, m.LastCheck, m.LastLatency, m.LastMessage, m.CertNotAfter, m.ID)
+	return err
+}
+
+// SetMonitorPush records a heartbeat.
+func (s *Store) SetMonitorPush(ctx context.Context, id, ts int64) error {
+	_, err := s.Exec(ctx, `UPDATE monitors SET last_push=? WHERE id=?`, ts, id)
 	return err
 }
 
@@ -496,6 +513,7 @@ type Incident struct {
 	AckedAt     int64          `json:"acked_at,omitempty"`
 	ParentID    int64          `json:"parent_id,omitempty"`
 	Maintenance bool           `json:"maintenance"`
+	Suppressed  bool           `json:"suppressed"` // a parent (monitor or agent) was down: not notified
 	Notified    int64          `json:"notified,omitempty"`
 	Notes       []IncidentNote `json:"notes,omitempty"`
 }
@@ -508,20 +526,26 @@ type IncidentNote struct {
 	Text   string `json:"text"`
 }
 
-const incidentCols = `id, monitor_id, opened, closed, cause, acked_by, acked_at, parent_id, maintenance, notified`
+const incidentCols = `id, monitor_id, opened, closed, cause, acked_by, acked_at, parent_id, maintenance, notified, suppressed`
 
 func scanIncident(sc interface{ Scan(...any) error }) (Incident, error) {
 	var i Incident
-	var m int
-	err := sc.Scan(&i.ID, &i.MonitorID, &i.Opened, &i.Closed, &i.Cause, &i.AckedBy, &i.AckedAt, &i.ParentID, &m, &i.Notified)
-	i.Maintenance = m != 0
+	var m, sup int
+	err := sc.Scan(&i.ID, &i.MonitorID, &i.Opened, &i.Closed, &i.Cause, &i.AckedBy, &i.AckedAt, &i.ParentID, &m, &i.Notified, &sup)
+	i.Maintenance, i.Suppressed = m != 0, sup != 0
 	return i, err
 }
 
 // OpenIncident creates an incident.
 func (s *Store) OpenIncident(ctx context.Context, i Incident) (int64, error) {
-	return s.Insert(ctx, `INSERT INTO incidents(monitor_id, opened, cause, parent_id, maintenance) VALUES (?,?,?,?,?)`,
-		i.MonitorID, i.Opened, i.Cause, i.ParentID, b2i(i.Maintenance))
+	return s.Insert(ctx, `INSERT INTO incidents(monitor_id, opened, cause, parent_id, maintenance, suppressed) VALUES (?,?,?,?,?,?)`,
+		i.MonitorID, i.Opened, i.Cause, i.ParentID, b2i(i.Maintenance), b2i(i.Suppressed))
+}
+
+// Unsuppress marks an incident as no longer caused by a parent.
+func (s *Store) Unsuppress(ctx context.Context, id int64) error {
+	_, err := s.Exec(ctx, `UPDATE incidents SET suppressed=0, parent_id=0 WHERE id=?`, id)
+	return err
 }
 
 // CloseIncident closes an incident.
@@ -539,12 +563,6 @@ func (s *Store) AckIncident(ctx context.Context, id int64, user string) error {
 // SetIncidentNotified records when notifications were last sent.
 func (s *Store) SetIncidentNotified(ctx context.Context, id, ts int64) error {
 	_, err := s.Exec(ctx, `UPDATE incidents SET notified=? WHERE id=?`, ts, id)
-	return err
-}
-
-// SetIncidentParent links an incident to the incident that caused it (suppression).
-func (s *Store) SetIncidentParent(ctx context.Context, id, parent int64, cause string) error {
-	_, err := s.Exec(ctx, `UPDATE incidents SET parent_id=?, cause=? WHERE id=?`, parent, cause, id)
 	return err
 }
 

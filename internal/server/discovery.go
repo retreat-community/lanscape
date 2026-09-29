@@ -424,3 +424,24 @@ func validateSpec(raw json.RawMessage) (monitor.Spec, error) {
 	}
 	return sp, sp.Validate()
 }
+
+// serviceAgents returns the agents a service was discovered on.
+func (s *Server) serviceAgents(ctx context.Context, serviceID int64) []string {
+	if serviceID == 0 {
+		return nil
+	}
+	v, err := s.store.ServiceByID(ctx, serviceID)
+	if err != nil || v.CardKey == "" {
+		return nil
+	}
+	cards, err := s.cards(ctx)
+	if err != nil {
+		return nil
+	}
+	for _, c := range cards {
+		if c.Key == v.CardKey {
+			return c.Agents
+		}
+	}
+	return nil
+}

@@ -228,6 +228,11 @@ var migrations = []string{
 		enabled INTEGER NOT NULL DEFAULT 1,
 		created_at BIGINT NOT NULL
 	);`,
+	// 3: heartbeat monitors, dependencies and suppressed incidents
+	`ALTER TABLE monitors ADD COLUMN push_token TEXT NOT NULL DEFAULT '';
+	ALTER TABLE monitors ADD COLUMN last_push BIGINT NOT NULL DEFAULT 0;
+	ALTER TABLE monitors ADD COLUMN parents TEXT NOT NULL DEFAULT '[]';
+	ALTER TABLE incidents ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

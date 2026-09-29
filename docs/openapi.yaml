@@ -623,6 +623,29 @@ paths:
       description: "Server-sent events: run.started, run.progress, run.done, agent, inventory, discovery, change, services, monitor, incident, maintenance"
       responses:
         "200": {description: event stream, content: {text/event-stream: {}}}
+  /api/push/{token}:
+    parameters:
+      - {name: token, in: path, required: true, schema: {type: string}}
+      - {name: status, in: query, description: "up (default) or down", schema: {type: string, enum: [up, down]}}
+      - {name: msg, in: query, schema: {type: string, maxLength: 500}}
+      - {name: ping, in: query, description: duration in ms reported as response time, schema: {type: number}}
+    get:
+      tags: [monitors]
+      operationId: pushHeartbeat
+      summary: Heartbeat push
+      description: Called by cron jobs and scripts for heartbeat monitors; the secret token authenticates the call.
+      security: []
+      responses:
+        "200": {description: recorded}
+        "404": {$ref: "#/components/responses/Error"}
+    post:
+      tags: [monitors]
+      operationId: pushHeartbeatPost
+      summary: Heartbeat push (POST)
+      security: []
+      responses:
+        "200": {description: recorded}
+        "404": {$ref: "#/components/responses/Error"}
   /api/v1/found:
     get:
       tags: [discovery]
@@ -1561,8 +1584,8 @@ components:
       type: object
       required: [type, target]
       properties:
-        type: {type: string, enum: [http, tcp, udp, icmp, dns, tls]}
-        target: {type: string, description: "URL (http), host:port (tcp, udp, tls), host (icmp) or record name (dns)"}
+        type: {type: string, enum: [http, tcp, udp, icmp, dns, tls, domain, heartbeat, composite]}
+        target: {type: string, description: "URL (http), host:port (tcp, udp, tls), host (icmp), record name (dns) or domain; not used by heartbeat and composite"}
         timeout_ms: {type: integer}
         method: {type: string}
         expect_status: {type: array, items: {type: integer}, description: "exact codes or classes (2 = 2xx); default 200-399"}
@@ -1582,6 +1605,8 @@ components:
         server: {type: string}
         record: {type: string, enum: [A, AAAA, CNAME, MX, TXT, NS]}
         warn_days: {type: integer}
+        grace_s: {type: integer, description: "heartbeat: silence tolerated beyond the interval"}
+        expr: {type: string, description: "composite: expression over monitor ids, e.g. #1 && (#2 || #3)"}
     CheckResult:
       type: object
       properties:
@@ -1606,6 +1631,7 @@ components:
         min_failing: {type: integer, default: 1, description: points that must fail}
         sla: {type: number}
         enabled: {type: boolean, default: true}
+        parents: {type: array, items: {type: integer}, description: "incidents are suppressed while a parent monitor is down"}
     Monitor:
       allOf:
         - {$ref: "#/components/schemas/MonitorInput"}
@@ -1618,6 +1644,8 @@ components:
             last_message: {type: string}
             cert_not_after: {type: integer}
             created_at: {type: integer}
+            push_token: {type: string, description: "heartbeat monitors: token of the push URL /api/push/{token}"}
+            last_push: {type: integer}
     Uptime:
       type: object
       properties:
@@ -1661,6 +1689,7 @@ components:
         acked_at: {type: integer}
         parent_id: {type: integer}
         maintenance: {type: boolean}
+        suppressed: {type: boolean, description: caused by a parent monitor or an offline agent; not notified}
         notified: {type: integer}
         notes:
           type: array

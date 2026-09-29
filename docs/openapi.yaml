@@ -928,6 +928,47 @@ paths:
                 type: object
                 properties:
                   sent: {type: integer}
+  /api/v1/actions/wol:
+    post:
+      tags: [discovery]
+      operationId: actionWake
+      summary: Send Wake-on-LAN to a device (operator; audited)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mac]
+              properties:
+                mac: {type: string}
+                ip: {type: string, description: last known address; picks agents on its subnet}
+                agent: {type: string, description: send from this agent only}
+      responses:
+        "200": {$ref: "#/components/responses/ActionResult"}
+        "400": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+  /api/v1/actions/restart:
+    post:
+      tags: [discovery]
+      operationId: actionRestart
+      summary: Restart a discovered container, workload or VM/CT (operator; audited)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent, source, key]
+              properties:
+                agent: {type: string}
+                source: {type: string, enum: [docker, k8s, proxmox]}
+                key: {type: string, example: container/gitea}
+      responses:
+        "200": {$ref: "#/components/responses/ActionResult"}
+        "400": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
   /api/v1/import/uptime-kuma:
     post:
       tags: [discovery]
@@ -1362,6 +1403,22 @@ components:
         application/json:
           schema: {$ref: "#/components/schemas/StatusPage"}
   responses:
+    ActionResult:
+      description: per-agent outcome (ok is true when any agent succeeded)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              ok: {type: boolean}
+              results:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    agent: {type: string}
+                    ok: {type: boolean}
+                    detail: {type: string}
     Error:
       description: error
       content:

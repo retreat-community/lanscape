@@ -251,4 +251,19 @@ Notification channels (**Settings → Notifications**): Telegram (bot token and 
 or TLS), ntfy, Gotify, Discord and Slack (incoming webhooks) and Matrix (a bot access token and a
 room id). Each channel can have quiet hours, a repeat interval for unacknowledged
 incidents and a list of monitors it cares about. Set **Settings → General → Public URL** so
-notifications link back to the panel.
+notifications link back to the panel. **Account → Notifications on this device** turns on browser
+push notifications (Web Push; the panel must be served over HTTPS).
+
+### Actions
+
+Operators can wake devices and restart discovered objects from the panel (**Devices →
+Discovered → Wake**, **Services → Restart**, or `Ctrl+K`). Every action asks for confirmation
+and is written to the audit log (who, what, when, result). An agent only performs the actions
+listed in `--actions` (`LANSCAPE_ACTIONS`):
+
+| Action | Default | What the agent does |
+|---|---|---|
+| `wol` | on | Sends a Wake-on-LAN magic packet to the broadcast address of its interfaces on the device's subnet. The server picks agents on that subnet or that have the device in their neighbour table. |
+| `restart` | off | Restarts a Docker container, performs a rolling restart of a Kubernetes deployment, statefulset or daemonset (needs `patch` on them; the Helm chart adds it when `agent.actions` contains `restart`), or reboots a Proxmox VM/CT (the API token needs `VM.PowerMgmt`). |
+
+`--actions none` disables actions on an agent.

@@ -442,6 +442,32 @@ paths:
           content:
             application/json:
               schema: {$ref: "#/components/schemas/MapGraph"}
+  /api/v1/devices/discovered:
+    get:
+      tags: [network]
+      operationId: discoveredDevices
+      summary: Discovered devices
+      description: Hosts without an agent from ARP/NDP neighbour tables, mDNS/DNS-SD and SSDP, merged by address, with the MAC vendor.
+      responses:
+        "200":
+          description: devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    ip: {type: string}
+                    mac: {type: string}
+                    vendor: {type: string}
+                    name: {type: string}
+                    type: {type: string, enum: [printer, media, iot, nas, computer, phone, router, ap, device]}
+                    model: {type: string}
+                    url: {type: string}
+                    services: {type: array, items: {type: string}}
+                    sources: {type: array, items: {type: string}}
+                    seen_by: {type: array, items: {type: string}}
   /api/v1/paths/history:
     get:
       tags: [network]
@@ -1636,7 +1662,7 @@ components:
             type: object
             properties:
               agent: {type: string}
-              source: {type: string, enum: [sockets, docker, k8s, proxmox]}
+              source: {type: string, enum: [sockets, docker, k8s, proxmox, mdns, ssdp]}
               key: {type: string}
               kind: {type: string}
               gone: {type: boolean}

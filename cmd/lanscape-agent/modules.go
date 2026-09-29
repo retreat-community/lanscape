@@ -37,12 +37,19 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 			cfg.Sockets = runtime.GOOS == "linux"
 			cfg.Docker = exists(orDefault(o.dockerSocket, "/var/run/docker.sock"))
 			cfg.K8s = os.Getenv("KUBERNETES_SERVICE_HOST") != "" || o.kubeconfig != ""
+			// multicast discovery belongs to hosts on the LAN, not to pods
+			cfg.MDNS = os.Getenv("KUBERNETES_SERVICE_HOST") == ""
+			cfg.SSDP = cfg.MDNS
 		case discovery.SourceSockets:
 			cfg.Sockets = true
 		case discovery.SourceDocker:
 			cfg.Docker = true
 		case discovery.SourceK8s:
 			cfg.K8s = true
+		case discovery.SourceMDNS:
+			cfg.MDNS = true
+		case discovery.SourceSSDP:
+			cfg.SSDP = true
 		case "none", "off":
 		default:
 			log.Warn("unknown discovery source", "source", src)
@@ -56,7 +63,7 @@ func registerModules(ctx context.Context, a *agent.Agent, o *options, log *slog.
 	if !col.Enabled() {
 		return
 	}
-	log.Info("discovery enabled", "sockets", cfg.Sockets, "docker", cfg.Docker, "k8s", cfg.K8s, "proxmox", cfg.Proxmox.URL != "",
+	log.Info("discovery enabled", "sockets", cfg.Sockets, "docker", cfg.Docker, "k8s", cfg.K8s, "mdns", cfg.MDNS, "ssdp", cfg.SSDP, "proxmox", cfg.Proxmox.URL != "",
 		"interval", col.Interval())
 	// the server can ask for a fresh report (the "rescan" button)
 	a.Handle(proto.MsgDiscovery, func(ctx context.Context, _ proto.Envelope) (any, error) {

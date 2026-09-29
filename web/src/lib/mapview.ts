@@ -27,6 +27,9 @@ export function elements(g: MapGraph, f: MapFilter, positions: Record<string, { 
   const devicesInSeg = new Set(
     g.nodes.filter((n) => n.type === "port" && portsInSeg.has(n.id) && n.parent).map((n) => n.parent as string),
   );
+  // hosts without an agent are linked to their segment directly
+  const deviceIDs = new Set(g.nodes.filter((n) => n.type === "device").map((n) => n.id));
+  for (const e of linkEdges) if (deviceIDs.has(e.source)) devicesInSeg.add(e.source);
   const keepNode = (id: string, type: string, parent?: string): boolean => {
     switch (type) {
       case "segment":

@@ -50,7 +50,7 @@ func parse(args []string) (*flag.FlagSet, *options, error) {
 	fs.DurationVar(&o.maxDuration, "max-duration", 30*time.Second, "maximum test duration")
 	fs.IntVar(&o.maxStreams, "max-streams", 16, "maximum parallel streams per test")
 	fs.IntVar(&o.maxUDPMbps, "max-udp-mbps", 10000, "maximum UDP test rate")
-	fs.StringVar(&o.discover, "discover", "auto", `discovery sources: "auto", "none" or a list of sockets,docker,k8s`)
+	fs.StringVar(&o.discover, "discover", "auto", `discovery sources: "auto", "none" or a list of sockets,docker,k8s,mdns,ssdp`)
 	fs.StringVar(&o.dockerSocket, "docker-socket", "/var/run/docker.sock", "Docker (or Podman) API socket")
 	fs.StringVar(&o.kubeconfig, "kubeconfig", "", "kubeconfig for Kubernetes discovery (default in-cluster)")
 	fs.DurationVar(&o.discoverInterval, "discover-interval", 5*time.Minute, "discovery period")

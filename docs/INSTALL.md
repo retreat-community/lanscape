@@ -187,10 +187,11 @@ the findings into cards in **Services → Found**. Sources are chosen with `--di
 | `sockets` | Linux; root (or `CAP_SYS_PTRACE`) to see the processes behind other users' sockets |
 | `docker` | read access to the Docker (or Podman) socket, `--docker-socket /var/run/docker.sock`; mount it read-only in containers |
 | `k8s` | in-cluster service account with read-only access to Services, Ingresses, HTTPRoutes, Deployments, StatefulSets, DaemonSets and PVCs, or `--kubeconfig` |
+| `mdns`, `ssdp` | multicast on the local links (not inside Kubernetes pods): printers, media players, NAS, IoT and UPnP routers; with the ARP neighbour tables of all agents and the MAC vendor they appear under **Devices → Discovered**, in IPAM and on the map |
 | Proxmox VE | `--proxmox-url https://127.0.0.1:8006 --proxmox-token 'lanscape@pve!discovery=<secret>'` (a token with the PVEAuditor role; `--proxmox-insecure` for the self-signed certificate). VMs and containers with status, addresses (QEMU guest agent), tags and notes; virtio guests inherit the link speed of the host bridge |
 
-The default `--discover auto` enables `sockets` on Linux, `docker` when the socket exists and
-`k8s` inside a cluster. HTTP endpoints are fingerprinted (title, headers, favicon, characteristic
+The default `--discover auto` enables `sockets` on Linux, `docker` when the socket exists,
+`k8s` inside a cluster and `mdns`/`ssdp` everywhere else. HTTP endpoints are fingerprinted (title, headers, favicon, characteristic
 paths) against the built-in library of application signatures; `--no-probe` turns this off and
 `--signatures my-apps.yaml` adds your own signatures in the format of
 [`internal/fingerprint/signatures.yaml`](../internal/fingerprint/signatures.yaml).

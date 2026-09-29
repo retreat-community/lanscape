@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"sort"
 	"strconv"
 	"strings"
@@ -91,6 +92,7 @@ func (s *Server) decorateMap(ctx context.Context, g *MapGraph) {
 		g.Nodes = append(g.Nodes, MapNode{ID: id, Label: it.Name, Type: "device", Icon: icon, Status: status,
 			Parent: "dev:" + host, Data: map[string]any{"guest": it.Key, "ips": it.IPs, "state": it.State}})
 	}
+	s.mapDevices(ctx, g)
 	// services as badges on the device they were discovered on
 	svcs, err := s.store.Services(ctx)
 	if err != nil || len(svcs) == 0 {
@@ -140,5 +142,51 @@ func (s *Server) decorateMap(ctx context.Context, g *MapGraph) {
 		}
 		g.Nodes = append(g.Nodes, MapNode{ID: "svc:" + strconv.FormatInt(v.ID, 10), Label: v.Name, Type: "service", Parent: parent, Icon: v.Icon,
 			Status: st, Data: map[string]any{"service": v.ID, "url": v.InternalURL, "external_url": v.ExternalURL}})
+	}
+}
+
+// mapDevices adds hosts without an agent to the segment their address belongs to.
+func (s *Server) mapDevices(ctx context.Context, g *MapGraph) {
+	type seg struct {
+		id  string
+		net *net.IPNet
+	}
+	var segs []seg
+	for _, n := range g.Nodes {
+		if n.Type != "segment" {
+			continue
+		}
+		if c, ok := n.Data["cidr"].(string); ok {
+			if _, ipn, err := net.ParseCIDR(c); err == nil {
+				segs = append(segs, seg{n.ID, ipn})
+			}
+		}
+	}
+	added := 0
+	for _, d := range s.devices(ctx) {
+		ip := net.ParseIP(d.IP)
+		if ip == nil || added >= 300 {
+			continue
+		}
+		for _, sg := range segs {
+			if !sg.net.Contains(ip) {
+				continue
+			}
+			label := d.Name
+			if label == "" {
+				label = d.Vendor
+			}
+			if label == "" {
+				label = d.IP
+			} else {
+				label += "\n" + d.IP
+			}
+			id := "host:" + d.IP
+			g.Nodes = append(g.Nodes, MapNode{ID: id, Label: label, Type: "device", Icon: d.Type, Status: "none",
+				Data: map[string]any{"ip": d.IP, "mac": d.MAC, "vendor": d.Vendor, "model": d.Model, "sources": d.Sources, "url": d.URL}})
+			g.Edges = append(g.Edges, MapEdge{ID: "link:" + id + "@" + strings.TrimPrefix(sg.id, "seg:"), Source: id, Target: sg.id, Type: "link"})
+			added++
+			break
+		}
 	}
 }

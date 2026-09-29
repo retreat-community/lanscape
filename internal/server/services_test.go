@@ -539,3 +539,35 @@ func TestMapDecorationAndPathHistory(t *testing.T) {
 		t.Errorf("missing params: %d", code)
 	}
 }
+
+func TestDiscoveredDevices(t *testing.T) {
+	s, ts := newTestServer(t)
+	c := client(t)
+	do(t, c, "POST", ts.URL+"/api/v1/auth/login", credentials{Username: "admin", Password: "correct-horse-battery"}, nil)
+	s.hub.Connected(AgentState{ID: "rt", Name: "router", Kind: "full", Inv: agent.Inventory{
+		Ifaces: []netio.Iface{{Name: "br-lan", Addrs: []netio.Addr{{IP: "192.168.1.1", Prefix: 24}}}},
+		Neighbors: []agent.Neighbor{
+			{IP: "192.168.1.50", MAC: "B8:27:EB:00:00:01", Dev: "br-lan", State: "REACHABLE"},
+			{IP: "192.168.1.60", MAC: "00:00:00:00:00:00", Dev: "br-lan", State: "FAILED"},
+			{IP: "192.168.1.1", MAC: "aa:aa:aa:aa:aa:aa", Dev: "br-lan"},
+		}}}, &fakeConn{id: "rt"})
+	err := s.ingestDiscovery(context.Background(), "rt", discovery.Report{Sources: []discovery.SourceReport{{Source: discovery.SourceMDNS,
+		Items: []discovery.Item{{Key: "mdns/printer.local", Kind: discovery.KindDevice, Name: "Office Printer", IPs: []string{"192.168.1.50"},
+			Labels: map[string]string{"type": "printer", "model": "HP LaserJet", "services": "_ipp._tcp"}}}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var devs []Device
+	do(t, c, "GET", ts.URL+"/api/v1/devices/discovered", nil, &devs)
+	if len(devs) != 1 {
+		t.Fatalf("devices: %+v", devs)
+	}
+	d := devs[0]
+	if d.IP != "192.168.1.50" || d.Name != "Office Printer" || d.Type != "printer" || d.Vendor == "" ||
+		strings.Join(d.Sources, ",") != "arp,mdns" || strings.Join(d.SeenBy, ",") != "router" {
+		t.Errorf("device: %+v", d)
+	}
+	if ex := s.discoveredExtras(); len(ex) != 1 || ex[0].Name != "Office Printer" {
+		t.Errorf("extras: %+v", ex)
+	}
+}

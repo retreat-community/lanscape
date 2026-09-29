@@ -154,8 +154,9 @@ func (s *Server) SetExtras(e []topo.Extra) {
 
 func (s *Server) discoveredExtras() []topo.Extra {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	return append([]topo.Extra(nil), s.extras...)
+	out := append([]topo.Extra(nil), s.extras...)
+	s.mu.Unlock()
+	return append(out, s.deviceExtras(s.ctx)...)
 }
 
 // SpeedInheritor returns the uplink speed for interfaces without a reported speed

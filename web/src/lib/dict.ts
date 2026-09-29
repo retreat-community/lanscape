@@ -421,6 +421,10 @@ export const en = {
   "st.theme": "Theme",
   "st.add_group": "Add group",
   "st.none": "No status pages yet.",
+  "dev.discovered": "Discovered",
+  "dev.vendor": "vendor",
+  "dev.sources": "found via",
+  "dev.none_discovered": "No devices discovered yet: agents report ARP neighbours, mDNS and SSDP announcements.",
 } as const;
 
 export type Key = keyof typeof en;
@@ -846,6 +850,10 @@ export const ru: Record<Key, string> = {
   "st.theme": "Тема",
   "st.add_group": "Добавить группу",
   "st.none": "Страниц статуса пока нет.",
+  "dev.discovered": "Обнаруженные",
+  "dev.vendor": "производитель",
+  "dev.sources": "найдено через",
+  "dev.none_discovered": "Устройства ещё не найдены: агенты сообщают соседей ARP, объявления mDNS и SSDP.",
 };
 
 export type Lang = "en" | "ru";

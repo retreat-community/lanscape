@@ -63,6 +63,7 @@ func (s *Server) servicesRoutes(mux *http.ServeMux, v func(string, http.HandlerF
 	mux.HandleFunc("GET /api/v1/dashboard", v(RoleViewer, s.apiDashboard))
 	mux.HandleFunc("GET /api/v1/search", v(RoleViewer, s.apiSearch))
 	mux.HandleFunc("GET /api/v1/paths/history", v(RoleViewer, s.apiPathHistory))
+	mux.HandleFunc("GET /api/v1/devices/discovered", v(RoleViewer, s.apiDevices))
 
 	// status pages: public (or with the link token) HTML and JSON, administration
 	mux.HandleFunc("GET /status/{slug}", func(w http.ResponseWriter, r *http.Request) { s.serveStatusHTML(w, r, r.PathValue("slug")) })

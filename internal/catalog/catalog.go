@@ -117,6 +117,8 @@ func include(f *Finding) bool {
 	switch it.Kind {
 	case discovery.KindPVC:
 		return false
+	case discovery.KindDevice:
+		return it.URL != "" // only LAN devices with a web interface become service cards
 	case discovery.KindSocket:
 		if ignoredProcesses[it.Process] {
 			return false
@@ -136,6 +138,9 @@ func include(f *Finding) bool {
 func nodeID(f *Finding) string {
 	if f.Source == discovery.SourceK8s || f.Source == discovery.SourceProxmox {
 		return f.Source + ":" + f.Item.Key // cluster-wide objects
+	}
+	if f.Item.Kind == discovery.KindDevice && len(f.Item.IPs) > 0 {
+		return "device:" + f.Item.IPs[0] // seen by several agents and by mDNS and SSDP
 	}
 	return f.Source + ":" + f.Agent + ":" + f.Item.Key
 }
@@ -446,6 +451,8 @@ func cardKey(p *Finding) string {
 	switch {
 	case p.Source == discovery.SourceK8s || p.Source == discovery.SourceProxmox:
 		return p.Source + ":" + it.Key
+	case it.Kind == discovery.KindDevice && len(it.IPs) > 0:
+		return "device:" + it.IPs[0]
 	case it.Kind == discovery.KindContainer:
 		return "docker:" + p.Agent + ":" + it.Name
 	case it.Kind == discovery.KindSocket && it.Process != "" && it.Owner == "":

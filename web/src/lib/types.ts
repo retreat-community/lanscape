@@ -627,3 +627,16 @@ export interface StatusPage {
   };
   created_at: number;
 }
+
+export interface DiscoveredDevice {
+  ip: string;
+  mac?: string;
+  vendor?: string;
+  name?: string;
+  type: string;
+  model?: string;
+  url?: string;
+  services?: string[];
+  sources: string[];
+  seen_by: string[];
+}

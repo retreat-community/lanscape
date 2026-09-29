@@ -3,12 +3,16 @@
   import { api } from "../lib/api";
   import { bytes, duration, when } from "../lib/format";
   import { t, toast, ui } from "../lib/state.svelte";
-  import type { Agent, IPAM } from "../lib/types";
+  import type { Agent, DiscoveredDevice, IPAM } from "../lib/types";
 
   let agents = $state<Agent[]>([]);
   let ipam = $state<IPAM[]>([]);
   let open = $state<string | null>(null);
-  let tab = $state<"agents" | "ipam">("agents");
+  let tab = $state<"agents" | "discovered" | "ipam">("agents");
+  let found = $state<DiscoveredDevice[]>([]);
+  const foundShown = $derived(
+    found.filter((d) => !q || [d.ip, d.mac, d.name, d.vendor, d.model].some((f) => f?.toLowerCase().includes(q.toLowerCase()))),
+  );
   let q = $state("");
 
   const filtered = $derived(
@@ -26,7 +30,7 @@
 
   onMount(async () => {
     try {
-      [agents, ipam] = await Promise.all([api.agents(), api.ipam()]);
+      [agents, ipam, found] = await Promise.all([api.agents(), api.ipam(), api.discoveredDevices()]);
     } catch (e) {
       toast(e instanceof Error ? e.message : String(e));
     }
@@ -36,6 +40,7 @@
 <div class="grid">
   <div class="tabs">
     <button class:on={tab === "agents"} onclick={() => (tab = "agents")}>{t("dev.agents")}</button>
+    <button class:on={tab === "discovered"} onclick={() => (tab = "discovered")}>{t("dev.discovered")} ({found.length})</button>
     <button class:on={tab === "ipam"} onclick={() => (tab = "ipam")}>{t("dev.ipam")}</button>
     <span class="spacer"></span>
     <input placeholder={t("common.search")} bind:value={q} />
@@ -103,6 +108,30 @@
           {/each}
         </tbody>
       </table>
+    </section>
+  {:else if tab === "discovered"}
+    <section class="card">
+      {#if foundShown.length === 0}
+        <p class="muted">{t("dev.none_discovered")}</p>
+      {:else}
+        <table>
+          <thead>
+            <tr><th>IP</th><th>{t("set.name")}</th><th>{t("dev.kind")}</th><th>MAC</th><th>{t("dev.vendor")}</th><th>{t("dev.sources")}</th></tr>
+          </thead>
+          <tbody>
+            {#each foundShown as d (d.ip)}
+              <tr>
+                <td>{#if d.url}<a href={d.url} target="_blank" rel="noopener">{d.ip}</a>{:else}{d.ip}{/if}</td>
+                <td><b>{d.name ?? ""}</b>{#if d.model}<div class="muted small">{d.model}</div>{/if}</td>
+                <td>{d.type}</td>
+                <td class="small">{d.mac ?? ""}</td>
+                <td class="small">{d.vendor ?? ""}</td>
+                <td class="small">{d.sources.join(", ")}{d.seen_by.length ? ` · ${d.seen_by.join(", ")}` : ""}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
     </section>
   {:else}
     {#each ipam as s (s.segment)}

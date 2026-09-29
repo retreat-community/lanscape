@@ -60,6 +60,10 @@ func Diff(prev, cur []discovery.Item, host string) []Change {
 				out = append(out, Change{ChangeIPChanged, host + " " + it.Name, strings.Join(o.IPs, ", ") + " → " + strings.Join(it.IPs, ", ")})
 			}
 		case discovery.KindPVC:
+		case discovery.KindDevice:
+			if !existed {
+				out = append(out, Change{ChangeDeviceNew, it.Name, strings.Join(it.IPs, ", ") + " " + it.Labels["type"]})
+			}
 		default:
 			if !existed {
 				out = append(out, Change{ChangeObjectNew, objName(it), it.Image})
@@ -80,7 +84,7 @@ func Diff(prev, cur []discovery.Item, host string) []Change {
 			}
 		case discovery.KindContainer:
 			out = append(out, Change{ChangeContainerGone, host + " " + it.Name, it.Image})
-		case discovery.KindPVC:
+		case discovery.KindPVC, discovery.KindDevice:
 		default:
 			out = append(out, Change{ChangeObjectGone, objName(it), ""})
 		}

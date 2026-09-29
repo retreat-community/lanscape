@@ -118,6 +118,21 @@ func (s *session) post(ctx context.Context, path, body string, v any) error {
 	return decode(resp.Body, v)
 }
 
+func (s *session) put(ctx context.Context, path, body string) error {
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPut, fullURL+path, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := s.c.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		return &httpError{resp.StatusCode, string(b)}
+	}
+	return nil
+}
+
 func TestFull(t *testing.T) {
 	requireRoot(t)
 	run(t, "./topo.sh", "up")
@@ -178,6 +193,8 @@ func TestFull(t *testing.T) {
 			t.Errorf("agent %s has no certificate: %v", n, err)
 		}
 	}
+
+	t.Run("services", func(t *testing.T) { servicesScenario(t, ctx, s) })
 
 	var started struct {
 		ID int64 `json:"id"`

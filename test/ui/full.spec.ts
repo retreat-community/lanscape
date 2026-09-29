@@ -5,7 +5,7 @@ const base = process.env.FULL_URL ?? "http://127.0.0.1:18090";
 const shots = process.env.SCREENSHOTS ?? "../e2e/screenshots";
 
 test("full: login, check all, matrix and map", async ({ page }) => {
-  await page.goto(base + "/");
+  await page.goto(base + "/#/network");
   await page.locator('input[name="username"]').fill("admin");
   await page.locator('input[name="password"]').fill("e2e-admin-password");
   await page.locator('button[type="submit"]').click();

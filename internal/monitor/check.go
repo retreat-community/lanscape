@@ -30,7 +30,16 @@ const (
 	TypeICMP = "icmp"
 	TypeDNS  = "dns"
 	TypeTLS  = "tls"
+	// TypeDomain checks the registration expiry of a domain via RDAP.
+	TypeDomain = "domain"
+	// TypeHeartbeat is passive: an external job calls the push URL; evaluated by the server.
+	TypeHeartbeat = "heartbeat"
+	// TypeComposite combines other monitors ("#1 && (#2 || #3)"); evaluated by the server.
+	TypeComposite = "composite"
 )
+
+// RDAPBase is the RDAP bootstrap service used for domain checks.
+var RDAPBase = "https://rdap.org/domain/"
 
 // Spec describes one check. Target is a URL for HTTP, host:port for TCP/UDP/TLS, a host for
 // ICMP and a record name for DNS.
@@ -62,9 +71,17 @@ type Spec struct {
 	Server string `json:"server,omitempty"` // host[:53]; empty = system resolver
 	Record string `json:"record,omitempty"` // A, AAAA, CNAME, MX, TXT, NS
 
-	// TLS (also applies to https:// HTTP checks)
+	// TLS (also applies to https:// HTTP checks) and domain expiry
 	WarnDays int `json:"warn_days,omitempty"`
+
+	// heartbeat: seconds of silence tolerated beyond the monitor interval
+	GraceS int `json:"grace_s,omitempty"`
+	// composite: boolean expression over monitor ids, e.g. "#1 && (#2 || #3)"
+	Expr string `json:"expr,omitempty"`
 }
+
+// ServerSide reports whether the type is evaluated by the server instead of a network check.
+func (s *Spec) ServerSide() bool { return s.Type == TypeHeartbeat || s.Type == TypeComposite }
 
 // Status of a check result.
 const (
@@ -102,9 +119,14 @@ func (s *Spec) Validate() error {
 		if _, _, err := net.SplitHostPort(s.Target); err != nil {
 			return errors.New("target must be host:port")
 		}
-	case TypeICMP, TypeDNS:
+	case TypeICMP, TypeDNS, TypeDomain:
 		if s.Target == "" || strings.ContainsAny(s.Target, "/ ") {
 			return errors.New("target must be a host name or address")
+		}
+	case TypeHeartbeat:
+	case TypeComposite:
+		if _, err := ParseExpr(s.Expr); err != nil {
+			return fmt.Errorf("expr: %w", err)
 		}
 	default:
 		return fmt.Errorf("unknown check type %q", s.Type)
@@ -138,6 +160,10 @@ func Run(ctx context.Context, s Spec) Result {
 		r = runDNS(ctx, &s)
 	case TypeTLS:
 		r = runTLS(ctx, &s)
+	case TypeDomain:
+		r = runDomain(ctx, &s)
+	case TypeHeartbeat, TypeComposite:
+		r = Result{Status: Down, Message: s.Type + " monitors are evaluated by the server"}
 	default:
 		r = Result{Status: Down, Message: "unknown check type " + s.Type}
 	}
@@ -521,5 +547,62 @@ func runTLS(ctx context.Context, s *Spec) Result {
 		}
 	}
 	certResult(&r, &st, s.WarnDays)
+	return r
+}
+
+// runDomain reads the registration expiry from RDAP.
+func runDomain(ctx context.Context, s *Spec) Result {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, RDAPBase+strings.TrimSuffix(s.Target, "."), nil)
+	if err != nil {
+		return down("%v", err)
+	}
+	req.Header.Set("Accept", "application/rdap+json, application/json")
+	start := time.Now()
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return down("rdap: %v", trimURLErr(err))
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return down("domain %s is not registered (RDAP 404)", s.Target)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return down("rdap: HTTP %d", resp.StatusCode)
+	}
+	var doc struct {
+		Events []struct {
+			Action string `json:"eventAction"`
+			Date   string `json:"eventDate"`
+		} `json:"events"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&doc); err != nil {
+		return down("rdap: %v", err)
+	}
+	r := Result{Status: Up, LatencyMS: ms(time.Since(start))}
+	for _, e := range doc.Events {
+		if e.Action != "expiration" {
+			continue
+		}
+		t, err := time.Parse(time.RFC3339, e.Date)
+		if err != nil {
+			continue
+		}
+		r.CertNotAfter = t.UnixMilli() // expiry is reported like a certificate's
+		warn := s.WarnDays
+		if warn <= 0 {
+			warn = 30
+		}
+		left := time.Until(t)
+		switch {
+		case left <= 0:
+			r.Status, r.Message = Down, "domain expired "+t.UTC().Format(time.DateOnly)
+		case left < time.Duration(warn)*24*time.Hour:
+			r.Status, r.Message = Degraded, fmt.Sprintf("domain expires in %d days", int(left.Hours()/24))
+		default:
+			r.Message = "expires " + t.UTC().Format(time.DateOnly)
+		}
+		return r
+	}
+	r.Message = "no expiration date in RDAP"
 	return r
 }

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestHTTP(t *testing.T) {
@@ -141,5 +142,70 @@ func TestValidateAndHelpers(t *testing.T) {
 	}
 	if r := Run(context.Background(), Spec{Type: TypeDNS, Target: "localhost"}); r.Status != Up {
 		t.Logf("dns localhost: %+v (resolver dependent)", r)
+	}
+}
+
+func TestDomain(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/example.com":
+			_, _ = w.Write([]byte(`{"events":[{"eventAction":"registration","eventDate":"2000-01-01T00:00:00Z"},
+				{"eventAction":"expiration","eventDate":"` + time.Now().Add(400*24*time.Hour).UTC().Format(time.RFC3339) + `"}]}`))
+		case "/soon.com":
+			_, _ = w.Write([]byte(`{"events":[{"eventAction":"expiration","eventDate":"` + time.Now().Add(5*24*time.Hour).UTC().Format(time.RFC3339) + `"}]}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	old := RDAPBase
+	RDAPBase = srv.URL + "/"
+	defer func() { RDAPBase = old }()
+	ctx := context.Background()
+	if r := Run(ctx, Spec{Type: TypeDomain, Target: "example.com"}); r.Status != Up || r.CertNotAfter == 0 {
+		t.Errorf("domain: %+v", r)
+	}
+	if r := Run(ctx, Spec{Type: TypeDomain, Target: "soon.com"}); r.Status != Degraded {
+		t.Errorf("expiring domain: %+v", r)
+	}
+	if r := Run(ctx, Spec{Type: TypeDomain, Target: "missing.com"}); r.Status != Down {
+		t.Errorf("unregistered domain: %+v", r)
+	}
+}
+
+func TestExpr(t *testing.T) {
+	state := map[int64]bool{1: true, 2: false, 3: true}
+	up := func(id int64) (bool, bool) {
+		v, ok := state[id]
+		return v, ok
+	}
+	cases := map[string][2]bool{ // value, known
+		"#1":                {true, true},
+		"#1 && #2":          {false, true},
+		"#1 && (#2 || #3)":  {true, true},
+		"!#2":               {true, true},
+		"#2 && #9":          {false, true}, // false && unknown
+		"#1 && #9":          {false, false},
+		"#1 || #9":          {true, true},
+		"!(#1 && #3) || #2": {false, true},
+	}
+	for s, want := range cases {
+		e, err := ParseExpr(s)
+		if err != nil {
+			t.Fatalf("%s: %v", s, err)
+		}
+		v, k := e.Eval(up)
+		if v != want[0] || k != want[1] {
+			t.Errorf("%s = %v,%v want %v", s, v, k, want)
+		}
+	}
+	for _, bad := range []string{"", "#", "#1 &&", "(#1", "#1 #2", "a", "#0"} {
+		if _, err := ParseExpr(bad); err == nil {
+			t.Errorf("%q accepted", bad)
+		}
+	}
+	e, _ := ParseExpr("#4 || (#5 && !#6)")
+	if ids := e.IDs(); len(ids) != 3 || ids[0] != 4 || ids[2] != 6 {
+		t.Errorf("ids: %v", ids)
 	}
 }

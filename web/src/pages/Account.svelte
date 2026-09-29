@@ -19,6 +19,43 @@
   async function refresh(): Promise<void> {
     ui.user = (await api.me()).user;
   }
+
+  // Web Push: needs a service worker, PushManager and a secure context
+  const pushSupported = typeof window !== "undefined" && window.isSecureContext && "serviceWorker" in navigator && "PushManager" in window;
+  let pushSub = $state<PushSubscription | null>(null);
+  let pushDenied = $state(false);
+
+  async function registration(): Promise<ServiceWorkerRegistration> {
+    return (await navigator.serviceWorker.getRegistration()) ?? (await navigator.serviceWorker.register("/sw.js"));
+  }
+
+  $effect(() => {
+    if (!pushSupported) return;
+    pushDenied = Notification.permission === "denied";
+    registration()
+      .then((r) => r.pushManager.getSubscription())
+      .then((s) => (pushSub = s))
+      .catch(() => {});
+  });
+
+  async function pushEnable(): Promise<void> {
+    if ((await Notification.requestPermission()) !== "granted") {
+      pushDenied = true;
+      throw new Error(t("acc.push_denied"));
+    }
+    const { key } = await api.pushKey();
+    const reg = await registration();
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+    await api.pushSubscribe(sub.toJSON());
+    pushSub = sub;
+  }
+
+  async function pushDisable(): Promise<void> {
+    if (!pushSub) return;
+    await api.pushUnsubscribe(pushSub.endpoint);
+    await pushSub.unsubscribe();
+    pushSub = null;
+  }
 </script>
 
 <div class="grid narrow">
@@ -44,6 +81,23 @@
       </div>
     {:else}
       <button onclick={async () => (enrol = await api.totpStart())}>{t("acc.totp_enable")}</button>
+    {/if}
+  </section>
+  <section class="card">
+    <h2>{t("acc.push")}</h2>
+    {#if !pushSupported}
+      <p class="muted">{t("acc.push_unsupported")}</p>
+    {:else if pushDenied && !pushSub}
+      <p class="muted">{t("acc.push_denied")}</p>
+    {:else if pushSub}
+      <p>{t("acc.push_on")}</p>
+      <div class="row">
+        <button onclick={() => run(() => api.pushTest())}>{t("acc.push_test")}</button>
+        <button class="danger" onclick={() => run(pushDisable)}>{t("acc.push_disable")}</button>
+      </div>
+    {:else}
+      <p class="muted">{t("acc.push_off")}</p>
+      <button class="primary" onclick={() => run(pushEnable)}>{t("acc.push_enable")}</button>
     {/if}
   </section>
 </div>

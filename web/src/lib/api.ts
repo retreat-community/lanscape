@@ -82,6 +82,10 @@ export const api = {
   totpStart: () => call<{ secret: string; url: string }>("POST", "/auth/totp"),
   totpConfirm: (secret: string, code: string) => call<undefined>("PUT", "/auth/totp", { secret, code }),
   totpDisable: () => call<undefined>("DELETE", "/auth/totp"),
+  pushKey: () => call<{ key: string }>("GET", "/push/key"),
+  pushSubscribe: (sub: PushSubscriptionJSON) => call<undefined>("POST", "/push/subscribe", sub),
+  pushUnsubscribe: (endpoint: string) => call<undefined>("POST", "/push/unsubscribe", { endpoint }),
+  pushTest: () => call<{ sent: number }>("POST", "/push/test"),
 
   users: () => call<User[]>("GET", "/users"),
   createUser: (username: string, password: string, role: string) =>

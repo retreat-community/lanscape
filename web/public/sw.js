@@ -47,10 +47,26 @@ self.addEventListener("fetch", (e) => {
 
 self.addEventListener("push", (e) => {
   const d = e.data ? e.data.json() : { title: "Lanscape", body: "" };
-  e.waitUntil(self.registration.showNotification(d.title || "Lanscape", { body: d.body || "", icon: "/icon.svg", data: d }));
+  e.waitUntil(
+    self.registration.showNotification(d.title || "Lanscape", {
+      body: d.body || "",
+      icon: "/icon.svg",
+      tag: d.tag,
+      renotify: !!d.tag,
+      requireInteraction: d.severity === "down",
+      data: d,
+    }),
+  );
 });
 
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
-  e.waitUntil(self.clients.openWindow((e.notification.data && e.notification.data.url) || "/"));
+  const url = (e.notification.data && e.notification.data.url) || "/";
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      const open = list.find((c) => new URL(c.url).origin === location.origin);
+      if (open) return open.focus().then((c) => (url !== "/" && c ? c.navigate(url) : c));
+      return self.clients.openWindow(url);
+    }),
+  );
 });

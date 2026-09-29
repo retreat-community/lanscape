@@ -80,6 +80,8 @@ type Server struct {
 
 	disc   discoveryState
 	uptime *uptime
+
+	pushClient *http.Client // Web Push delivery (tests swap it)
 }
 
 // New opens the store and the CA.

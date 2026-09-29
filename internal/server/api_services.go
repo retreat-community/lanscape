@@ -67,6 +67,10 @@ func (s *Server) servicesRoutes(mux *http.ServeMux, v func(string, http.HandlerF
 	mux.HandleFunc("GET /api/v1/devices/discovered", v(RoleViewer, s.apiDevices))
 	mux.HandleFunc("POST /api/v1/discovery/scan", v(RoleAdmin, s.apiScan))
 	mux.HandleFunc("POST /api/v1/import/uptime-kuma", v(RoleAdmin, s.apiImportKuma))
+	mux.HandleFunc("GET /api/v1/push/key", v(RoleViewer, s.apiPushKey))
+	mux.HandleFunc("POST /api/v1/push/subscribe", v(RoleViewer, s.apiPushSubscribe))
+	mux.HandleFunc("POST /api/v1/push/unsubscribe", v(RoleViewer, s.apiPushUnsubscribe))
+	mux.HandleFunc("POST /api/v1/push/test", v(RoleViewer, s.apiPushTest))
 	mux.HandleFunc("POST /api/v1/import/prometheus", v(RoleAdmin, s.apiImportPrometheus))
 	mux.HandleFunc("POST /api/v1/import/home-assistant", v(RoleAdmin, s.apiImportHomeAssistant))
 

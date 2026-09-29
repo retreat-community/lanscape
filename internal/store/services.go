@@ -846,3 +846,54 @@ func (s *Store) DeleteStatusPage(ctx context.Context, id int64) error {
 	_, err := s.Exec(ctx, `DELETE FROM status_pages WHERE id=?`, id)
 	return err
 }
+
+// --- web push ---
+
+// PushSubscription is a browser subscribed to notifications.
+type PushSubscription struct {
+	ID        int64  `json:"id"`
+	UserID    int64  `json:"user_id"`
+	Endpoint  string `json:"endpoint"`
+	P256dh    string `json:"-"`
+	Auth      string `json:"-"`
+	UserAgent string `json:"user_agent"`
+	CreatedAt int64  `json:"created_at"`
+}
+
+// SavePushSubscription inserts or refreshes a subscription (by endpoint).
+func (s *Store) SavePushSubscription(ctx context.Context, p PushSubscription) error {
+	_, err := s.Exec(ctx, `INSERT INTO push_subscriptions(user_id, endpoint, p256dh, auth, user_agent, created_at) VALUES (?,?,?,?,?,?)
+		ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id, p256dh=excluded.p256dh, auth=excluded.auth,
+		user_agent=excluded.user_agent`, p.UserID, p.Endpoint, p.P256dh, p.Auth, p.UserAgent, now())
+	return err
+}
+
+// PushSubscriptions lists subscriptions (of one user when userID > 0).
+func (s *Store) PushSubscriptions(ctx context.Context, userID int64) ([]PushSubscription, error) {
+	q := `SELECT id, user_id, endpoint, p256dh, auth, user_agent, created_at FROM push_subscriptions`
+	var args []any
+	if userID > 0 {
+		q += ` WHERE user_id=?`
+		args = append(args, userID)
+	}
+	rows, err := s.Query(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []PushSubscription{}
+	for rows.Next() {
+		var p PushSubscription
+		if err := rows.Scan(&p.ID, &p.UserID, &p.Endpoint, &p.P256dh, &p.Auth, &p.UserAgent, &p.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// DeletePushSubscription removes a subscription by endpoint.
+func (s *Store) DeletePushSubscription(ctx context.Context, endpoint string) error {
+	_, err := s.Exec(ctx, `DELETE FROM push_subscriptions WHERE endpoint=?`, endpoint)
+	return err
+}

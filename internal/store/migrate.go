@@ -244,6 +244,16 @@ var migrations = []string{
 		config TEXT NOT NULL DEFAULT '{}',
 		created_at BIGINT NOT NULL
 	)`,
+	// 5: web push subscriptions (PWA)
+	`CREATE TABLE push_subscriptions (
+		id {{PK}},
+		user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		endpoint TEXT NOT NULL UNIQUE,
+		p256dh TEXT NOT NULL,
+		auth TEXT NOT NULL,
+		user_agent TEXT NOT NULL DEFAULT '',
+		created_at BIGINT NOT NULL
+	)`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

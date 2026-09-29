@@ -601,6 +601,8 @@ func (u *uptime) dispatch(ctx context.Context, m notify.Message) {
 		u.s.log.Warn("cannot load channels", "err", err)
 		return
 	}
+	// browsers subscribed to push notifications (PWA) get every incident
+	go u.s.webPush(u.s.ctx, m, 0)
 	for _, ch := range chans {
 		if !ch.Enabled {
 			continue

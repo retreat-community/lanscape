@@ -862,6 +862,72 @@ paths:
       responses:
         "202": {description: started}
         "400": {$ref: "#/components/responses/Error"}
+  /api/v1/push/key:
+    get:
+      tags: [notifications]
+      operationId: pushKey
+      summary: Web Push application server key
+      responses:
+        "200":
+          description: VAPID public key (base64url, uncompressed P-256 point)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key: {type: string}
+  /api/v1/push/subscribe:
+    post:
+      tags: [notifications]
+      operationId: pushSubscribe
+      summary: Register this browser for incident notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: PushSubscription.toJSON()
+              required: [endpoint, keys]
+              properties:
+                endpoint: {type: string, format: uri}
+                keys:
+                  type: object
+                  properties:
+                    p256dh: {type: string}
+                    auth: {type: string}
+      responses:
+        "200": {$ref: "#/components/responses/Ok"}
+        "400": {$ref: "#/components/responses/Error"}
+  /api/v1/push/unsubscribe:
+    post:
+      tags: [notifications]
+      operationId: pushUnsubscribe
+      summary: Remove a browser subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                endpoint: {type: string}
+      responses:
+        "204": {description: removed}
+  /api/v1/push/test:
+    post:
+      tags: [notifications]
+      operationId: pushTest
+      summary: Send a test notification to the current user's browsers
+      responses:
+        "200":
+          description: number of browsers reached
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sent: {type: integer}
   /api/v1/import/uptime-kuma:
     post:
       tags: [discovery]

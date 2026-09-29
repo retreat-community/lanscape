@@ -119,4 +119,60 @@ The agent runs as a DaemonSet with `hostNetwork: true` and measures node network
 
 ## Lanscape (Full)
 
-Installation of the Full edition is described once it is released (see the release notes).
+The server (`lanscape`) is one static binary with the web UI. Agents (`lanscape-agent`) dial the
+server gateway on TCP 8443, register once with a token and then use mTLS; test traffic between
+agents uses TCP/UDP 47700. Lanscape Mini agents can join the same server on TCP 47701.
+
+| Port | Purpose |
+|---|---|
+| 8080 | UI and API (put a TLS reverse proxy in front or use `--tls-cert/--tls-key`) |
+| 8443 | agent gateway (TLS by the built-in CA, mTLS after registration) |
+| 47700/tcp+udp | data plane between agents |
+| 47701 | Lanscape Mini agents (optional, `--mini-listen ""` disables) |
+
+### Server
+
+**Docker / Compose**
+
+```sh
+docker run -d --name lanscape -p 8080:8080 -p 8443:8443 -p 47701:47701 -v lanscape:/data \
+  -e LANSCAPE_ADMIN_PASSWORD='change-me-please' -e LANSCAPE_GATEWAY_HOSTS=lanscape.lan,192.168.1.10 \
+  ghcr.io/retreat-community/lanscape:latest
+```
+
+or `deploy/compose/server.yaml`. Open http://server:8080, sign in as `admin` (or create the first
+administrator in the browser when no bootstrap password is set).
+
+**Debian/Ubuntu/RHEL/Alpine packages**: download `lanscape_<version>_linux_<arch>.deb|.rpm|.apk`
+from the release, install it, set options in `/etc/lanscape/lanscape.env`, then
+`systemctl enable --now lanscape` (OpenRC: `rc-update add lanscape && rc-service lanscape start`).
+
+**Binary**: `lanscape serve --data-dir /var/lib/lanscape --gateway-hosts lanscape.lan`. Every flag
+has an environment variable `LANSCAPE_<FLAG>`. Useful flags: `--expect 10.30.0.0/24=2500`,
+`--metrics-token`, `--mini-token`, `--secure-cookies` (behind a TLS proxy).
+
+**Backup and restore**: `lanscape backup /backup/lanscape.db` (consistent copy while running);
+restore with the server stopped: `lanscape restore /backup/lanscape.db`.
+
+### Agents
+
+In the panel open **Settings → Agents → Add node**. It creates a registration token (single use
+or reusable, optionally expiring) and shows ready commands for every platform. The commands pin
+the server CA fingerprint, so the first connection cannot be intercepted.
+
+| Platform | Command |
+|---|---|
+| Linux (any) | `curl -fsSL https://raw.githubusercontent.com/retreat-community/lanscape/main/scripts/install.sh \| sudo sh -s -- agent --server lanscape.lan:8443 --token lsr_... --ca-fingerprint ...` |
+| Debian/Ubuntu/Proxmox, RHEL, Alpine | install `lanscape-agent_<version>_linux_<arch>.deb/.rpm/.apk`, set `LANSCAPE_SERVER`, `LANSCAPE_TOKEN`, `LANSCAPE_CA_FINGERPRINT` in `/etc/lanscape/agent.env`, `systemctl enable --now lanscape-agent` |
+| Docker / NAS | `deploy/compose/agent-nas.yaml` (`network_mode: host`, `NET_RAW`, `NET_ADMIN`, optional read-only Docker socket) |
+| Kubernetes | `helm install lanscape oci://ghcr.io/retreat-community/charts/lanscape` (see the chart values) |
+| macOS | download the darwin archive, `sudo lanscape-agent service install --server ... --token ... --ca-fingerprint ...` (launchd) |
+| Windows | unzip, run `lanscape-agent.exe service install --server ... --token ... --ca-fingerprint ...` as Administrator |
+| FreeBSD / OPNsense / pfSense | copy the binary to `/usr/local/bin`, `freebsd/lanscape_agent` to `/usr/local/etc/rc.d`, then `sysrc lanscape_agent_enable=YES lanscape_agent_flags="--server ... --token ..." && service lanscape_agent start` |
+| OpenWrt | `lanscape-agent` and `luci-app-lanscape` packages from the feed (below); on routers with little flash use the Mini agent |
+
+The agent needs root or `CAP_NET_RAW` + `CAP_NET_ADMIN` for ICMP and `SO_BINDTODEVICE`. Limits
+and modes: `--max-duration`, `--max-streams`, `--max-udp-mbps`, `--exclude 'wan*,tailscale*'`,
+`--mode respond-only` (never initiate tests) or `--mode checks-only` (no test responder).
+Certificates are stored in the data directory and renewed automatically 30 days before expiry.
+Deleting an agent in the panel revokes its access.

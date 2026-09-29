@@ -23,6 +23,16 @@ server:
     enabled: true
     token: ""
   database: ""  # empty = SQLite on the volume; or a postgres:// URL
+  existingDatabaseSecret: ""  # secret with the postgres:// URL under the key "url" (overrides database)
+  # single sign-on with OpenID Connect (redirect URL: <publicURL>/api/v1/auth/oidc/callback)
+  oidc:
+    issuer: ""
+    clientID: ""
+    existingSecret: ""  # key: client-secret
+    name: SSO
+    adminGroups: ""
+    operatorGroups: ""
+    defaultRole: viewer  # viewer, operator or none
   logLevel: info
   persistence:
     enabled: true

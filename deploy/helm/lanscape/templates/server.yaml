@@ -69,8 +69,27 @@ spec:
             {{- if .Values.server.expect }}
             - {name: LANSCAPE_EXPECT, value: {{ .Values.server.expect | quote }}}
             {{- end }}
-            {{- if .Values.server.database }}
+            {{- if .Values.server.existingDatabaseSecret }}
+            - name: LANSCAPE_DB
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.server.existingDatabaseSecret }}, key: url}
+            {{- else if .Values.server.database }}
             - {name: LANSCAPE_DB, value: {{ .Values.server.database | quote }}}
+            {{- end }}
+            {{- with .Values.server.oidc }}
+            {{- if .issuer }}
+            - {name: LANSCAPE_OIDC_ISSUER, value: {{ .issuer | quote }}}
+            - {name: LANSCAPE_OIDC_CLIENT_ID, value: {{ .clientID | quote }}}
+            - {name: LANSCAPE_OIDC_NAME, value: {{ .name | quote }}}
+            - {name: LANSCAPE_OIDC_ADMIN_GROUPS, value: {{ .adminGroups | quote }}}
+            - {name: LANSCAPE_OIDC_OPERATOR_GROUPS, value: {{ .operatorGroups | quote }}}
+            - {name: LANSCAPE_OIDC_DEFAULT_ROLE, value: {{ .defaultRole | quote }}}
+            {{- if .existingSecret }}
+            - name: LANSCAPE_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef: {name: {{ .existingSecret }}, key: client-secret}
+            {{- end }}
+            {{- end }}
             {{- end }}
             {{- if .Values.server.miniAgents.enabled }}
             - {name: LANSCAPE_MINI_TOKEN, value: {{ .Values.server.miniAgents.token | quote }}}

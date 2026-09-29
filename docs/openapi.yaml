@@ -1,0 +1,999 @@
+openapi: 3.0.3
+info:
+  title: Lanscape API
+  version: "1"
+  description: |
+    HTTP API of the Lanscape server (port 8080). Authenticate with the session cookie from
+    `POST /api/v1/auth/login` or with an API token (`Authorization: Bearer lsk_...`).
+    State-changing requests must use `Content-Type: application/json`.
+    Roles: viewer < operator (runs, incidents) < admin.
+  license:
+    name: GPL-3.0-or-later
+    url: https://www.gnu.org/licenses/gpl-3.0.html
+servers:
+  - url: http://localhost:8080
+security:
+  - cookie: []
+  - bearer: []
+tags:
+  - name: auth
+  - name: users
+  - name: agents
+  - name: network
+  - name: runs
+  - name: settings
+  - name: system
+paths:
+  /healthz:
+    get:
+      tags: [system]
+      operationId: health
+      summary: Health
+      security: []
+      responses:
+        "200": {description: ok, content: {text/plain: {}}}
+  /metrics:
+    get:
+      tags: [system]
+      operationId: metrics
+      summary: Metrics
+      description: Prometheus metrics; requires `Bearer <metrics token>` when configured.
+      security: [{}, {metricsToken: []}]
+      responses:
+        "200": {description: metrics, content: {text/plain: {}}}
+        "401": {$ref: "#/components/responses/Error"}
+  /api/v1/setup:
+    get:
+      tags: [auth]
+      operationId: setupState
+      summary: Setup state
+      security: []
+      responses:
+        "200":
+          description: whether the first administrator must be created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  needs_setup: {type: boolean}
+                  version: {type: string}
+    post:
+      tags: [auth]
+      operationId: setup
+      summary: Setup
+      security: []
+      requestBody: {$ref: "#/components/requestBodies/Credentials"}
+      responses:
+        "200": {$ref: "#/components/responses/User"}
+        "400": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: Login
+      security: []
+      requestBody: {$ref: "#/components/requestBodies/Credentials"}
+      responses:
+        "200": {$ref: "#/components/responses/User"}
+        "401": {$ref: "#/components/responses/Error"}
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Logout
+      responses:
+        "200": {$ref: "#/components/responses/Ok"}
+  /api/v1/auth/me:
+    get:
+      tags: [auth]
+      operationId: me
+      summary: Me
+      responses:
+        "200":
+          description: current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: {$ref: "#/components/schemas/User"}
+                  role: {type: string}
+                  version: {type: string}
+        "401": {$ref: "#/components/responses/Error"}
+  /api/v1/auth/password:
+    post:
+      tags: [auth]
+      operationId: changePassword
+      summary: Change password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [old, new]
+              properties:
+                old: {type: string}
+                new: {type: string, minLength: 10}
+      responses:
+        "200": {$ref: "#/components/responses/Ok"}
+        "400": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+  /api/v1/auth/totp:
+    post:
+      tags: [auth]
+      operationId: totpStart
+      summary: Totp start
+      responses:
+        "200":
+          description: new secret for enrolment
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret: {type: string}
+                  url: {type: string}
+    put:
+      tags: [auth]
+      operationId: totpConfirm
+      summary: Totp confirm
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                secret: {type: string}
+                code: {type: string}
+      responses:
+        "200": {$ref: "#/components/responses/Ok"}
+        "400": {$ref: "#/components/responses/Error"}
+    delete:
+      tags: [auth]
+      operationId: totpDisable
+      summary: Totp disable
+      responses:
+        "200": {$ref: "#/components/responses/Ok"}
+  /api/v1/users:
+    get:
+      tags: [users]
+      operationId: listUsers
+      summary: List users
+      responses:
+        "200":
+          description: users (admin)
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/User"}}
+        "403": {$ref: "#/components/responses/Error"}
+    post:
+      tags: [users]
+      operationId: createUser
+      summary: Create user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password, role]
+              properties:
+                username: {type: string}
+                password: {type: string, minLength: 10}
+                role: {$ref: "#/components/schemas/Role"}
+      responses:
+        "201": {$ref: "#/components/responses/User"}
+        "400": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+  /api/v1/users/{id}:
+    parameters: [{$ref: "#/components/parameters/IntID"}]
+    patch:
+      tags: [users]
+      operationId: updateUser
+      summary: Update user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role: {$ref: "#/components/schemas/Role"}
+                password: {type: string}
+                disabled: {type: boolean}
+                reset_totp: {type: boolean}
+      responses:
+        "200": {$ref: "#/components/responses/User"}
+        "404": {$ref: "#/components/responses/Error"}
+    delete:
+      tags: [users]
+      operationId: deleteUser
+      summary: Delete user
+      responses:
+        "204": {description: deleted}
+        "400": {$ref: "#/components/responses/Error"}
+  /api/v1/tokens:
+    get:
+      tags: [users]
+      operationId: listTokens
+      summary: List tokens
+      parameters:
+        - {name: all, in: query, schema: {type: string, enum: ["1"]}, description: all users (admin)}
+      responses:
+        "200":
+          description: API tokens
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/APIToken"}}
+    post:
+      tags: [users]
+      operationId: createToken
+      summary: Create token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: {type: string}
+                role: {$ref: "#/components/schemas/Role"}
+                expires_in_s: {type: integer}
+      responses:
+        "201": {$ref: "#/components/responses/Secret"}
+        "400": {$ref: "#/components/responses/Error"}
+  /api/v1/tokens/{id}:
+    parameters: [{$ref: "#/components/parameters/IntID"}]
+    delete:
+      tags: [users]
+      operationId: deleteToken
+      summary: Delete token
+      responses:
+        "204": {description: deleted}
+  /api/v1/agent-tokens:
+    get:
+      tags: [agents]
+      operationId: listAgentTokens
+      summary: List agent tokens
+      responses:
+        "200":
+          description: registration tokens (admin)
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/AgentToken"}}
+    post:
+      tags: [agents]
+      operationId: createAgentToken
+      summary: Create agent token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: string}
+                labels: {type: object, additionalProperties: {type: string}}
+                reusable: {type: boolean}
+                expires_in_s: {type: integer}
+      responses:
+        "201":
+          description: token (shown once) and install commands
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: integer}
+                  token: {type: string}
+                  install: {type: object, additionalProperties: {type: string}}
+  /api/v1/agent-tokens/{id}:
+    parameters: [{$ref: "#/components/parameters/IntID"}]
+    delete:
+      tags: [agents]
+      operationId: deleteAgentToken
+      summary: Delete agent token
+      responses:
+        "204": {description: deleted}
+  /api/v1/install:
+    get:
+      tags: [agents]
+      operationId: installCommands
+      summary: Install commands
+      responses:
+        "200":
+          description: gateway address, CA fingerprint and install command templates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gateway: {type: string}
+                  ca_fingerprint: {type: string}
+                  commands: {type: object, additionalProperties: {type: string}}
+  /api/v1/agents:
+    get:
+      tags: [agents]
+      operationId: listAgents
+      summary: List agents
+      responses:
+        "200":
+          description: agents with live state and inventory
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/Agent"}}
+  /api/v1/agents/{id}:
+    parameters: [{$ref: "#/components/parameters/StrID"}]
+    get:
+      tags: [agents]
+      operationId: getAgent
+      summary: Get agent
+      responses:
+        "200":
+          description: agent
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Agent"}
+        "404": {$ref: "#/components/responses/Error"}
+    patch:
+      tags: [agents]
+      operationId: updateAgent
+      summary: Update agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: string}
+                labels: {type: object, additionalProperties: {type: string}}
+      responses:
+        "200": {description: updated, content: {application/json: {schema: {type: object}}}}
+        "404": {$ref: "#/components/responses/Error"}
+    delete:
+      tags: [agents]
+      operationId: deleteAgent
+      summary: Delete agent
+      description: Removes the agent; its certificate is no longer accepted.
+      responses:
+        "204": {description: deleted}
+  /api/v1/segments:
+    get:
+      tags: [network]
+      operationId: listSegments
+      summary: List segments
+      responses:
+        "200":
+          description: current segments
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/Segment"}}
+  /api/v1/segments/{id}:
+    parameters: [{$ref: "#/components/parameters/StrID"}]
+    put:
+      tags: [network]
+      operationId: setSegment
+      summary: Set segment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: string}
+                expected_mbps: {type: integer, minimum: 0}
+      responses:
+        "200": {description: saved, content: {application/json: {schema: {type: object}}}}
+        "400": {$ref: "#/components/responses/Error"}
+  /api/v1/ipam:
+    get:
+      tags: [network]
+      operationId: ipam
+      summary: Ipam
+      responses:
+        "200":
+          description: address usage per segment
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/IPAM"}}
+  /api/v1/anomalies:
+    get:
+      tags: [network]
+      operationId: anomalies
+      summary: Anomalies
+      responses:
+        "200":
+          description: duplicate IP/MAC, subnet on several VLANs, missing link, new MACs
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/Anomaly"}}
+  /api/v1/map:
+    get:
+      tags: [network]
+      operationId: map
+      summary: Map
+      responses:
+        "200":
+          description: map graph with verdicts of the last full run
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MapGraph"}
+  /api/v1/runs:
+    get:
+      tags: [runs]
+      operationId: listRuns
+      summary: List runs
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, maximum: 500}}
+      responses:
+        "200":
+          description: runs, newest first
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/RunSummary"}}
+    post:
+      tags: [runs]
+      operationId: startRun
+      summary: Start run
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/RunOptions"}
+      responses:
+        "202":
+          description: started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: integer}
+        "400": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+  /api/v1/runs/estimate:
+    get:
+      tags: [runs]
+      operationId: estimateRun
+      summary: Estimate run
+      parameters:
+        - {name: kind, in: query, schema: {type: string}}
+        - {name: udp, in: query, schema: {type: string, enum: ["0", "1"]}}
+        - {name: bidir, in: query, schema: {type: string, enum: ["0", "1"]}}
+      responses:
+        "200":
+          description: number of paths and expected duration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  paths: {type: integer}
+                  seconds: {type: integer}
+  /api/v1/runs/active:
+    get:
+      tags: [runs]
+      operationId: activeRun
+      summary: Active run
+      responses:
+        "200":
+          description: progress of the running run or null
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Progress"}
+  /api/v1/runs/last:
+    get:
+      tags: [runs]
+      operationId: lastRun
+      summary: Last run
+      parameters:
+        - {name: kind, in: query, schema: {type: string}}
+      responses:
+        "200":
+          description: last finished run or null
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Report"}
+  /api/v1/runs/{id}:
+    parameters: [{$ref: "#/components/parameters/IntID"}]
+    get:
+      tags: [runs]
+      operationId: getRun
+      summary: Get run
+      responses:
+        "200":
+          description: run report
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Report"}
+        "404": {$ref: "#/components/responses/Error"}
+  /api/v1/runs/cancel:
+    post:
+      tags: [runs]
+      operationId: cancelRun
+      summary: Cancel run
+      responses:
+        "200":
+          description: whether a run was cancelled (partial results are kept)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cancelled: {type: boolean}
+  /api/v1/schedules:
+    get:
+      tags: [runs]
+      operationId: listSchedules
+      summary: List schedules
+      responses:
+        "200":
+          description: schedules
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/Schedule"}}
+    post:
+      tags: [runs]
+      operationId: createSchedule
+      summary: Create schedule
+      requestBody: {$ref: "#/components/requestBodies/Schedule"}
+      responses:
+        "200": {$ref: "#/components/responses/Schedule"}
+        "400": {$ref: "#/components/responses/Error"}
+  /api/v1/schedules/{id}:
+    parameters: [{$ref: "#/components/parameters/IntID"}]
+    put:
+      tags: [runs]
+      operationId: updateSchedule
+      summary: Update schedule
+      requestBody: {$ref: "#/components/requestBodies/Schedule"}
+      responses:
+        "200": {$ref: "#/components/responses/Schedule"}
+        "400": {$ref: "#/components/responses/Error"}
+    delete:
+      tags: [runs]
+      operationId: deleteSchedule
+      summary: Delete schedule
+      responses:
+        "204": {description: deleted}
+  /api/v1/settings:
+    get:
+      tags: [settings]
+      operationId: getSettings
+      summary: Get settings
+      responses:
+        "200":
+          description: settings (secrets masked)
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Settings"}
+    put:
+      tags: [settings]
+      operationId: saveSettings
+      summary: Save settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Settings"}
+      responses:
+        "200":
+          description: saved
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Settings"}
+        "400": {$ref: "#/components/responses/Error"}
+  /api/v1/audit:
+    get:
+      tags: [settings]
+      operationId: audit
+      summary: Audit
+      responses:
+        "200":
+          description: latest audit entries (admin)
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/AuditEntry"}}
+  /api/v1/events:
+    get:
+      tags: [system]
+      operationId: events
+      summary: Events
+      description: "Server-sent events: run.started, run.progress, run.done, agent, inventory"
+      responses:
+        "200": {description: event stream, content: {text/event-stream: {}}}
+components:
+  securitySchemes:
+    cookie: {type: apiKey, in: cookie, name: lanscape_session}
+    bearer: {type: http, scheme: bearer}
+    metricsToken: {type: http, scheme: bearer}
+  parameters:
+    IntID: {name: id, in: path, required: true, schema: {type: integer}}
+    StrID: {name: id, in: path, required: true, schema: {type: string}}
+  requestBodies:
+    Credentials:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [username, password]
+            properties:
+              username: {type: string}
+              password: {type: string}
+              code: {type: string, description: TOTP code when two-factor authentication is enabled}
+    Schedule:
+      required: true
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Schedule"}
+  responses:
+    Error:
+      description: error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: {type: string}
+    Ok:
+      description: ok
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              ok: {type: boolean}
+    User:
+      description: user
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/User"}
+    Secret:
+      description: created; the secret is returned only once
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id: {type: integer}
+              token: {type: string}
+    Schedule:
+      description: schedule
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Schedule"}
+  schemas:
+    Role: {type: string, enum: [viewer, operator, admin]}
+    User:
+      type: object
+      properties:
+        id: {type: integer}
+        username: {type: string}
+        role: {$ref: "#/components/schemas/Role"}
+        totp_enabled: {type: boolean}
+        disabled: {type: boolean}
+        created_at: {type: integer}
+    APIToken:
+      type: object
+      properties:
+        id: {type: integer}
+        user_id: {type: integer}
+        name: {type: string}
+        role: {$ref: "#/components/schemas/Role"}
+        created_at: {type: integer}
+        last_used: {type: integer}
+        expires_at: {type: integer}
+    AgentToken:
+      type: object
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        labels: {type: object, additionalProperties: {type: string}}
+        reusable: {type: boolean}
+        uses: {type: integer}
+        expires_at: {type: integer}
+        created_at: {type: integer}
+    Iface:
+      type: object
+      properties:
+        name: {type: string}
+        mac: {type: string}
+        mtu: {type: integer}
+        up: {type: boolean}
+        carrier: {type: boolean}
+        kind: {type: string}
+        parent: {type: string}
+        master: {type: string}
+        members: {type: array, items: {type: string}}
+        vlan: {type: integer}
+        speed: {type: integer, description: "Mbit/s, 0 when unknown"}
+        addrs:
+          type: array
+          items:
+            type: object
+            properties:
+              ip: {type: string}
+              prefix: {type: integer}
+    Agent:
+      type: object
+      properties:
+        id: {type: string}
+        name: {type: string}
+        kind: {type: string, enum: [full, lite]}
+        online: {type: boolean}
+        version: {type: string}
+        os: {type: string}
+        arch: {type: string}
+        hostname: {type: string}
+        host_id: {type: string}
+        data_port: {type: integer}
+        last_seen: {type: integer}
+        labels: {type: object, additionalProperties: {type: string}}
+        inventory:
+          type: object
+          properties:
+            ifaces: {type: array, items: {$ref: "#/components/schemas/Iface"}}
+            routes: {type: array, items: {type: object}}
+            rules: {type: array, items: {type: string}}
+            neighbors: {type: array, items: {type: object}}
+            env: {type: object}
+            resources: {type: object}
+    Segment:
+      type: object
+      properties:
+        id: {type: string}
+        cidr: {type: string}
+        vlan: {type: integer}
+        expected_mbps: {type: integer}
+        manual: {type: boolean}
+        name: {type: string}
+        members:
+          type: array
+          items:
+            type: object
+            properties:
+              node: {type: string}
+              iface: {type: string}
+              ip: {type: string}
+              speed: {type: integer}
+              mtu: {type: integer}
+              kind: {type: string}
+    Probe:
+      type: object
+      nullable: true
+      properties:
+        status: {type: string}
+        size: {type: integer}
+        sent: {type: integer}
+        recv: {type: integer}
+        rtt_min_us: {type: integer}
+        rtt_avg_us: {type: integer}
+        rtt_p95_us: {type: integer}
+        rtt_max_us: {type: integer}
+        jitter_us: {type: integer}
+    Throughput:
+      type: object
+      nullable: true
+      properties:
+        status: {type: string}
+        streams: {type: integer}
+        bps: {type: integer}
+        bps_reverse: {type: integer}
+        cpu_local: {type: integer, description: per mille}
+        cpu_peer: {type: integer, description: per mille}
+        path_ok: {type: boolean}
+        verified: {type: boolean}
+        sent: {type: integer}
+        lost: {type: integer}
+        loss_pct: {type: number}
+        jitter_us: {type: integer}
+    PathResult:
+      type: object
+      properties:
+        seg: {type: integer}
+        seg_id: {type: string}
+        src: {type: string}
+        src_if: {type: string}
+        src_ip: {type: string}
+        dst: {type: string}
+        dst_if: {type: string}
+        dst_ip: {type: string}
+        ping: {$ref: "#/components/schemas/Probe"}
+        echo: {$ref: "#/components/schemas/Probe"}
+        mtu: {$ref: "#/components/schemas/Probe"}
+        jumbo: {$ref: "#/components/schemas/Probe"}
+        tcp1: {$ref: "#/components/schemas/Throughput"}
+        tcpn: {$ref: "#/components/schemas/Throughput"}
+        udp: {$ref: "#/components/schemas/Throughput"}
+        bidir: {$ref: "#/components/schemas/Throughput"}
+        route_dev: {type: string}
+        expected_mbps: {type: integer}
+        best_bps: {type: integer}
+        verdict: {type: string, enum: [green, yellow, red, purple, none]}
+        mismatch: {type: boolean}
+        mtu_ok: {type: boolean}
+        loss_high: {type: boolean}
+        rtt_high: {type: boolean}
+    Problem:
+      type: object
+      properties:
+        kind: {type: string, enum: [tcp_intercepted, mtu, slow, path_mismatch, unreachable, macvlan, loss, cpu_bound, rtt]}
+        seg: {type: integer}
+        seg_id: {type: string}
+        src: {type: string}
+        src_if: {type: string}
+        dst: {type: string}
+        dst_if: {type: string}
+        detail: {type: string}
+    Anomaly:
+      type: object
+      properties:
+        kind: {type: string}
+        key: {type: string}
+        nodes: {type: array, items: {type: string}}
+        detail: {type: string}
+    RunOptions:
+      type: object
+      properties:
+        kind: {type: string, enum: [full, reachability, aggregate]}
+        duration_ms: {type: integer}
+        streams: {type: integer}
+        ping_count: {type: integer}
+        udp: {type: boolean}
+        udp_rate_kbps: {type: integer}
+        bidir: {type: boolean}
+        segments: {type: array, items: {type: string}}
+        nodes: {type: array, items: {type: string}}
+    RunSummary:
+      type: object
+      properties:
+        id: {type: integer}
+        kind: {type: string}
+        status: {type: string}
+        started: {type: integer}
+        finished: {type: integer}
+        params: {$ref: "#/components/schemas/RunOptions"}
+    Progress:
+      type: object
+      nullable: true
+      properties:
+        id: {type: integer}
+        kind: {type: string}
+        done: {type: integer}
+        total: {type: integer}
+        eta_s: {type: integer}
+        step: {type: string}
+    Report:
+      type: object
+      nullable: true
+      properties:
+        id: {type: integer}
+        kind: {type: string}
+        status: {type: string, enum: [done, cancelled, running]}
+        started: {type: integer}
+        finished: {type: integer}
+        options: {$ref: "#/components/schemas/RunOptions"}
+        nodes:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {type: string}
+              name: {type: string}
+              kind: {type: string}
+              env: {type: string}
+              arch: {type: string}
+        segments: {type: array, items: {$ref: "#/components/schemas/Segment"}}
+        paths: {type: array, items: {$ref: "#/components/schemas/PathResult"}}
+        problems: {type: array, items: {$ref: "#/components/schemas/Problem"}}
+        anomalies: {type: array, items: {$ref: "#/components/schemas/Anomaly"}}
+        aggregate:
+          type: array
+          items:
+            type: object
+            properties:
+              seg: {type: integer}
+              seg_id: {type: string}
+              total_bps: {type: integer}
+              pairs: {type: integer}
+              node_out_bps: {type: object, additionalProperties: {type: integer}}
+              node_in_bps: {type: object, additionalProperties: {type: integer}}
+    MapGraph:
+      type: object
+      properties:
+        run_id: {type: integer}
+        nodes:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {type: string}
+              label: {type: string}
+              type: {type: string, enum: [device, port, segment, zone, service, switch]}
+              parent: {type: string}
+              icon: {type: string}
+              status: {type: string}
+              data: {type: object}
+        edges:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {type: string}
+              source: {type: string}
+              target: {type: string}
+              type: {type: string, enum: [link, path, dependency]}
+              verdict: {type: string}
+              label: {type: string}
+        hypotheses:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {type: string}
+              segment: {type: string}
+              mbps: {type: integer}
+              group_a: {type: array, items: {type: string}}
+              group_b: {type: array, items: {type: string}}
+              detail: {type: string}
+              accepted: {type: boolean}
+    IPAM:
+      type: object
+      properties:
+        segment: {type: string}
+        cidr: {type: string}
+        size: {type: integer}
+        used: {type: integer}
+        free: {type: integer}
+        pool_size: {type: integer}
+        entries:
+          type: array
+          items:
+            type: object
+            properties:
+              ip: {type: string}
+              node: {type: string}
+              iface: {type: string}
+              mac: {type: string}
+              name: {type: string}
+              source: {type: string}
+              in_pool: {type: boolean}
+    Schedule:
+      type: object
+      required: [name, kind, spec]
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        kind: {type: string, enum: [full, reachability, aggregate]}
+        spec: {type: string, example: every 5m}
+        enabled: {type: boolean}
+        params: {$ref: "#/components/schemas/RunOptions"}
+        last_run: {type: integer}
+    Settings:
+      type: object
+      properties:
+        duration_ms: {type: integer}
+        streams: {type: integer}
+        ping_count: {type: integer}
+        rtt_warn_ms: {type: integer}
+        mini_token: {type: string, description: masked on read}
+        webhooks: {type: array, items: {type: string}}
+        retention_days: {type: integer}
+        public_url: {type: string}
+    AuditEntry:
+      type: object
+      properties:
+        id: {type: integer}
+        ts: {type: integer}
+        actor: {type: string}
+        action: {type: string}
+        target: {type: string}
+        result: {type: string}
+        detail: {type: string}

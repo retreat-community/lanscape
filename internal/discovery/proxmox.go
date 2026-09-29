@@ -89,7 +89,7 @@ func Proxmox(ctx context.Context, cfg ProxmoxConfig) ([]Item, error) {
 	if cfg.URL == "" || cfg.Token == "" {
 		return nil, errors.New("proxmox: url and token are required")
 	}
-	c := &pveClient{cfg: cfg, hc: &http.Client{Timeout: 20 * time.Second, Transport: &http.Transport{
+	c := &pveClient{cfg: cfg, hc: &http.Client{Timeout: 20 * time.Second, Transport: &http.Transport{IdleConnTimeout: 30 * time.Second,
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Insecure}}}} //nolint:gosec // opt-in for self-signed PVE certificates
 	var res []pveResource
 	if err := c.get(ctx, "/cluster/resources?type=vm", &res); err != nil {

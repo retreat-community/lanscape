@@ -309,8 +309,9 @@ type Prober struct {
 
 // NewProber returns a prober that accepts self-signed certificates (internal services).
 func NewProber(lib *Library) *Prober {
+	// probes are rare and cached: no idle connections (each would hold buffers and a goroutine)
 	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // fingerprinting internal services
-		ResponseHeaderTimeout: 5 * time.Second, MaxIdleConnsPerHost: 2}
+		ResponseHeaderTimeout: 5 * time.Second, DisableKeepAlives: true}
 	return &Prober{Lib: lib, Client: &http.Client{Transport: tr, Timeout: 8 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 3 {

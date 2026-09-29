@@ -37,7 +37,7 @@ type dockerContainer struct {
 
 // dockerClient talks to the Docker Engine API over a Unix socket (also Podman's).
 func dockerClient(sock string) *http.Client {
-	return &http.Client{Timeout: 15 * time.Second, Transport: &http.Transport{
+	return &http.Client{Timeout: 15 * time.Second, Transport: &http.Transport{DisableKeepAlives: true,
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 			var d net.Dialer
 			return d.DialContext(ctx, "unix", sock)

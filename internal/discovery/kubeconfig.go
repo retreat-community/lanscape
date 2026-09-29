@@ -95,6 +95,6 @@ func kubeconfigClient(path string) (*k8sClient, error) {
 	if cl.base == "" {
 		return nil, errors.New("k8s: kubeconfig has no server for the current context")
 	}
-	cl.hc = &http.Client{Timeout: 20 * time.Second, Transport: &http.Transport{TLSClientConfig: tc}}
+	cl.hc = &http.Client{Timeout: 20 * time.Second, Transport: &http.Transport{TLSClientConfig: tc, IdleConnTimeout: 30 * time.Second}}
 	return cl, nil
 }

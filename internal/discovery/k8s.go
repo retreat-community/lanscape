@@ -44,7 +44,8 @@ func newK8sClient(kubeconfig string) (*k8sClient, error) {
 		pool := x509.NewCertPool()
 		pool.AppendCertsFromPEM(ca)
 		return &k8sClient{base: "https://" + net.JoinHostPort(host, port), token: strings.TrimSpace(string(tok)),
-			hc: &http.Client{Timeout: 20 * time.Second, Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12}}}}, nil
+			hc: &http.Client{Timeout: 20 * time.Second, Transport: &http.Transport{IdleConnTimeout: 30 * time.Second,
+				TLSClientConfig: &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12}}}}, nil
 	}
 	return kubeconfigClient(kubeconfig)
 }

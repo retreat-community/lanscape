@@ -147,6 +147,32 @@ administrator in the browser when no bootstrap password is set).
 from the release, install it, set options in `/etc/lanscape/lanscape.env`, then
 `systemctl enable --now lanscape` (OpenRC: `rc-update add lanscape && rc-service lanscape start`).
 
+**Package repositories** (published with every release on GitHub Pages; the packages are not
+GPG-signed, their checksums are signed with cosign in the release):
+
+```sh
+# Debian, Ubuntu, Proxmox
+echo "deb [trusted=yes] https://retreat-community.github.io/lanscape/apt stable main" | sudo tee /etc/apt/sources.list.d/lanscape.list
+sudo apt update && sudo apt install lanscape          # or lanscape-agent, lsm-agent, lsm-server
+# RHEL, Fedora, Rocky, Alma
+sudo curl -fsSL -o /etc/yum.repos.d/lanscape.repo https://retreat-community.github.io/lanscape/rpm/lanscape.repo
+sudo dnf install lanscape                              # or lanscape-agent
+```
+
+**macOS and Linux with Homebrew**:
+
+```sh
+brew tap-new --no-git lanscape/local
+for f in lanscape lanscape-agent; do
+  curl -fsSL "https://retreat-community.github.io/lanscape/homebrew/$f.rb" -o "$(brew --repository lanscape/local)/Formula/$f.rb"
+done
+brew install lanscape/local/lanscape && brew services start lanscape
+```
+
+The agent service (`brew services start lanscape-agent`) reads `LANSCAPE_SERVER`,
+`LANSCAPE_TOKEN` and `LANSCAPE_CA_FINGERPRINT` from `$(brew --prefix)/etc/lanscape/agent.env`.
+Run the curl loop again to update the formulas.
+
 **Binary**: `lanscape serve --data-dir /var/lib/lanscape --gateway-hosts lanscape.lan`. Every flag
 has an environment variable `LANSCAPE_<FLAG>`. Useful flags: `--expect 10.30.0.0/24=2500`,
 `--metrics-token`, `--mini-token`, `--secure-cookies` (behind a TLS proxy).
@@ -205,7 +231,8 @@ the server CA fingerprint, so the first connection cannot be intercepted.
 | Docker / NAS | `deploy/compose/agent-nas.yaml` (`network_mode: host`, `NET_RAW`, `NET_ADMIN`, optional read-only Docker socket) |
 | Kubernetes | `helm install lanscape oci://ghcr.io/retreat-community/charts/lanscape` (see the chart values) |
 | macOS | download the darwin archive, `sudo lanscape-agent service install --server ... --token ... --ca-fingerprint ...` (launchd) |
-| Windows | unzip, run `lanscape-agent.exe service install --server ... --token ... --ca-fingerprint ...` as Administrator |
+| Windows | `msiexec /i lanscape-agent_<version>_windows_amd64.msi SERVER=lanscape.lan:8443 TOKEN=lsr_... CAFINGERPRINT=...` (installs the `LanscapeAgent` service; upgrades keep the values), or unzip the archive and run `lanscape-agent.exe service install --server ... --token ... --ca-fingerprint ...` as Administrator |
+| Homebrew (macOS, Linux) | the `lanscape-agent` formula (above), settings in `$(brew --prefix)/etc/lanscape/agent.env`, `brew services start lanscape-agent` |
 | FreeBSD / OPNsense / pfSense | copy the binary to `/usr/local/bin`, `freebsd/lanscape_agent` to `/usr/local/etc/rc.d`, then `sysrc lanscape_agent_enable=YES lanscape_agent_flags="--server ... --token ..." && service lanscape_agent start` |
 | OpenWrt | `lanscape-agent` and `luci-app-lanscape` packages from the feed (below); on routers with little flash use the Mini agent |
 

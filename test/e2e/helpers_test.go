@@ -203,8 +203,11 @@ func iperf3BPS(from, to, addr string) (float64, error) {
 			} `json:"sum_received"`
 		} `json:"end"`
 	}
-	if err := json.Unmarshal(out, &res); err != nil || res.End.SumReceived.BPS == 0 {
-		return 0, fmt.Errorf("iperf3 output: %v", err)
+	if err := json.Unmarshal(out, &res); err != nil {
+		return 0, fmt.Errorf("iperf3 output: %w", err)
+	}
+	if res.End.SumReceived.BPS == 0 {
+		return 0, fmt.Errorf("iperf3 measured nothing: %s", out)
 	}
 	return res.End.SumReceived.BPS, nil
 }

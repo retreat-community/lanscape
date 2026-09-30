@@ -19,7 +19,7 @@ T_linux-mips64   := mips64-linux-muslabi64 -Wno-option-ignored
 T_linux-mips64le := mips64el-linux-muslabi64 -Wno-option-ignored
 T_linux-riscv64  := riscv64-linux-musl
 T_linux-ppc64le  := powerpc64le-linux-musl
-T_freebsd-amd64  := x86_64-freebsd
+T_freebsd-amd64  := x86_64-freebsd.14.0
 TRIPLE := $(T_$(TARGET))
 ifeq ($(TRIPLE),)
 $(error unknown TARGET $(TARGET))
@@ -32,13 +32,21 @@ CFLAGS := -std=c11 -D_GNU_SOURCE -Os -ffunction-sections -fdata-sections \
 	-fno-asynchronous-unwind-tables -fno-stack-protector -Wall -Wextra -Werror \
 	-DLS_VERSION=\"$(VERSION)\"
 LDFLAGS := -static -Wl,--gc-sections -s
+# FreeBSD (Zig 0.15+) links against the base system's libc.so.7, which every FreeBSD, pfSense
+# and OPNsense install has; its symbol versioning keeps the binary working on newer releases
+ifneq ($(filter freebsd-%,$(TARGET)),)
+LDFLAGS := -Wl,--gc-sections -s
+# strict C11 hides the BSD types (u_char …) the network headers use
+CFLAGS := $(subst -std=c11,-std=gnu11,$(CFLAGS))
+endif
 STRIP_SECTIONS := --remove-section=.comment --remove-section=.pdr --remove-section=.mdebug.abi32 \
 	--remove-section=.gnu.attributes --remove-section=.note.gnu.build-id
 
 BUILD := build/$(TARGET)
 GEN := build/gen
 COMMON := common/sha256.c common/tlv.c common/util.c
-AGENT_SRC := agent/main.c agent/dp.c agent/icmp.c common/netif.c $(COMMON)
+OS := $(firstword $(subst -, ,$(TARGET)))
+AGENT_SRC := agent/main.c agent/dp.c agent/icmp.c common/netif.c common/netif_$(OS).c $(COMMON)
 SERVER_SRC := server/main.c server/agents.c server/run.c server/segments.c server/store.c \
 	server/http.c server/httpparse.c common/jw.c $(COMMON)
 HDRS := $(wildcard common/*.h agent/*.h server/*.h)
@@ -104,7 +112,7 @@ $(GEN)/fuzz-http: tests/fuzz_http.c server/httpparse.c
 lint:
 	cppcheck --quiet --error-exitcode=1 --std=c11 --inline-suppr \
 		--enable=warning,portability,performance --suppress=missingIncludeSystem \
-		-D__linux__ -DLS_VERSION=\"lint\" -I$(GEN) common agent server tools
+		-D__linux__ -DLS_VERSION=\"lint\" -I$(GEN) -i common/netif_freebsd.c common agent server tools
 
 clean:
 	rm -rf build

@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+# PROVIDE: lsm_server
+# REQUIRE: NETWORKING
+# KEYWORD: shutdown
+#
+# Lanscape Mini server. Copy lsm-server to /usr/local/bin and server.conf to /usr/local/etc/lsm/,
+# then add to /etc/rc.conf:
+#   lsm_server_enable="YES"
+
+. /etc/rc.subr
+
+name="lsm_server"
+rcvar="lsm_server_enable"
+load_rc_config $name
+: ${lsm_server_enable:="NO"}
+: ${lsm_server_config:="/usr/local/etc/lsm/server.conf"}
+pidfile="/var/run/${name}.pid"
+procname="/usr/local/bin/lsm-server"
+command="/usr/sbin/daemon"
+command_args="-r -o /var/log/${name}.log -p ${pidfile} ${procname} -c ${lsm_server_config}"
+
+run_rc_command "$1"

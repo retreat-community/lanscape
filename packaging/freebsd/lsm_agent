@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+# PROVIDE: lsm_agent
+# REQUIRE: NETWORKING
+# KEYWORD: shutdown
+#
+# Lanscape Mini agent. Copy lsm-agent to /usr/local/bin and agent.conf to /usr/local/etc/lsm/,
+# then add to /etc/rc.conf:
+#   lsm_agent_enable="YES"
+
+. /etc/rc.subr
+
+name="lsm_agent"
+rcvar="lsm_agent_enable"
+load_rc_config $name
+: ${lsm_agent_enable:="NO"}
+: ${lsm_agent_config:="/usr/local/etc/lsm/agent.conf"}
+pidfile="/var/run/${name}.pid"
+procname="/usr/local/bin/lsm-agent"
+command="/usr/sbin/daemon"
+command_args="-r -o /var/log/${name}.log -p ${pidfile} ${procname} -c ${lsm_agent_config}"
+
+run_rc_command "$1"

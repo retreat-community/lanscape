@@ -6,12 +6,10 @@
 #include "../common/util.h"
 
 #include <errno.h>
-#include <linux/sockios.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <poll.h>
 #include <string.h>
-#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -143,8 +141,7 @@ static void drain_wait(const int *fds, int n, uint64_t deadline)
     while (ls_now_us() < deadline) {
         int i, pending = 0;
         for (i = 0; i < n; i++) {
-            int q = 0;
-            if (fds[i] >= 0 && ioctl(fds[i], SIOCOUTQ, &q) == 0 && q > 0)
+            if (fds[i] >= 0 && ls_outq(fds[i]) > 0)
                 pending = 1;
         }
         if (!pending)
@@ -428,7 +425,7 @@ static int connect_bound(const cmd_t *c, uint64_t deadline, uint8_t *status)
         *status = ST_INTERNAL;
         return -1;
     }
-    if (c->dev[0] && setsockopt(s, SOL_SOCKET, SO_BINDTODEVICE, c->dev, (socklen_t)strlen(c->dev)) < 0) {
+    if (c->dev[0] && ls_bind_dev(s, c->dev) < 0) {
         *status = ST_NO_DEVICE;
         close(s);
         return -1;

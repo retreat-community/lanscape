@@ -1,4 +1,4 @@
-/* Linux interface inventory, counters, routes and CPU sampling for lsm-agent. */
+/* Interface inventory, counters, routes and CPU sampling for lsm-agent (Linux and FreeBSD). */
 #ifndef LS_NETIF_H
 #define LS_NETIF_H
 
@@ -37,6 +37,13 @@ int ls_dev_by_addr(uint32_t addr, char *dev, size_t cap);
 int ls_ifindex(const char *dev);
 int ls_cpu_read(ls_cpu *c);
 unsigned ls_cpu_permille(const ls_cpu *a, const ls_cpu *b);
+
+/* Socket helpers: bind to a device (SO_BINDTODEVICE on Linux; FreeBSD has no equivalent and
+ * relies on the source address, the route check and the counters), set DF for PMTU probes,
+ * bytes not yet sent by the kernel. */
+int ls_bind_dev(int s, const char *dev);
+void ls_set_df(int s, int df);
+int ls_outq(int s);
 
 /* Pure parsers (unit tested). */
 int ls_parse_vlan_config(const char *text, const char *dev, uint16_t *vid, char *parent, size_t pcap);

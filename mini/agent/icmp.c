@@ -1,10 +1,10 @@
 /* ICMP echo for reachability, RTT and PMTU (DF) probes, bound to a device. */
 #include "agent.h"
+#include "../common/netif.h"
 #include "../common/util.h"
 
 #include <errno.h>
 #include <netinet/in.h>
-#include <netinet/ip.h>
 #include <poll.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -28,7 +28,6 @@ static uint16_t csum(const uint8_t *p, size_t n)
 static int open_icmp(const cmd_t *c, int df, int *raw)
 {
     struct sockaddr_in sa;
-    int pmtu = df ? IP_PMTUDISC_PROBE : IP_PMTUDISC_DONT;
     int s = socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP);
     *raw = 1;
     if (s < 0) {
@@ -37,11 +36,11 @@ static int open_icmp(const cmd_t *c, int df, int *raw)
     }
     if (s < 0)
         return -1;
-    if (c->dev[0] && setsockopt(s, SOL_SOCKET, SO_BINDTODEVICE, c->dev, (socklen_t)strlen(c->dev)) < 0) {
+    if (c->dev[0] && ls_bind_dev(s, c->dev) < 0) {
         close(s);
         return -2;
     }
-    setsockopt(s, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu));
+    ls_set_df(s, df);
     memset(&sa, 0, sizeof(sa));
     sa.sin_family = AF_INET;
     sa.sin_addr.s_addr = c->src;

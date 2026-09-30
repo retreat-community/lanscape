@@ -24,7 +24,7 @@ Lanscape Mini must be a static C binary for many Linux architectures with a hard
   | linux-mips64/mips64le | `mips64{,el}-linux-muslabi64` | hard (n64); `-Wno-option-ignored` because clang ignores `-fno-PIC` with n64 |
   | linux-riscv64 | `riscv64-linux-musl` | lp64d |
   | linux-ppc64le | `powerpc64le-linux-musl` | hard |
-  | freebsd-amd64 | `x86_64-freebsd` | **allowed-failure**: Zig 0.14 does not ship a FreeBSD libc |
+  | freebsd-amd64 | `x86_64-freebsd.14.0` with Zig **0.15.1** | hard; links dynamically against the base `libc.so.7` (Zig provides FreeBSD libc stubs only for dynamic linking) |
 
 - No floating point anywhere in Mini: bit rates are integers (bit/s), CPU load in per mille, a
   custom formatter replaces `printf` so the soft-float runtime is not linked.
@@ -34,5 +34,9 @@ Lanscape Mini must be a static C binary for many Linux architectures with a hard
 
 ## Consequences
 
-The FreeBSD Mini build is reported but does not fail CI until Zig gains FreeBSD libc support
-(0.15+). All Linux targets are checked against the budget in CI.
+All targets, FreeBSD included, are built and checked against the budget in CI. FreeBSD uses Zig
+0.15.1 (the first release with FreeBSD libc) while Linux stays on 0.14.1 until 0.15 is verified
+for the MIPS and ARM soft-float targets. The FreeBSD binaries need FreeBSD 14.0 or newer
+(`__libc_start1`); 13.x is end-of-life. FreeBSD has no `SO_BINDTODEVICE`: the agent binds the
+source address and relies on the route check before and the interface counters after a test
+(`mini/common/netif_freebsd.c`).

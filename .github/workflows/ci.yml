@@ -20,6 +20,8 @@ permissions:
 
 env:
   ZIG_VERSION: 0.14.1
+  # FreeBSD libc ships with Zig 0.15 (docs/decisions/0003-mini-toolchain.md)
+  ZIG_FREEBSD_VERSION: 0.15.1
   GO_VERSION: "1.23"
   OPENWRT_24: 24.10.8
   OPENWRT_25: 25.12.5
@@ -222,8 +224,6 @@ jobs:
       matrix:
         target: [linux-amd64, linux-386, linux-arm64, linux-armv7, linux-armv6, linux-armv5, linux-mips,
                  linux-mipsle, linux-mips64, linux-mips64le, linux-riscv64, linux-ppc64le, freebsd-amd64]
-    # FreeBSD needs a libc that Zig 0.14 does not ship (docs/decisions/0003-mini-toolchain.md)
-    continue-on-error: ${{ matrix.target == 'freebsd-amd64' }}
     steps:
       - uses: actions/checkout@v4
       - name: Install tools
@@ -232,7 +232,7 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: mlugg/setup-zig@v2
         with:
-          version: ${{ env.ZIG_VERSION }}
+          version: ${{ startsWith(matrix.target, 'freebsd-') && env.ZIG_FREEBSD_VERSION || env.ZIG_VERSION }}
       - name: Unit and property tests
         if: matrix.target == 'linux-amd64'
         run: make -C mini test

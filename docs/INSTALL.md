@@ -31,6 +31,21 @@ copy `lsm-agent`/`lsm-server` to `/usr/bin`, the `*.conf` samples to `/etc/lsm/`
 from `systemd/` (or the script from `openrc/`). The agent needs `CAP_NET_RAW` and `CAP_NET_ADMIN`
 (or root) for `SO_BINDTODEVICE` and ICMP.
 
+### FreeBSD, pfSense, OPNsense
+
+FreeBSD 14 or newer (pfSense 2.7+, OPNsense 24+): download
+`lanscape-mini_<version>_freebsd-amd64.tar.gz`, then as root
+
+```sh
+install -m 0755 lsm-agent /usr/local/bin/ && install -m 0755 rc.d/lsm_agent /usr/local/etc/rc.d/
+mkdir -p /usr/local/etc/lsm && cp agent.conf /usr/local/etc/lsm/   # set server and token
+sysrc lsm_agent_enable=YES && service lsm_agent start
+```
+
+(the same with `lsm-server`, `rc.d/lsm_server` and `server.conf` for the server). The binaries
+link against the base system's libc. FreeBSD has no `SO_BINDTODEVICE`, so the agent binds the
+interface's address; the route check and the interface counters still confirm the path.
+
 Configuration keys (`/etc/lsm/agent.conf`, `/etc/lsm/server.conf`) can be overridden with
 environment variables `LSM_<KEY>` (for example `LSM_TOKEN`, `LSM_SERVER`).
 

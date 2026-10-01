@@ -13,7 +13,7 @@ COPY --from=base /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificat
 COPY --from=base /etc/passwd /etc/group /etc/nsswitch.conf /etc/
 COPY --from=base /usr/share/zoneinfo /usr/share/zoneinfo
 COPY --from=base /tmp /tmp
-COPY linux-${TARGETARCH}${TARGETVARIANT}/lanscape-agent /usr/bin/lanscape-agent
+COPY --chmod=0755 linux-${TARGETARCH}${TARGETVARIANT}/lanscape-agent /usr/bin/lanscape-agent
 ENV LANSCAPE_DATA_DIR=/var/lib/lanscape-agent
 VOLUME ["/var/lib/lanscape-agent"]
 ENTRYPOINT ["/usr/bin/lanscape-agent"]

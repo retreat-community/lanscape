@@ -7,5 +7,5 @@ LABEL org.opencontainers.image.title="lsm-agent" \
       org.opencontainers.image.description="Lanscape Mini agent" \
       org.opencontainers.image.source="https://github.com/retreat-community/lanscape" \
       org.opencontainers.image.licenses="GPL-3.0-or-later"
-COPY linux-${TARGETARCH}${TARGETVARIANT}/lsm-agent /lsm-agent
+COPY --chmod=0755 linux-${TARGETARCH}${TARGETVARIANT}/lsm-agent /lsm-agent
 ENTRYPOINT ["/lsm-agent"]

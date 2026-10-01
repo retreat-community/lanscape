@@ -1,33 +1,33 @@
 Package: lsm-agent
 Architecture: i386
-Version: 1.0.1
+Version: 1.0.2
 Priority: optional
 Section: net
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Installed-Size: 72
-Filename: pool/main/lsm-agent_1.0.1_i386.deb
-Size: 47684
-MD5sum: 0ceeae0cb1d2d77aa8d0d61937a923d1
-SHA1: 059eb66e40bdb8664daa21af001118d1268beac4
-SHA256: 08397ca2d9498e821c3a9876845d4198e440188482aaa5594677a92da34c7df7
-SHA512: ed96218121eb59328f09cc9586d464e5b618696b169df306156c25bc951c235c9b0c0724b7e1d20d3e5566947b7195bf90cd5bc6f9e00f6822349063bad38019
+Filename: pool/main/lsm-agent_1.0.2_i386.deb
+Size: 47688
+MD5sum: eb16739c3503fed7d181cce0638ed9ac
+SHA1: 78df8286800c3f19dd40828df7a433c018213523
+SHA256: 679369e2ad9ad95710107970a86f7c4f25641b0542b5ab79fb79091336a0046a
+SHA512: 7f90e9e6673ccdfac22f82d8f0fd5324e8c6261729aac67256819f1eb911e944c24399842230148ed8c2a3bf04eedb8c60f67af9b16bd467d42fa084fce33072
 Homepage: https://github.com/retreat-community/lanscape
 Description: Lanscape Mini agent (tiny network path tester)
 License: GPL-3.0-or-later
 
 Package: lsm-server
 Architecture: i386
-Version: 1.0.1
+Version: 1.0.2
 Priority: optional
 Section: net
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Installed-Size: 86
-Filename: pool/main/lsm-server_1.0.1_i386.deb
-Size: 59308
-MD5sum: 078cb30879d29c80b98cae6d5e7d8b9f
-SHA1: 95e1d13e58b3739e3e9a8aed8d74dc6bb29f5905
-SHA256: 673e6489e348f8b3dea9a9eb974c7449d3dcec92ab5f391d0246258608f60630
-SHA512: 8287da4f023b9dc31a1058f074f184d318b247b575f167686a2d26e323c64e1ef7b4f05027d8213c12496ca5fd24456a69c09c3fbd73e6b45bb708ff2c052731
+Filename: pool/main/lsm-server_1.0.2_i386.deb
+Size: 59312
+MD5sum: 03e916e8a5199f2c867628120e64d3d7
+SHA1: b6b677ffd3e236c182f9e566eec64460d43c8acc
+SHA256: ba353e03bde48bb35d8a91dea034cbef9e1ee9a6bc1ef11bf1110a85c37e3bc8
+SHA512: 10bfb834331eda90c72235c3df3da8dd4143b871122966e9b1a03ee777bca6b1ec15218bfaf994327f0e9fd80a3568afadad132fd88bbbaa1bfe8133d7884dbb
 Homepage: https://github.com/retreat-community/lanscape
 Description: Lanscape Mini server (tiny network path tester)
 License: GPL-3.0-or-later

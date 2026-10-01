@@ -1,5 +1,5 @@
 Package: lanscape-agent
-Version: 1.0.1-r1
+Version: 1.0.2-r1
 Depends: libc, ca-bundle
 Source: feeds/base/lanscape/lanscape-agent
 SourceName: lanscape-agent
@@ -11,15 +11,15 @@ URL: https://github.com/retreat-community/lanscape
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Architecture: mips_24kc
 Installed-Size: 7864320
-Filename: lanscape-agent_1.0.1-r1_mips_24kc.ipk
-Size: 2621115
-SHA256sum: 2d0180c37206af893991caa3ddb7542afd26b4e8538fdc39f95168159296dbb8
+Filename: lanscape-agent_1.0.2-r1_mips_24kc.ipk
+Size: 2621088
+SHA256sum: 19d738c8d2175d713a6ac55e5d2abb247ad4ed99969ba88bafde98c3f541517d
 Description:  Connects the router to a Lanscape server: interface inventory, bound network
  tests, DHCP leases and Wi-Fi clients as discovery sources, availability checks.
  On routers with little flash use the Lanscape Mini agent (lsm-agent) instead.
 
 Package: lsm-agent
-Version: 1.0.1-r1
+Version: 1.0.2-r1
 Depends: libc
 Source: feeds/base/lanscape/lsm-agent
 SourceName: lsm-agent
@@ -31,14 +31,14 @@ URL: https://github.com/retreat-community/lanscape
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Architecture: mips_24kc
 Installed-Size: 102400
-Filename: lsm-agent_1.0.1-r1_mips_24kc.ipk
-Size: 50432
-SHA256sum: 1aea62cff9a5621bfeb2a82b82c6de091b1a921109f1c870793993a660ed0d04
+Filename: lsm-agent_1.0.2-r1_mips_24kc.ipk
+Size: 50439
+SHA256sum: cc5b73785c624c6cd497010e0b859f3fd83c7c03b7bccb53b9400c1140901a23
 Description:  Reports interfaces and runs bound TCP throughput, ping and PMTU tests
  for a Lanscape Mini or Lanscape server.
 
 Package: lsm-server
-Version: 1.0.1-r1
+Version: 1.0.2-r1
 Depends: libc
 Source: feeds/base/lanscape/lsm-server
 SourceName: lsm-server
@@ -49,14 +49,14 @@ URL: https://github.com/retreat-community/lanscape
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Architecture: mips_24kc
 Installed-Size: 122880
-Filename: lsm-server_1.0.1-r1_mips_24kc.ipk
-Size: 62715
-SHA256sum: 44ed55c476bb92cb041eb0052f367bcec69bb34fac2df0c7a34cf4fb39c6b45f
+Filename: lsm-server_1.0.2-r1_mips_24kc.ipk
+Size: 62729
+SHA256sum: 55ea5db879541d2a9a7d4b1539989d69f7c28d909be9424cdc93cb455b1ad132
 Description:  Collects Lanscape Mini agents, runs "check all" over every path and serves
  a single page with the speed matrix and the network map on port 8080.
 
 Package: luci-app-lanscape
-Version: 1.0.1-r1
+Version: 1.0.2-r1
 Depends: libc, luci-base, rpcd-mod-ucode, lanscape-agent
 Source: feeds/base/lanscape/luci-app-lanscape
 SourceName: luci-app-lanscape
@@ -68,8 +68,8 @@ URL: https://github.com/retreat-community/lanscape
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Architecture: all
 Installed-Size: 20480
-Filename: luci-app-lanscape_1.0.1-r1_all.ipk
-Size: 3816
-SHA256sum: 2962e87ffb3d7d9e08491dbf32affd4e2c87a4b0b987865e10d001a8886f6eaf
+Filename: luci-app-lanscape_1.0.2-r1_all.ipk
+Size: 3813
+SHA256sum: dd8fe07dfa4ca7a6e2bb8190a213ed30b120ad8ac149e66a6f8e34423ae9ef77
 Description:  Lanscape agent settings, status, "check from this router" and the last results in LuCI.
 

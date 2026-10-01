@@ -1,27 +1,27 @@
 class LanscapeAgent < Formula
   desc "Lanscape agent: network tests, discovery and checks"
   homepage "https://github.com/retreat-community/lanscape"
-  version "1.0.1"
+  version "1.0.2"
   license "GPL-3.0-or-later"
 
   on_macos do
     on_arm do
-      url "https://github.com/retreat-community/lanscape/releases/download/v1.0.1/lanscape-agent_1.0.1_darwin_arm64.tar.gz"
-      sha256 "ad9fa999a5aa48afdd08cc94977d7f4c762579935bd94751cb96dcd029f41b94"
+      url "https://github.com/retreat-community/lanscape/releases/download/v1.0.2/lanscape-agent_1.0.2_darwin_arm64.tar.gz"
+      sha256 "19f5ec38ce70d49d7e9e617eeb2c6ccc232ac0ab6014b19a351c621582c297b4"
     end
     on_intel do
-      url "https://github.com/retreat-community/lanscape/releases/download/v1.0.1/lanscape-agent_1.0.1_darwin_amd64.tar.gz"
-      sha256 "34c53f88387ee79e156dcd0fc327b6fd688d922e7cd4c47cec9dfe495ca340a2"
+      url "https://github.com/retreat-community/lanscape/releases/download/v1.0.2/lanscape-agent_1.0.2_darwin_amd64.tar.gz"
+      sha256 "f841d01a5f5bf19806ed37a903f5d83088c81642d9bd4bdfd3029232aa69a88d"
     end
   end
   on_linux do
     on_arm do
-      url "https://github.com/retreat-community/lanscape/releases/download/v1.0.1/lanscape-agent_1.0.1_linux_arm64.tar.gz"
-      sha256 "87d92afae6fcffd707926e11183f6e52878bb83a94af63313e3152320bcc5ed9"
+      url "https://github.com/retreat-community/lanscape/releases/download/v1.0.2/lanscape-agent_1.0.2_linux_arm64.tar.gz"
+      sha256 "ca700e6f2573c5b702844438eee5d1ad2895f4a95bdc0b1b929d4d186d14399f"
     end
     on_intel do
-      url "https://github.com/retreat-community/lanscape/releases/download/v1.0.1/lanscape-agent_1.0.1_linux_amd64.tar.gz"
-      sha256 "10ce4c195fb67fe6c248965f0da6941b7581b51ed63ca892240fa85bd08d92d0"
+      url "https://github.com/retreat-community/lanscape/releases/download/v1.0.2/lanscape-agent_1.0.2_linux_amd64.tar.gz"
+      sha256 "c8f980d67cc5555ac84fea939da104d556fd2f34e4b58b628061241e65dd17dc"
     end
   end
 

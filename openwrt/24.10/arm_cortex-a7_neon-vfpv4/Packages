@@ -1,5 +1,5 @@
 Package: lanscape-agent
-Version: 1.0.1-r1
+Version: 1.0.2-r1
 Depends: libc, ca-bundle
 Source: feeds/base/lanscape/lanscape-agent
 SourceName: lanscape-agent
@@ -11,15 +11,15 @@ URL: https://github.com/retreat-community/lanscape
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Architecture: arm_cortex-a7_neon-vfpv4
 Installed-Size: 6871040
-Filename: lanscape-agent_1.0.1-r1_arm_cortex-a7_neon-vfpv4.ipk
-Size: 2701148
-SHA256sum: 9a640f44528e7217991c5e08bcf72cbe88a1547cb3e792e1fc409484b4d28d69
+Filename: lanscape-agent_1.0.2-r1_arm_cortex-a7_neon-vfpv4.ipk
+Size: 2701162
+SHA256sum: 2d0481549c950f8894ef643dcf70823c5e9afa0552d88fefdad0c9632adad965
 Description:  Connects the router to a Lanscape server: interface inventory, bound network
  tests, DHCP leases and Wi-Fi clients as discovery sources, availability checks.
  On routers with little flash use the Lanscape Mini agent (lsm-agent) instead.
 
 Package: lsm-agent
-Version: 1.0.1-r1
+Version: 1.0.2-r1
 Depends: libc
 Source: feeds/base/lanscape/lsm-agent
 SourceName: lsm-agent
@@ -31,14 +31,14 @@ URL: https://github.com/retreat-community/lanscape
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Architecture: arm_cortex-a7_neon-vfpv4
 Installed-Size: 92160
-Filename: lsm-agent_1.0.1-r1_arm_cortex-a7_neon-vfpv4.ipk
-Size: 45307
-SHA256sum: 65987b4ae80c15e404a16394449bdf3318741a4084e3228089881e91a685b77a
+Filename: lsm-agent_1.0.2-r1_arm_cortex-a7_neon-vfpv4.ipk
+Size: 45296
+SHA256sum: 30de958c51ba9a167b151f796cc52ecaf371657069cc64e17ce07bba73600215
 Description:  Reports interfaces and runs bound TCP throughput, ping and PMTU tests
  for a Lanscape Mini or Lanscape server.
 
 Package: lsm-server
-Version: 1.0.1-r1
+Version: 1.0.2-r1
 Depends: libc
 Source: feeds/base/lanscape/lsm-server
 SourceName: lsm-server
@@ -49,14 +49,14 @@ URL: https://github.com/retreat-community/lanscape
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Architecture: arm_cortex-a7_neon-vfpv4
 Installed-Size: 102400
-Filename: lsm-server_1.0.1-r1_arm_cortex-a7_neon-vfpv4.ipk
-Size: 56680
-SHA256sum: 94804f3146167586f4d1c0d84be7784fea0573596887fdf0a13376850fa8f322
+Filename: lsm-server_1.0.2-r1_arm_cortex-a7_neon-vfpv4.ipk
+Size: 56686
+SHA256sum: 50466d9262fc6e66e97972735c9067035282207048274f6dc461cac23d7574c7
 Description:  Collects Lanscape Mini agents, runs "check all" over every path and serves
  a single page with the speed matrix and the network map on port 8080.
 
 Package: luci-app-lanscape
-Version: 1.0.1-r1
+Version: 1.0.2-r1
 Depends: libc, luci-base, rpcd-mod-ucode, lanscape-agent
 Source: feeds/base/lanscape/luci-app-lanscape
 SourceName: luci-app-lanscape
@@ -68,8 +68,8 @@ URL: https://github.com/retreat-community/lanscape
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Architecture: all
 Installed-Size: 20480
-Filename: luci-app-lanscape_1.0.1-r1_all.ipk
-Size: 3816
-SHA256sum: 2962e87ffb3d7d9e08491dbf32affd4e2c87a4b0b987865e10d001a8886f6eaf
+Filename: luci-app-lanscape_1.0.2-r1_all.ipk
+Size: 3813
+SHA256sum: dd8fe07dfa4ca7a6e2bb8190a213ed30b120ad8ac149e66a6f8e34423ae9ef77
 Description:  Lanscape agent settings, status, "check from this router" and the last results in LuCI.
 

@@ -1,0 +1,66 @@
+Package: lanscape-agent
+Architecture: arm64
+Version: 1.0.1
+Priority: optional
+Section: net
+Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
+Installed-Size: 7745
+Filename: pool/main/lanscape-agent_1.0.1_linux_arm64.deb
+Size: 3235194
+MD5sum: fc4a5d2ad33541a24f8628fa77ed75e0
+SHA1: 83ce0bd4b02618fd04fd459cb8d5bd9bca16859a
+SHA256: 87e7e0c80dd50e0ad94e570e4df21c2db7741d50d31b4107d3d19149d1182388
+SHA512: 48e9ff03863abbac096671c35a8cbfdc0f04b78931a25c5f407640125b18f87f18f921702856250bb4dfa66c061a9572888739f28b9e9533fc0b20f045e666ec
+Homepage: https://github.com/retreat-community/lanscape
+Description: Lanscape agent - inventory, network tests, discovery and checks
+
+Package: lanscape
+Architecture: arm64
+Version: 1.0.1
+Priority: optional
+Section: net
+Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
+Installed-Size: 22849
+Filename: pool/main/lanscape_1.0.1_linux_arm64.deb
+Size: 8698862
+MD5sum: f87508a3a1cf2f3f037c1c1a39638bd6
+SHA1: 9f61843ad0fc0295efb484f43e61c00afe5b6e71
+SHA256: 9090c4472d8d810dd7de762e0adfe8dec7587836bc5946509a372cddc575e43b
+SHA512: a26b304aabdadcccc73dc883d9533351718886dda53ede9d341614fe7349ac12fa016f6dc01dab5e7457345eca82a7254d05eb77614df1a093607cc7218eff8a
+Homepage: https://github.com/retreat-community/lanscape
+Description: Network paths, map and service uptime in one panel (server)
+
+Package: lsm-agent
+Architecture: arm64
+Version: 1.0.1
+Priority: optional
+Section: net
+Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
+Installed-Size: 72
+Filename: pool/main/lsm-agent_1.0.1_arm64.deb
+Size: 48510
+MD5sum: 8c015d686ff8b0a6fa23c3fd94c92fc8
+SHA1: a04fc13beb78616a7828f8df8729c67289a5645f
+SHA256: d47a1d8dd2b8670c0765d2ef8de9b559f37bd2d430e5cad05ec04a1bdd058217
+SHA512: 2588a9f3a32bcc54d75b372ac1036d48b8127181963bb280ace30b0d68f490a3e93719a7185ed5bb5b5e12549d1f2f26a9b22ad5581807ea806e91b85a951eb4
+Homepage: https://github.com/retreat-community/lanscape
+Description: Lanscape Mini agent (tiny network path tester)
+License: GPL-3.0-or-later
+
+Package: lsm-server
+Architecture: arm64
+Version: 1.0.1
+Priority: optional
+Section: net
+Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
+Installed-Size: 88
+Filename: pool/main/lsm-server_1.0.1_arm64.deb
+Size: 61038
+MD5sum: ad8b1ac162ef9e27066430c50d825f78
+SHA1: c98fcead33cbc90c276af71df6bd8c070b58984e
+SHA256: 0808c0231da80e16aac4920924ad2f950fe81acd641dd8ec78c9ff0463428369
+SHA512: ada2bba8d3115bf5579643b0c9870ba5031e46f1d583d08b630899981e3a4c9a193ab81ae6cc061b5977bcc975cab9a238f04f0f1291988e97d206d56603f3c9
+Homepage: https://github.com/retreat-community/lanscape
+Description: Lanscape Mini server (tiny network path tester)
+License: GPL-3.0-or-later
+

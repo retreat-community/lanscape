@@ -1,0 +1,34 @@
+Package: lsm-agent
+Architecture: armhf
+Version: 1.0.1
+Priority: optional
+Section: net
+Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
+Installed-Size: 75
+Filename: pool/main/lsm-agent_1.0.1_armhf.deb
+Size: 47534
+MD5sum: e14d09d773e5d52e1cef0423bba8ce9c
+SHA1: d10e31d85c5e6e0f93fe8ed455221e6cb3308346
+SHA256: 42247c5659ae2c3bcfd6a8a7c9fea2382742e8cda4d9aa6d1302acae885b18b5
+SHA512: cde7034d26221106ba50c0bd155e5671fe5f2bc0298778fe55b9968a936b11debeb502729c078d243d746c9278e7d7e24614751b850c1981e9b71dbf4c6d2b9a
+Homepage: https://github.com/retreat-community/lanscape
+Description: Lanscape Mini agent (tiny network path tester)
+License: GPL-3.0-or-later
+
+Package: lsm-server
+Architecture: armhf
+Version: 1.0.1
+Priority: optional
+Section: net
+Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
+Installed-Size: 88
+Filename: pool/main/lsm-server_1.0.1_armhf.deb
+Size: 59260
+MD5sum: 0fa5e0fc05b7cf2f3e9be3770341ade4
+SHA1: b166b7f8cdef9440fa93664f38f4c83236fc9f90
+SHA256: 8d0e5a08f461dfd0fc82ca4dbd2531709eb2add1209d301b87ce25d3cac083d7
+SHA512: 10e1e04e9e385bf71e421df27e6ae5397d9d1f68d4bab07e4faf7d9e1a9056adb5f6ed2a49ba841aa7152a30a0844f315e2aa0092644e22c35e825f58b6fc2eb
+Homepage: https://github.com/retreat-community/lanscape
+Description: Lanscape Mini server (tiny network path tester)
+License: GPL-3.0-or-later
+

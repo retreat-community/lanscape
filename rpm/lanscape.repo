@@ -1,0 +1,6 @@
+[lanscape]
+name=Lanscape
+baseurl=https://retreat-community.github.io/lanscape/rpm
+enabled=1
+gpgcheck=0
+repo_gpgcheck=0

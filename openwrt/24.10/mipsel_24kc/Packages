@@ -1,0 +1,75 @@
+Package: lanscape-agent
+Version: 1.0.1-r1
+Depends: libc, ca-bundle
+Source: feeds/base/lanscape/lanscape-agent
+SourceName: lanscape-agent
+License: GPL-3.0-or-later
+LicenseFiles: LICENSE
+Section: net
+SourceDateEpoch: 1784877710
+URL: https://github.com/retreat-community/lanscape
+Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
+Architecture: mipsel_24kc
+Installed-Size: 7864320
+Filename: lanscape-agent_1.0.1-r1_mipsel_24kc.ipk
+Size: 2562809
+SHA256sum: 4a1383aecb941b5d72db60a307bfccde852c34790ea5fce02c9f2ef44e980635
+Description:  Connects the router to a Lanscape server: interface inventory, bound network
+ tests, DHCP leases and Wi-Fi clients as discovery sources, availability checks.
+ On routers with little flash use the Lanscape Mini agent (lsm-agent) instead.
+
+Package: lsm-agent
+Version: 1.0.1-r1
+Depends: libc
+Source: feeds/base/lanscape/lsm-agent
+SourceName: lsm-agent
+License: GPL-3.0-or-later
+LicenseFiles: LICENSE
+Section: net
+SourceDateEpoch: 1784877710
+URL: https://github.com/retreat-community/lanscape
+Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
+Architecture: mipsel_24kc
+Installed-Size: 102400
+Filename: lsm-agent_1.0.1-r1_mipsel_24kc.ipk
+Size: 50379
+SHA256sum: 1269257cb9e8ce90b18eb7011bd0f60863f385f5db7fe1306a5777c4623f3f77
+Description:  Reports interfaces and runs bound TCP throughput, ping and PMTU tests
+ for a Lanscape Mini or Lanscape server.
+
+Package: lsm-server
+Version: 1.0.1-r1
+Depends: libc
+Source: feeds/base/lanscape/lsm-server
+SourceName: lsm-server
+License: GPL-3.0-or-later
+Section: net
+SourceDateEpoch: 1784877710
+URL: https://github.com/retreat-community/lanscape
+Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
+Architecture: mipsel_24kc
+Installed-Size: 122880
+Filename: lsm-server_1.0.1-r1_mipsel_24kc.ipk
+Size: 62618
+SHA256sum: 5d80ae7928ef424d7eba3abb01077f01c4fb0e2070c24d8aa0ac045d651fb9c9
+Description:  Collects Lanscape Mini agents, runs "check all" over every path and serves
+ a single page with the speed matrix and the network map on port 8080.
+
+Package: luci-app-lanscape
+Version: 1.0.1-r1
+Depends: libc, luci-base, rpcd-mod-ucode, lanscape-agent
+Source: feeds/base/lanscape/luci-app-lanscape
+SourceName: luci-app-lanscape
+License: GPL-3.0-or-later
+LicenseFiles: LICENSE
+Section: luci
+SourceDateEpoch: 1784877710
+URL: https://github.com/retreat-community/lanscape
+Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
+Architecture: all
+Installed-Size: 20480
+Filename: luci-app-lanscape_1.0.1-r1_all.ipk
+Size: 3816
+SHA256sum: 2962e87ffb3d7d9e08491dbf32affd4e2c87a4b0b987865e10d001a8886f6eaf
+Description:  Lanscape agent settings, status, "check from this router" and the last results in LuCI.
+

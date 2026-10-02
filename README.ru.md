@@ -34,6 +34,19 @@ macvlan-родитель.
 - [Архитектурные решения](docs/decisions/)
 - [ТЗ](docs/SPEC.md)
 
+## Поддержать проект
+
+Lanscape бесплатный, без телеметрии и платных тарифов. Если он вам полезен, поддержать разработку можно криптой (адреса есть и на странице **Поддержать проект** в панели):
+
+| Сеть | Монеты | Адрес |
+|---|---|---|
+| Bitcoin | BTC | `bc1qzyc34w6jk9lhnagync80724wxhuklwfspk95ez` |
+| Ethereum | ETH, USDT | `0x57D67fE406994fC7e5095a0edA72B2EB3A2AffA2` |
+| TRON | TRX, USDT | `TRgcXpqvPrcntuq5ouHuJ7ofTyWqzQVBzu` |
+| TON | TON, USDT | `UQBNRESRFYTtMeRQ5t-x1u-zEg14zOeTcUzBoBg6td25Eqcl` |
+
+Отправляйте только указанные монеты и только в сети адреса.
+
 ## Лицензия
 
 GNU General Public License v3.0 или новее, см. [LICENSE](LICENSE) и [NOTICE](NOTICE).

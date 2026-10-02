@@ -62,6 +62,19 @@ The interface is available in English and Russian ([screenshot](docs/screenshots
 - [Architecture decisions](docs/decisions/)
 - [Specification](docs/SPEC.md)
 
+## Support the project
+
+Lanscape is free, without telemetry or paid plans. If it is useful to you, you can support the development with crypto (also on the **Support the project** page of the panel):
+
+| Network | Assets | Address |
+|---|---|---|
+| Bitcoin | BTC | `bc1qzyc34w6jk9lhnagync80724wxhuklwfspk95ez` |
+| Ethereum | ETH, USDT | `0x57D67fE406994fC7e5095a0edA72B2EB3A2AffA2` |
+| TRON | TRX, USDT | `TRgcXpqvPrcntuq5ouHuJ7ofTyWqzQVBzu` |
+| TON | TON, USDT | `UQBNRESRFYTtMeRQ5t-x1u-zEg14zOeTcUzBoBg6td25Eqcl` |
+
+Send only the listed assets and only in the network of the address.
+
 ## License
 
 GNU General Public License v3.0 or later, see [LICENSE](LICENSE) and [NOTICE](NOTICE).

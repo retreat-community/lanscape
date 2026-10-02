@@ -1,33 +1,33 @@
 Package: lsm-agent
 Architecture: i386
-Version: 1.0.2
+Version: 1.0.3
 Priority: optional
 Section: net
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Installed-Size: 72
-Filename: pool/main/lsm-agent_1.0.2_i386.deb
-Size: 47688
-MD5sum: eb16739c3503fed7d181cce0638ed9ac
-SHA1: 78df8286800c3f19dd40828df7a433c018213523
-SHA256: 679369e2ad9ad95710107970a86f7c4f25641b0542b5ab79fb79091336a0046a
-SHA512: 7f90e9e6673ccdfac22f82d8f0fd5324e8c6261729aac67256819f1eb911e944c24399842230148ed8c2a3bf04eedb8c60f67af9b16bd467d42fa084fce33072
+Filename: pool/main/lsm-agent_1.0.3_i386.deb
+Size: 47686
+MD5sum: 8bdbd14f9fc00bf6a4dc419a28ad3a78
+SHA1: 4dba360f3d2028851d844cc30b1398830802947e
+SHA256: 9c9c4a9859ef0059df93c611b5f900144663b394c09558824f7cb256a0d0e882
+SHA512: e30b582f9ce299868df3624b64a81b6bb19d647718c4632c30127b28df05406ecbc3941a04c9e11565be3bd7643ac83fa4655d2fe08ff06b873a7a60a0ef93c9
 Homepage: https://github.com/retreat-community/lanscape
 Description: Lanscape Mini agent (tiny network path tester)
 License: GPL-3.0-or-later
 
 Package: lsm-server
 Architecture: i386
-Version: 1.0.2
+Version: 1.0.3
 Priority: optional
 Section: net
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Installed-Size: 86
-Filename: pool/main/lsm-server_1.0.2_i386.deb
+Filename: pool/main/lsm-server_1.0.3_i386.deb
 Size: 59312
-MD5sum: 03e916e8a5199f2c867628120e64d3d7
-SHA1: b6b677ffd3e236c182f9e566eec64460d43c8acc
-SHA256: ba353e03bde48bb35d8a91dea034cbef9e1ee9a6bc1ef11bf1110a85c37e3bc8
-SHA512: 10bfb834331eda90c72235c3df3da8dd4143b871122966e9b1a03ee777bca6b1ec15218bfaf994327f0e9fd80a3568afadad132fd88bbbaa1bfe8133d7884dbb
+MD5sum: 2d79ec1a378b7bcb871519f2310f3602
+SHA1: 213c7d139ac71bae752abf427c514357327b8afa
+SHA256: 91d9482eecad586dcf044fdbfcb13b06a60cbc464fcc5c03cfed31dda7d655b6
+SHA512: ca7678adf61ea5a2254b041cca158f6c68a7317e6efa2c8c29c387ef00d3b3680162ff81748346da73aceac30df5603e1202e12a0df33f6f3ac713c7598ea057
 Homepage: https://github.com/retreat-community/lanscape
 Description: Lanscape Mini server (tiny network path tester)
 License: GPL-3.0-or-later

@@ -1,65 +1,65 @@
 Package: lanscape-agent
 Architecture: arm64
-Version: 1.0.2
+Version: 1.0.3
 Priority: optional
 Section: net
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Installed-Size: 7745
-Filename: pool/main/lanscape-agent_1.0.2_linux_arm64.deb
-Size: 3235192
-MD5sum: c215b1982d1ada78c6e0edc28cd93590
-SHA1: 0f93b61711bfd0ff6df6d5a84c863a9fc30197d4
-SHA256: aba28fc835929d3db86d4d0c66cbf68d0553cfdd5a7bf41fee4e5642e6331068
-SHA512: 5a14648873f09e8dee794cfcaae84a8b88d0247a73221bfc4af0639b092900c9605db61a0b46d3d7641178ba164a07a14962da71ab9b276b207812bd947b790d
+Filename: pool/main/lanscape-agent_1.0.3_linux_arm64.deb
+Size: 3235186
+MD5sum: 44acb5935f5623933952104d854e75a2
+SHA1: c414e29167368ded32a20aeae1abd6190aa38e68
+SHA256: 96c9dc6179c484156ea5e1d65b5db34cd0a0486897e4042adf98c28f5e4e32a0
+SHA512: 6c9e362009fb439890c3441983888ff6ea18f25bae56e46299c33b10df1546b03353f452d56215ab532075a0dc2dc652d59c3db11f921f751c0802c3fe85a791
 Homepage: https://github.com/retreat-community/lanscape
 Description: Lanscape agent - inventory, network tests, discovery and checks
 
 Package: lanscape
 Architecture: arm64
-Version: 1.0.2
+Version: 1.0.3
 Priority: optional
 Section: net
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Installed-Size: 22849
-Filename: pool/main/lanscape_1.0.2_linux_arm64.deb
-Size: 8698846
-MD5sum: d534fa72f779fd755f0b0adaffb3e658
-SHA1: b219f10ccd41807c31ceaae7d0c019a55c1636cd
-SHA256: c082e2b30d2768cac74add65381ca5b6889f7685f9a613eef1fe03ada8857d69
-SHA512: 32657cc0b4eaecabfda9c33a8242208b32edd71a3cffa07f6532fdbeeb82b02bc62d33ce025c1f1c165dcbcade21cb88ec131900c42879460a0353c3caa7ccd4
+Filename: pool/main/lanscape_1.0.3_linux_arm64.deb
+Size: 8699148
+MD5sum: f8c319ee50b0dfd9360abde1d5fa9c79
+SHA1: 83791d99c2e9d06e277b3f540b14ba1d3458b224
+SHA256: 16d6f78a8bee4d5fc93c5bb14b701bf8561dd0a29b86dac180de1108959b95f4
+SHA512: 3a88694c05660ec7d029f07f63c60821efbf7df2916e8c496a2fe08d2f2e53b7f1f95ccb0d17c03d125decdb95fe9d79aee6f1ad5adac3311070f85fe1ee73c8
 Homepage: https://github.com/retreat-community/lanscape
 Description: Network paths, map and service uptime in one panel (server)
 
 Package: lsm-agent
 Architecture: arm64
-Version: 1.0.2
+Version: 1.0.3
 Priority: optional
 Section: net
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Installed-Size: 72
-Filename: pool/main/lsm-agent_1.0.2_arm64.deb
-Size: 48516
-MD5sum: 36486050815e7cc04f4c1351288a63a5
-SHA1: ef27478a2ae5d9284e250d1197e1ff048a6e985b
-SHA256: 5fcbc3a79dc3ddbf85966239aa14a5c179472332f82ebdaa29ec9a7176592823
-SHA512: cd983872e4f695b596d3546371db26f80655c306c85901d93340fcdb462a0a65e0f87e3ec4f316dde99ccee196d89484c59a67ecd9e945dc717379486725236e
+Filename: pool/main/lsm-agent_1.0.3_arm64.deb
+Size: 48514
+MD5sum: a4a73c2fd569aee76837e4f87e43af60
+SHA1: dd600ea36957a1cbab3586da9768623ec2f3b009
+SHA256: d3c83a9037cfe1156a80155cd4f1514d975e67c520d49f65f68a82f3f2ed34a8
+SHA512: c6fe7d63490d36ff0a20c53a200d92dd6936d39db0b14e610a67bbc9cf7c01276e5f6c60e1cd616c8a3dcf2bdd30a366ec53d11077a1a80b42a9500590bb0771
 Homepage: https://github.com/retreat-community/lanscape
 Description: Lanscape Mini agent (tiny network path tester)
 License: GPL-3.0-or-later
 
 Package: lsm-server
 Architecture: arm64
-Version: 1.0.2
+Version: 1.0.3
 Priority: optional
 Section: net
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Installed-Size: 88
-Filename: pool/main/lsm-server_1.0.2_arm64.deb
+Filename: pool/main/lsm-server_1.0.3_arm64.deb
 Size: 61042
-MD5sum: 51692cd5edda5bbc285ecf3ed5820f98
-SHA1: de0af9153369451fc59e41b8f5f36dce502a9f2f
-SHA256: 516bc876b516cfb972ad52c6d18fe0ef91d3cb6a2c6f5af5a0be30dffc3fa042
-SHA512: 1582dbb67045fae47595ac8f0b8af83e8e4871f61a4d192d67d0d3f0ed6a869fd704ec7666ff96cd9519f69ab1bed2c752d0d12d2e9590e0d8bd08e96997ff41
+MD5sum: af17d59e715366d16752fe8597f8eb8a
+SHA1: 8e6d30d699f1bdc4e763ccf10d37ceb414b181b7
+SHA256: eb91180b08efa7094b3ab0f3eab99bcf85557937104b65e620e6d555c4b32ec4
+SHA512: 54363d395e984109e174b65be3fca15ca827f50f978ba6d475c73666a0f6fe83acf578f9039495315d5dc866ccc14b254832b54e34935ba370b64cd59dc7a70b
 Homepage: https://github.com/retreat-community/lanscape
 Description: Lanscape Mini server (tiny network path tester)
 License: GPL-3.0-or-later

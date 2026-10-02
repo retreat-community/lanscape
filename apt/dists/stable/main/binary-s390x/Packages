@@ -1,16 +1,16 @@
 Package: lanscape-agent
 Architecture: s390x
-Version: 1.0.2
+Version: 1.0.3
 Priority: optional
 Section: net
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Installed-Size: 8577
-Filename: pool/main/lanscape-agent_1.0.2_linux_s390x.deb
-Size: 3380532
-MD5sum: 1caecd824a1795116476cea8ebee015c
-SHA1: 62ba8e5c9e511816eaffd920a02804b10c030914
-SHA256: 0aed988c666b7b2d891d9f9981f8e7f811127c0d7e5d365737419758f8361d26
-SHA512: a3d6b2fa53017030d1aa1dfa235097c559a46e5f6e993341a6bcf03522b165b288918154bcf46705caa791f0a638c77f72ad842c67a6a106415bd8633fa45b4e
+Filename: pool/main/lanscape-agent_1.0.3_linux_s390x.deb
+Size: 3380542
+MD5sum: 51b14093378d684abba497b7cec47366
+SHA1: 44303a428493f1127557c4b8c89e289348b8b7d5
+SHA256: 1036aef0f59a97e631326dfc8a5e39d7b927950cc50361ea438d25d8a65ccdd2
+SHA512: a5922136e94d75d51f6acddc953f20698c7139aceda3ff425b272d939a2d03cebe9c27c7b84d6bdcfe0ae75e390d4d6792370400af66639493f4aa29bf5af226
 Homepage: https://github.com/retreat-community/lanscape
 Description: Lanscape agent - inventory, network tests, discovery and checks
 

@@ -151,8 +151,14 @@ func (ca *CA) ServerCert(hosts []string) (*tls.Certificate, error) {
 	certPath, keyPath := filepath.Join(ca.dir, "server.crt"), filepath.Join(ca.dir, "server.key")
 	if c, err := tls.LoadX509KeyPair(certPath, keyPath); err == nil {
 		leaf, err := x509.ParseCertificate(c.Certificate[0])
-		if err == nil && time.Until(leaf.NotAfter) > RenewBefore && coversHosts(leaf, hosts) {
+		if err == nil && time.Until(leaf.NotAfter) > RenewBefore && coversHosts(leaf, hosts) &&
+			leaf.CheckSignatureFrom(ca.Cert) == nil {
 			c.Leaf = leaf
+			// the chain must end with the CA: agents pin its fingerprint on registration.
+			// server.crt written before the CA was stored with it holds the leaf only.
+			if len(c.Certificate) == 1 {
+				c.Certificate = append(c.Certificate, ca.Cert.Raw)
+			}
 			ca.server = &c
 			return ca.server, nil
 		}
@@ -189,10 +195,11 @@ func (ca *CA) ServerCert(hosts []string) (*tls.Certificate, error) {
 	if err := os.WriteFile(keyPath, kpem, 0o600); err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(certPath, cpem, 0o644); err != nil { //nolint:gosec // certificates are public
+	chain := append(append([]byte{}, cpem...), ca.CertPEM...)
+	if err := os.WriteFile(certPath, chain, 0o644); err != nil { //nolint:gosec // certificates are public
 		return nil, err
 	}
-	c, err := tls.X509KeyPair(append(cpem, ca.CertPEM...), kpem)
+	c, err := tls.X509KeyPair(chain, kpem)
 	if err != nil {
 		return nil, err
 	}

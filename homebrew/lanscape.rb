@@ -1,27 +1,27 @@
 class Lanscape < Formula
   desc "Network paths, map and service uptime in one panel"
   homepage "https://github.com/retreat-community/lanscape"
-  version "1.0.3"
+  version "1.0.4"
   license "GPL-3.0-or-later"
 
   on_macos do
     on_arm do
-      url "https://github.com/retreat-community/lanscape/releases/download/v1.0.3/lanscape_1.0.3_darwin_arm64.tar.gz"
-      sha256 "56596d97211053c9a9a0a7cd0575743d6dfad8b51467bebf918bcf8b2b57247a"
+      url "https://github.com/retreat-community/lanscape/releases/download/v1.0.4/lanscape_1.0.4_darwin_arm64.tar.gz"
+      sha256 "030adfe1e7c029222654cbb598f55e446c6bcc376b3cf9e921998b775a342f7e"
     end
     on_intel do
-      url "https://github.com/retreat-community/lanscape/releases/download/v1.0.3/lanscape_1.0.3_darwin_amd64.tar.gz"
-      sha256 "288b638035e62083c6c7f2eaa10dfcdd6762adecceb73e2bf6da4c68cafcefac"
+      url "https://github.com/retreat-community/lanscape/releases/download/v1.0.4/lanscape_1.0.4_darwin_amd64.tar.gz"
+      sha256 "ddcf5fea329b8b0804a4aa88f2802a397cac1a8407d3a4c6d8ef002d5d801728"
     end
   end
   on_linux do
     on_arm do
-      url "https://github.com/retreat-community/lanscape/releases/download/v1.0.3/lanscape_1.0.3_linux_arm64.tar.gz"
-      sha256 "fd6b48a9029fd30650b41acd2710fb2af3eec239c694d37122e4b9b78dd42803"
+      url "https://github.com/retreat-community/lanscape/releases/download/v1.0.4/lanscape_1.0.4_linux_arm64.tar.gz"
+      sha256 "96d8e92be469375b76494c48ec94eed59bff72c2d7a8104270fa25d4aeeaa876"
     end
     on_intel do
-      url "https://github.com/retreat-community/lanscape/releases/download/v1.0.3/lanscape_1.0.3_linux_amd64.tar.gz"
-      sha256 "4776a33546c92948bf204b369b6e97f0e25a2eab8962e649629636b9dfcf0864"
+      url "https://github.com/retreat-community/lanscape/releases/download/v1.0.4/lanscape_1.0.4_linux_amd64.tar.gz"
+      sha256 "86e7ecb6aa7890e481e971061ea646c27fd5285601b3d412ed12186b65c0998e"
     end
   end
 

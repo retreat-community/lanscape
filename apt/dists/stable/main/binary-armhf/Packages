@@ -1,33 +1,33 @@
 Package: lsm-agent
 Architecture: armhf
-Version: 1.0.3
+Version: 1.0.4
 Priority: optional
 Section: net
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Installed-Size: 75
-Filename: pool/main/lsm-agent_1.0.3_armhf.deb
-Size: 47536
-MD5sum: bed779fc5ffe92ce60babb47d1f3dde9
-SHA1: 7c1dc04bdb3d0ff4d352b36d6ede2230d2c6ad32
-SHA256: 2795b33b0bd45f271b4c0170cb9bcf6eda52d8aa4bb8a090bcb1d686ff624ec4
-SHA512: a8c1fda6d53003edddc1e6ad4376ba88dbbc3725b9a8af35770c03c9ca13df712c5a3cd45173bd203ea8c25ec84df851ff54cfb36cca989d091fc01ee33407e5
+Filename: pool/main/lsm-agent_1.0.4_armhf.deb
+Size: 47534
+MD5sum: c56ef52406f43126710f1aaa1380b533
+SHA1: 845e2a679ecd02867410cc9691cbee128c510e0d
+SHA256: 81387458d43ab8b3a80dcf0bb2117ae332fba2bcb76cf9ba20739a140c3fc897
+SHA512: 42c5e35d95607affb27fe62d47ea2f9cb7e141c933e90f7d24c428b3588db7f586f8c3fc6ed552d5873945b282790dfcc09fd9c5559dcce1225f04e185cb84e5
 Homepage: https://github.com/retreat-community/lanscape
 Description: Lanscape Mini agent (tiny network path tester)
 License: GPL-3.0-or-later
 
 Package: lsm-server
 Architecture: armhf
-Version: 1.0.3
+Version: 1.0.4
 Priority: optional
 Section: net
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Installed-Size: 88
-Filename: pool/main/lsm-server_1.0.3_armhf.deb
+Filename: pool/main/lsm-server_1.0.4_armhf.deb
 Size: 59262
-MD5sum: 08fadeefa9a886db7c2b6a4820a9e289
-SHA1: 5b805c56b2e101e57895e277aa025a3f7728b7ed
-SHA256: acff99801600d0492adfa5d1f12c0aee2c64c018f5aca2350800e0e7daa22058
-SHA512: 0bc2ebc504ee32d160e6d8f550c105589c3ddcfab2ad1c0c3b1e564d2b5b9eaedaf70ab59d5d3bb46c7c65b1a8d44a1da01b4816966dd0194ca52d1b7789747d
+MD5sum: b6f8ef6c66582580f393770d8a6895c2
+SHA1: 936723e8efc0edefcdaf4669e82557d827954d72
+SHA256: 14233e1b003478ddb7fee90d63da6d9ebb7586bc5a8c7faff3746d4830e1ffd2
+SHA512: a3caa6a58d109c5e30208ccbccaed2aa8a6a6d36da9403e9240649e3a2568a49f0fc85fb54cbe7585cd65937872bafcc5b7c3eadc0d49bc2588ad48e56e91334
 Homepage: https://github.com/retreat-community/lanscape
 Description: Lanscape Mini server (tiny network path tester)
 License: GPL-3.0-or-later

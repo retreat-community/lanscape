@@ -1,16 +1,16 @@
 Package: lanscape-agent
 Architecture: riscv64
-Version: 1.0.3
+Version: 1.0.4
 Priority: optional
 Section: net
 Maintainer: Kirill Shakhov <kirill.shakhov14@gmail.com>
 Installed-Size: 7617
-Filename: pool/main/lanscape-agent_1.0.3_linux_riscv64.deb
-Size: 3204492
-MD5sum: eeb3b0dc377e7e84da9d5917a601f9c3
-SHA1: 0bfb2615c64eb1ae5851e7346b1b5c9d56029fdf
-SHA256: 35b47a3dcaf76ef17d69b8c5d1f8283fdc682636578cfd88dd3b7e1ea4d9e91f
-SHA512: 030d26e28c8755c564a1644f6ef87738889d7e82039c1e79303e252ae40b382fd8c04960e68353d17af17123f718e743a90007cd708bd779d699da1b2a8dd092
+Filename: pool/main/lanscape-agent_1.0.4_linux_riscv64.deb
+Size: 3204496
+MD5sum: 96623bec826617c07f5631419394de11
+SHA1: ce3b4de4a03f40299a25b73f1285c5dc1610e779
+SHA256: ded5788ab0a987b64da394428ca8b5597b570c25cd195323a3002e18443401bc
+SHA512: 5d1597499235121ac9c1e0ef2bb6d333af5330d999885de14bf096be9ab55858b020f54a1410927626aee23ad860b8217d22f25dd2a7b75436c80b121b9febf2
 Homepage: https://github.com/retreat-community/lanscape
 Description: Lanscape agent - inventory, network tests, discovery and checks
 

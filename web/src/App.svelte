@@ -7,6 +7,7 @@
   import Changes from "./pages/Changes.svelte";
   import Dashboard from "./pages/Dashboard.svelte";
   import Devices from "./pages/Devices.svelte";
+  import Donate from "./pages/Donate.svelte";
   import Login from "./pages/Login.svelte";
   import Network from "./pages/Network.svelte";
   import Monitors from "./pages/Monitors.svelte";
@@ -124,11 +125,13 @@
       <Settings />
     {:else if page.startsWith("/account")}
       <Account />
+    {:else if page.startsWith("/donate")}
+      <Donate />
     {:else}
       <Dashboard />
     {/if}
   </main>
-  <footer class="muted small">Lanscape {ui.version}</footer>
+  <footer class="muted small">Lanscape {ui.version} · <a href="#/donate">{t("donate.link")}</a></footer>
 {/if}
 
 {#if ui.toast}
